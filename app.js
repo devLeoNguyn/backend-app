@@ -26,9 +26,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 1. dangky
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
+const otpRoutes = require('./routes/otp.routes');
+const genreRoutes = require('./routes/genre.routes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/otp', otpRoutes);
+app.use('/api/genres', genreRoutes);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
