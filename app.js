@@ -22,6 +22,9 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 //---------Routes----------
+const indexRouter = require('./routes/index');
+
+app.use('/', indexRouter);
 
 // 1. dangky
 const authRoutes = require('./routes/auth.routes');
