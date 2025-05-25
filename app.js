@@ -2,7 +2,6 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
-
 var logger = require('morgan');
 
 var app = express();
@@ -23,14 +22,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //---------Routes----------
 const indexRouter = require('./routes/index');
-app.use('/', indexRouter);
-
-// 1. dangky
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
+const movieRoutes = require('./routes/movie.routes');
+const episodeRoutes = require('./routes/episode.routes');
 
+// Đăng ký routes
+app.use('/', indexRouter);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/movies', movieRoutes);
+app.use('/api/episodes', episodeRoutes);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -47,6 +49,7 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
 //mongoose connect
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -55,7 +58,4 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 
-
-
 module.exports = app;
-
