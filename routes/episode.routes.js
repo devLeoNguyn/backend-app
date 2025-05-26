@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const episodeController = require('../controllers/episode.controller');
+const { 
+    getEpisodeById, 
+    createEpisode, 
+    updateEpisode, 
+    deleteEpisode 
+} = require('../controllers/episode.controller');
+const { authenticateToken } = require('../middleware/auth.middleware');
 
-// Lấy chi tiết một tập phim
-router.get('/:id', episodeController.getEpisodeById);
+// Public routes
+router.get('/:id', getEpisodeById);
 
-// Thêm tập phim mới
-router.post('/', episodeController.createEpisode);
+// Protected routes
+router.post('/', authenticateToken, createEpisode);
+router.put('/:id', authenticateToken, updateEpisode);
+router.delete('/:id', authenticateToken, deleteEpisode);
 
-// Cập nhật thông tin tập phim
-router.put('/:id', episodeController.updateEpisode);
-
-// Xóa tập phim
-router.delete('/:id', episodeController.deleteEpisode);
-
-module.exports = router; 
+module.exports = router;

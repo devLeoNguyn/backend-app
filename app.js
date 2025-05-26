@@ -26,6 +26,7 @@ const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const movieRoutes = require('./routes/movie.routes');
 const episodeRoutes = require('./routes/episode.routes');
+const favoriteRoutes = require('./routes/favorite.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -42,12 +44,14 @@ app.use(function (req, res, next) {
 // error handler
 app.use(function (err, req, res, next) {
   // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  const error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+  // return error as JSON
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: error
+  });
 });
 
 //mongoose connect
