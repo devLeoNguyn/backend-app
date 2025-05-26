@@ -1,12 +1,17 @@
-var express = require('express');
-var router = express.Router();
-const User = require('../models/User'); 
+const express = require('express');
+const router = express.Router();
+const auth = require('../middlewares/auth.middleware');
+const upload = require('../middlewares/upload.middleware');
+const {
+  createUser,
+  updateUser,
+  deleteUser,
+  uploadAvatar
+} = require('../controllers/user.controller');
 
-/* GET users listing. */
-router.get('/users', async (req, res) => {
-  const users = await User.find();
-
-  res.render('users', { users });
-});
+router.post('/', createUser);
+router.put('/:id', auth, updateUser);
+router.delete('/:id', auth, deleteUser);
+router.patch('/:id/avatar', auth, upload.single('avatar'), uploadAvatar);
 
 module.exports = router;
