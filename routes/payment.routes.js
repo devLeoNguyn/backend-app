@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const payOS = require("../utils/payos.util");
-const Payment = require("../models/Payment");
+const MoviePayment = require("../models/MoviePayment");
 
 // Utility function to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -44,19 +44,13 @@ router.post("/create", async (req, res) => {
     console.log("PayOS Response:", paymentLinkRes);
 
     // Lưu thông tin thanh toán vào database
-    const payment = new Payment({
-      orderCode,
-      amount,
-      description: description || "Ma giao dich thu nghiem",
-      userId,
-      movieId,
-      payosData: {
-        bin: paymentLinkRes.bin,
-        checkoutUrl: paymentLinkRes.checkoutUrl,
-        accountNumber: paymentLinkRes.accountNumber,
-        accountName: paymentLinkRes.accountName,
-        qrCode: paymentLinkRes.qrCode
-      }
+    const payment = new MoviePayment({
+      user_id: userId,
+      movie_id: movieId,
+      amount: amount,
+      payment_method: 'bank_transfer', // PayOS sử dụng chuyển khoản ngân hàng
+      status: 'pending',
+      payment_date: new Date()
     });
 
     await payment.save();
@@ -103,12 +97,17 @@ router.post("/create", async (req, res) => {
 // 2. Truy vấn đơn hàng
 router.get("/:orderId", async (req, res) => {
   try {
-    // Tìm trong database local trước
-    const localPayment = await Payment.findOne({ orderCode: req.params.orderId })
-      .populate('userId', 'name email') // Lấy thông tin user
-      .populate('movieId', 'title price'); // Lấy thông tin movie
+    // Tìm trong database local
+    const payment = await MoviePayment.findOne({ 
+      payment_date: {
+        $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Tìm trong 24h gần nhất
+      }
+    })
+    .populate('user_id', 'name email')
+    .populate('movie_id', 'title price')
+    .sort({ payment_date: -1 });
 
-    if (!localPayment) {
+    if (!payment) {
       return res.status(404).json({
         error: -1,
         message: "Không tìm thấy đơn hàng",
@@ -116,29 +115,10 @@ router.get("/:orderId", async (req, res) => {
       });
     }
 
-    // Kiểm tra trạng thái từ PayOS nếu đơn chưa hoàn thành
-    if (localPayment.status === 'PENDING') {
-      try {
-        const payosOrder = await payOS.getPaymentLinkInfomation(req.params.orderId);
-        // Cập nhật thông tin mới nhất từ PayOS
-        if (payosOrder) {
-          localPayment.status = payosOrder.status === 'PAID' ? 'SUCCESS' : 'PENDING';
-          if (payosOrder.status === 'PAID') {
-            localPayment.paymentTime = new Date();
-            localPayment.paymentMethod = payosOrder.paymentMethod;
-          }
-          await localPayment.save();
-        }
-      } catch (payosError) {
-        console.error("Lỗi khi kiểm tra PayOS:", payosError);
-        // Vẫn trả về thông tin local nếu không check được PayOS
-      }
-    }
-
     return res.json({
       error: 0,
       message: "Thành công",
-      data: localPayment
+      data: payment
     });
   } catch (error) {
     console.error("Lỗi truy vấn đơn:", error);
@@ -218,10 +198,16 @@ router.get("/success", async (req, res) => {
     console.log("Payment Success Callback:", { orderCode, amount, description, status });
     
     // Cập nhật trạng thái thanh toán trong database
-    const payment = await Payment.findOne({ orderCode });
+    const payment = await MoviePayment.findOne({
+      payment_date: {
+        $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Tìm trong 24h gần nhất
+      }
+    }).sort({ payment_date: -1 });
+
     if (payment) {
-      payment.status = 'SUCCESS';
-      payment.paymentTime = new Date();
+      payment.status = 'completed';
+      // Bắt đầu thời gian thuê 48h
+      payment.start48hRental();
       await payment.save();
     }
     
@@ -247,9 +233,14 @@ router.get("/cancel", async (req, res) => {
     console.log("Payment Cancelled:", { orderCode });
     
     // Cập nhật trạng thái đơn hàng trong database
-    const payment = await Payment.findOne({ orderCode });
+    const payment = await MoviePayment.findOne({
+      payment_date: {
+        $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Tìm trong 24h gần nhất
+      }
+    }).sort({ payment_date: -1 });
+
     if (payment) {
-      payment.status = 'CANCELLED';
+      payment.status = 'failed';
       await payment.save();
     }
     

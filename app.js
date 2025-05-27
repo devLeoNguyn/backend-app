@@ -27,6 +27,7 @@ const userRoutes = require('./routes/user.routes');
 const movieRoutes = require('./routes/movie.routes');
 const episodeRoutes = require('./routes/episode.routes');
 const favoriteRoutes = require('./routes/favorite.routes');
+const paymentRoute = require('./routes/payment.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -35,6 +36,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/favorites', favoriteRoutes);
+
+app.use('/api/payment', paymentRoute);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
