@@ -41,25 +41,24 @@ const createMovie = async (movieData) => {
     }
 };
 
-const formatMovieResponse = (movie, episodes) => {
-    const responseData = movie.toObject();
+// const formatMovieResponse = (movie, episodes) => {
+//     const responseData = movie.toObject();
     
-    if (responseData.movie_type === 'Phim bộ') {
-        // Sắp xếp episodes theo episode_number
-        episodes.sort((a, b) => a.episode_number - b.episode_number);
-        responseData.episodes = episodes.map(ep => ({
-            ...ep.toObject(),
-            uri: responseData.is_free ? ep.uri : null
-        }));
-    } else {
-        responseData.uri = responseData.is_free ? episodes[0].uri : null;
-        responseData.episode_description = episodes[0].episode_description;
-    }
+//     if (responseData.movie_type === 'Phim bộ') {
+//         // Sắp xếp episodes theo episode_number
+//         episodes.sort((a, b) => a.episode_number - b.episode_number);
+//         responseData.episodes = episodes.map(ep => ({
+//             ...ep.toObject(),
+//             uri: responseData.is_free ? ep.uri : null
+//         }));
+//     } else {
+//         responseData.uri = responseData.is_free ? episodes[0].uri : null;
+//         responseData.episode_description = episodes[0].episode_description;
+//     }
 
-    return responseData;
-};
+//     return responseData;
+// };
 
 module.exports = {
     createMovie,
-    formatMovieResponse
 }; 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const applyMovieMethods = require('./methods/movie.methods');
 
 const movieSchema = new mongoose.Schema({
   movie_title: {
@@ -7,12 +8,19 @@ const movieSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true
+    trim: true
   },
   production_time: {
     type: Date,
     required: true
   },
+  poster_path: {
+    type: String
+  },
+  genres: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Genre'
+  }],
   producer: {
     type: String,
     required: true
@@ -24,33 +32,20 @@ const movieSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    default: 0, // Mặc định là phim freebh
-    min: 0, // Giá không thể âm
+    default: 0,
+    min: 0,
     validate: {
-      validator: function(value) {
-        // Giá phải là số nguyên
-        return Number.isInteger(value);
-      },
+      validator: Number.isInteger,
       message: 'Giá phải là số nguyên'
-    }
-  },
-  total_episodes: {
-    type: Number,
-    required: true,
-    min: 1,
-    validate: {
-      validator: function(value) {
-        return Number.isInteger(value);
-      },
-      message: 'Số tập phải là số nguyên'
     }
   },
   is_free: {
     type: Boolean,
-    default: true, // Mặc định là phim free
-    get: function() {
-      return this.price === 0;
-    }
+    default: true
+  },
+  total_episodes: {
+    type: Number,
+    min: 1
   }
 }, {
   timestamps: true, // Tự động thêm createdAt và updatedAt
@@ -64,36 +59,8 @@ const movieSchema = new mongoose.Schema({
   }
 });
 
-// Virtual field để hiển thị trạng thái và định dạng giá
-movieSchema.virtual('price_display').get(function() {
-  if (this.price === 0) {
-    return 'Miễn phí';
-  }
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND'
-  }).format(this.price);
-});
 
-// Middleware để tự động set is_free và movie_type
-movieSchema.pre('save', function(next) {
-  // Set is_free dựa vào price
-  this.is_free = this.price === 0;
-  
-  // Set movie_type dựa vào total_episodes
-  if (this.isModified('total_episodes')) {
-    this.movie_type = this.total_episodes > 1 ? 'Phim bộ' : 'Phim lẻ';
-  }
-  
-  next();
-});
+applyMovieMethods(movieSchema);
 
-// Virtual để lấy thông tin episodes
-movieSchema.virtual('episodes', {
-  ref: 'Episode',
-  localField: '_id',
-  foreignField: 'movie_id',
-  options: { sort: { episode_number: 1 } }
-});
 
 module.exports = mongoose.model('Movie', movieSchema);
