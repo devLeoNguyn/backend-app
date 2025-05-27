@@ -2,13 +2,25 @@ const express = require("express");
 const router = express.Router();
 const payOS = require("../utils/payos.util");
 const Payment = require("../models/MoviePayment");
+const { authenticateToken } = require("../middleware/auth.middleware");
+
+
 
 // Utility function to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // 1. Tạo đơn thanh toán
-router.post("/create", async (req, res) => {
+router.post("/create", authenticateToken, async (req, res) => {
   const { description, returnUrl, cancelUrl, amount, userId, movieId } = req.body;
+
+  // Kiểm tra xem user có quyền tạo payment cho userId này không
+  if (req.user._id.toString() !== userId) {
+    return res.status(403).json({
+      error: -1,
+      message: "Unauthorized: You can only create payments for yourself",
+      data: null
+    });
+  }
 
   console.log("Request Body:", req.body);
   console.log("PayOS Credentials:", {
@@ -17,7 +29,7 @@ router.post("/create", async (req, res) => {
     checksumKey: process.env.PAYOS_CHECKSUM_KEY ? "Configured" : "Missing"
   });
 
-  const orderCode = Number(String(Date.now()).slice(-6));
+  const orderCode = Date.now(); // đơn giản, duy nhất theo thời gian
 
   const body = {
     orderCode,
@@ -37,13 +49,10 @@ router.post("/create", async (req, res) => {
   console.log("PayOS Request Body:", body);
 
   try {
-    // Add delay before making the request
     await delay(1000);
-    
     const paymentLinkRes = await payOS.createPaymentLink(body);
     console.log("PayOS Response:", paymentLinkRes);
 
-    // Lưu thông tin thanh toán vào database
     const payment = new Payment({
       orderCode,
       amount,
@@ -83,7 +92,6 @@ router.post("/create", async (req, res) => {
       statusCode: error.response?.status
     });
 
-    // Handle rate limit error
     if (error.response?.status === 429) {
       return res.status(429).json({
         error: -1,
@@ -101,93 +109,139 @@ router.post("/create", async (req, res) => {
 });
 
 // 2. Truy vấn đơn hàng
-router.get("/:orderId", async (req, res) => {
-  try {
-    // Tìm trong database local trước
-    const localPayment = await Payment.findOne({ orderCode: req.params.orderId })
-      .populate('userId', 'name email') // Lấy thông tin user
-      .populate('movieId', 'title price'); // Lấy thông tin movie
+router.get("/:orderId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      // Tìm trong database local trước
+      const localPayment = await Payment.findOne({ orderCode: req.params.orderId })
+        .populate('userId', 'name email')
+        .populate('movieId', 'title price');
 
-    if (!localPayment) {
-      return res.status(404).json({
+      if (!localPayment) {
+        return res.status(404).json({
+          error: -1,
+          message: "Không tìm thấy đơn hàng",
+          data: null,
+        });
+      }
+
+      // Kiểm tra quyền truy cập
+      if (localPayment.userId._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          error: -1,
+          message: "Unauthorized: You can only view your own payments",
+          data: null
+        });
+      }
+
+      // Kiểm tra trạng thái từ PayOS nếu đơn chưa hoàn thành
+      if (localPayment.status === 'PENDING') {
+        try {
+          const payosOrder = await payOS.getPaymentLinkInfomation(req.params.orderId);
+          // Cập nhật thông tin mới nhất từ PayOS
+          if (payosOrder) {
+            localPayment.status = payosOrder.status === 'PAID' ? 'SUCCESS' : 'PENDING';
+            if (payosOrder.status === 'PAID') {
+              localPayment.paymentTime = new Date();
+              localPayment.paymentMethod = payosOrder.paymentMethod;
+            }
+            await localPayment.save();
+          }
+        } catch (payosError) {
+          console.error("Lỗi khi kiểm tra PayOS:", payosError);
+          // Vẫn trả về thông tin local nếu không check được PayOS
+        }
+      }
+
+      return res.json({
+        error: 0,
+        message: "Thành công",
+        data: localPayment
+      });
+    } catch (error) {
+      console.error("Lỗi truy vấn đơn:", error);
+      return res.status(500).json({
         error: -1,
-        message: "Không tìm thấy đơn hàng",
+        message: "Lỗi hệ thống",
         data: null,
       });
     }
-
-    // Kiểm tra trạng thái từ PayOS nếu đơn chưa hoàn thành
-    if (localPayment.status === 'PENDING') {
-      try {
-        const payosOrder = await payOS.getPaymentLinkInfomation(req.params.orderId);
-        // Cập nhật thông tin mới nhất từ PayOS
-        if (payosOrder) {
-          localPayment.status = payosOrder.status === 'PAID' ? 'SUCCESS' : 'PENDING';
-          if (payosOrder.status === 'PAID') {
-            localPayment.paymentTime = new Date();
-            localPayment.paymentMethod = payosOrder.paymentMethod;
-          }
-          await localPayment.save();
-        }
-      } catch (payosError) {
-        console.error("Lỗi khi kiểm tra PayOS:", payosError);
-        // Vẫn trả về thông tin local nếu không check được PayOS
-      }
-    }
-
-    return res.json({
-      error: 0,
-      message: "Thành công",
-      data: localPayment
-    });
-  } catch (error) {
-    console.error("Lỗi truy vấn đơn:", error);
-    return res.status(500).json({
-      error: -1,
-      message: "Lỗi hệ thống",
-      data: null,
-    });
-  }
 });
 
 // 3. Hủy đơn thanh toán
-router.put("/:orderId", async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { cancellationReason } = req.body;
+router.put("/:orderId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { cancellationReason } = req.body;
 
-    const order = await payOS.cancelPaymentLink(orderId, cancellationReason);
-    return res.json({
-      error: 0,
-      message: "Đã hủy thành công",
-      data: order,
-    });
-  } catch (error) {
-    console.error("Lỗi hủy đơn:", error);
-    return res.status(500).json({
-      error: -1,
-      message: "Hủy đơn thất bại",
-      data: null,
-    });
-  }
+      // Kiểm tra quyền hủy đơn
+      const payment = await Payment.findOne({ orderCode: orderId });
+      if (!payment) {
+        return res.status(404).json({
+          error: -1,
+          message: "Không tìm thấy đơn hàng",
+          data: null
+        });
+      }
+
+      if (payment.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          error: -1,
+          message: "Unauthorized: You can only cancel your own payments",
+          data: null
+        });
+      }
+
+      if (payment.status !== 'PENDING') {
+        return res.status(400).json({
+          error: -1,
+          message: "Chỉ có thể hủy đơn đang chờ thanh toán",
+          data: null
+        });
+      }
+
+      const order = await payOS.cancelPaymentLink(orderId, cancellationReason);
+      
+      // Cập nhật trạng thái trong DB
+      payment.status = 'CANCELLED';
+      payment.payosData.cancelReason = cancellationReason;
+      await payment.save();
+
+      return res.json({
+        error: 0,
+        message: "Đã hủy thành công",
+        data: order,
+      });
+    } catch (error) {
+      console.error("Lỗi hủy đơn:", error);
+      return res.status(500).json({
+        error: -1,
+        message: "Hủy đơn thất bại",
+        data: null,
+      });
+    }
 });
 
 // 4. Xác nhận webhook
-router.post("/confirm-webhook", async (req, res) => {
-  const { webhookUrl } = req.body;
-  try {
-    await payOS.confirmWebhook(webhookUrl);
-    return res.json({
-      error: 0,
-      message: "Đã xác nhận webhook",
-    });
-  } catch (error) {
-    console.error("Lỗi xác nhận webhook:", error);
-    return res.status(500).json({
-      error: -1,
-      message: "Xác nhận thất bại",
-    });
-  }
+router.post("/confirm-webhook",
+  async (req, res) => {
+    const { webhookUrl } = req.body;
+    try {
+      await payOS.confirmWebhook(webhookUrl);
+      return res.json({
+        error: 0,
+        message: "Đã xác nhận webhook",
+      });
+    } catch (error) {
+      console.error("Lỗi xác nhận webhook:", error);
+      return res.status(500).json({
+        error: -1,
+        message: "Xác nhận thất bại",
+      });
+    }
 });
 
 // 5. Nhận webhook thanh toán
@@ -196,17 +250,26 @@ router.post("/webhook", async (req, res) => {
     const webhookData = payOS.verifyPaymentWebhookData(req.body);
     console.log("📥 Webhook nhận được:", webhookData);
 
-    // TODO: xử lý logic lưu đơn/ cập nhật DB ở đây
+    // Cập nhật trạng thái thanh toán trong DB
+    const payment = await Payment.findOne({ orderCode: webhookData.orderCode });
+    if (payment) {
+      payment.status = webhookData.status === 'PAID' ? 'SUCCESS' : payment.status;
+      if (webhookData.status === 'PAID') {
+        payment.paymentTime = new Date();
+        payment.paymentMethod = webhookData.paymentMethod;
+      }
+      await payment.save();
+    }
+
     return res.json({
       error: 0,
-      message: "Webhook received",
-      data: webhookData,
+      message: "Webhook processed successfully"
     });
   } catch (error) {
-    console.error("Lỗi webhook:", error);
-    return res.status(400).json({
+    console.error("Lỗi xử lý webhook:", error);
+    return res.status(500).json({
       error: -1,
-      message: "Webhook không hợp lệ",
+      message: "Webhook processing failed"
     });
   }
 });

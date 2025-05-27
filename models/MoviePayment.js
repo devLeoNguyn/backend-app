@@ -1,12 +1,17 @@
 const mongoose = require('mongoose');
 
 const moviePaymentSchema = new mongoose.Schema({
-    user_id: {
+    orderCode: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    movie_id: {
+    movieId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Movie',
         required: true
@@ -16,9 +21,34 @@ const moviePaymentSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
-    payment_date: {
+    description: {
+        type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['PENDING', 'SUCCESS', 'CANCELLED', 'FAILED'],
+        default: 'PENDING'
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['BANK_TRANSFER', 'CREDIT_CARD', 'MOMO', 'ZALOPAY', 'VNPAY', 'OTHER'],
+    },
+    paymentTime: {
+        type: Date
+    },
+    createdAt: {
         type: Date,
         default: Date.now
+    },
+    payosData: {
+        bin: String,
+        checkoutUrl: String,
+        accountNumber: String,
+        accountName: String,
+        qrCode: String,
+        description: String,
+        cancelReason: String
     },
     rental_48h_start_time: {
         type: Date
@@ -31,29 +61,14 @@ const moviePaymentSchema = new mongoose.Schema({
     },
     rental_30d_expiration_time: {
         type: Date
-    },
-    status: {
-        type: String,
-        enum: ['pending', 'completed', 'failed', 'refunded'],
-        default: 'pending'
-    },
-    payment_method: {
-        type: String,
-        enum: ['credit_card', 'momo', 'zalopay', 'bank_transfer'],
-        required: true
     }
 }, {
     timestamps: true
 });
 
-// Tạo index cho việc tìm kiếm giao dịch
-moviePaymentSchema.index({ user_id: 1, movie_id: 1, payment_date: -1 });
 
-// Tạo index cho việc kiểm tra thời hạn thuê
-moviePaymentSchema.index({ rental_48h_expiration_time: 1 });
-moviePaymentSchema.index({ rental_30d_expiration_time: 1 });
 
-// Virtual field để kiểm tra trạng thái thuê
+// Virtual fields for rental status
 moviePaymentSchema.virtual('is_48h_rental_active').get(function() {
     if (!this.rental_48h_start_time || !this.rental_48h_expiration_time) {
         return false;
@@ -70,13 +85,28 @@ moviePaymentSchema.virtual('is_30d_rental_active').get(function() {
 
 // Methods
 moviePaymentSchema.methods.start48hRental = function() {
+    if (this.status !== 'SUCCESS') {
+        throw new Error('Cannot start rental for unpaid order');
+    }
     this.rental_48h_start_time = new Date();
     this.rental_48h_expiration_time = new Date(this.rental_48h_start_time.getTime() + (48 * 60 * 60 * 1000));
 };
 
 moviePaymentSchema.methods.start30dRental = function() {
+    if (this.status !== 'SUCCESS') {
+        throw new Error('Cannot start rental for unpaid order');
+    }
     this.rental_30d_start_time = new Date();
     this.rental_30d_expiration_time = new Date(this.rental_30d_start_time.getTime() + (30 * 24 * 60 * 60 * 1000));
 };
+
+// Pre-save middleware
+moviePaymentSchema.pre('save', function(next) {
+    // Nếu payment thành công và chưa có thời gian thanh toán
+    if (this.status === 'SUCCESS' && !this.paymentTime) {
+        this.paymentTime = new Date();
+    }
+    next();
+});
 
 module.exports = mongoose.model('MoviePayment', moviePaymentSchema); 
