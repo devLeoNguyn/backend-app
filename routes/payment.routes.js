@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const payOS = require("../utils/payos.util");
-const Payment = require("../models/Payment");
+const Payment = require("../models/MoviePayment");
 
 // Utility function to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
