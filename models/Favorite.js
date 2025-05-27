@@ -19,7 +19,7 @@ const favoriteSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Đảm bảo một user không thể thêm cùng một phim vào yêu thích nhiều lần
+// Tạo compound index để đảm bảo một user không thể thêm cùng một phim vào yêu thích nhiều lần
 favoriteSchema.index({ user_id: 1, movie_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('Favorite', favoriteSchema);

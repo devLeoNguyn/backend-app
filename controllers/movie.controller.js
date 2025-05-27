@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Movie = require('../models/Movie');
 const Episode = require('../models/Episode');
-const { createMovie, formatMovieResponse } = require('../services/movie.service');
+const { createMovie } = require('../services/movie.service');
 
 // Lấy 5 phim mới nhất
 const getNewWeekMovies = async (req, res) => {
@@ -64,12 +64,12 @@ const createMovieController = async (req, res) => {
         const { newMovie, episodes } = await createMovie(req.body);
 
         // Format response
-        const responseData = formatMovieResponse(newMovie, episodes);
+         const formattedMovie = newMovie.formatMovieResponse(episodes);
 
         res.status(201).json({
             status: 'success',
             data: {
-                movie: responseData
+                movie: formattedMovie
             }
         });
     } catch (err) {
