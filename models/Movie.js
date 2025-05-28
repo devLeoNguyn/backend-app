@@ -54,14 +54,14 @@ const movieSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true, // Tự động thêm createdAt và updatedAt
-  toJSON: { 
-    virtuals: true,
-    getters: true 
-  },
-  toObject: { 
-    virtuals: true,
-    getters: true 
-  }
+  // toJSON: { 
+  //   virtuals: true,
+  //   getters: true 
+  // },
+  // toObject: { 
+  //   virtuals: true,
+  //   getters: true 
+  // }
 });
 
 

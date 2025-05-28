@@ -7,7 +7,6 @@ var logger = require('morgan');
 // Swagger 
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
-const swaggerDocument = YAML.load('./swagger.yaml');
 
 var app = express();
 
@@ -47,7 +46,10 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/genres', genreRoutes);
 
-// Swagger 
+// Swagger
+const swaggerPath = path.join(__dirname, 'swagger.yaml');
+const swaggerDocument = YAML.load(swaggerPath);
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // catch 404 and forward to error handler

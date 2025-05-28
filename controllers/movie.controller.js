@@ -18,26 +18,7 @@ const getNewWeekMovies = async (req, res) => {
                 .select('episode_title uri episode_number episode_description')
                 .sort({ episode_number: 1 });
 
-            const movieObj = movie.toObject();
-
-            // Nếu có nhiều hơn 1 tập -> phim bộ
-            if (episodes.length > 1) {
-                movieObj.movie_type = 'Phim bộ';
-                movieObj.episodes = episodes.map(ep => ({
-                    episode_title: ep.episode_title,
-                    episode_number: ep.episode_number,
-                    uri: movieObj.is_free ? ep.uri : null
-                }));
-                movieObj.total_episodes = episodes.length;
-            } 
-            // Nếu chỉ có 1 tập -> phim lẻ
-            else if (episodes.length === 1) {
-                movieObj.movie_type = 'Phim lẻ';
-                movieObj.uri = movieObj.is_free ? episodes[0].uri : null;
-                movieObj.episode_description = episodes[0].episode_description;
-            }
-
-            return movieObj;
+            return movie.formatMovieResponse(episodes);
         }));
 
         res.json({
@@ -63,8 +44,8 @@ const createMovieController = async (req, res) => {
         // Gọi service để tạo movie và episodes
         const { newMovie, episodes } = await createMovie(req.body);
 
-        // Format response
-         const formattedMovie = newMovie.formatMovieResponse(episodes);
+        // Format response using schema method
+        const formattedMovie = newMovie.formatMovieResponse(episodes);
 
         res.status(201).json({
             status: 'success',
@@ -100,7 +81,7 @@ const getMovieById = async (req, res) => {
             .select('episode_title uri episode_number episode_description')
             .sort({ episode_number: 1 });
 
-        const responseData = formatMovieResponse(movie, episodes);
+        const responseData = movie.formatMovieResponse(episodes);
 
         res.json({
             status: 'success',
@@ -120,15 +101,74 @@ const getMovieById = async (req, res) => {
 // Cập nhật phim
 const updateMovie = async (req, res) => {
     try {
-        const { newMovie, episodes } = await createMovie(req.body);
-        const responseData = formatMovieResponse(newMovie, episodes);
+        const { id } = req.params;
+        const updateData = req.body;
 
-        res.json({
-            status: 'success',
-            data: {
-                movie: responseData
-            }
-        });
+        // Kiểm tra phim tồn tại
+        const existingMovie = await Movie.findById(id);
+        if (!existingMovie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Movie not found'
+            });
+        }
+
+        // Cập nhật thông tin cơ bản của phim
+        const updatedMovie = await Movie.findByIdAndUpdate(
+            id,
+            {
+                movie_title: updateData.movie_title,
+                description: updateData.description,
+                production_time: updateData.production_time,
+                producer: updateData.producer,
+                price: updateData.price,
+                poster_path: updateData.poster_path,
+                genres: updateData.genres
+            },
+            { new: true, runValidators: true }
+        ).populate('genres', 'genre_name description');
+
+        // Cập nhật hoặc thêm mới các tập phim
+        if (updateData.episodes && updateData.episodes.length > 0) {
+            // Xóa các tập cũ
+            await Episode.deleteMany({ movie_id: id });
+
+            // Thêm các tập mới
+            const episodes = await Promise.all(updateData.episodes.map(async (ep) => {
+                return await Episode.create({
+                    episode_title: ep.episode_title,
+                    uri: ep.uri,
+                    episode_number: ep.episode_number,
+                    episode_description: ep.episode_description || '',
+                    movie_id: id
+                });
+            }));
+
+            // Format response using schema method
+            const responseData = updatedMovie.formatMovieResponse(episodes);
+
+            res.json({
+                status: 'success',
+                data: {
+                    movie: responseData
+                }
+            });
+        } else {
+            // Get existing episodes if no new episodes provided
+            const episodes = await Episode.find({ movie_id: id })
+                .select('episode_title uri episode_number episode_description')
+                .sort({ episode_number: 1 });
+
+            const responseData = updatedMovie.formatMovieResponse(episodes);
+
+            res.json({
+                status: 'success',
+                data: {
+                    movie: responseData
+                }
+            });
+        }
+
     } catch (err) {
         res.status(400).json({
             status: 'error',

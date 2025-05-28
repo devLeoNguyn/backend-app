@@ -6,7 +6,7 @@ const {
     updateProfile
 } = require('../controllers/user.controller');
 
-// Tất cả routes yêu cầu đăng nhập
+// auth all
 router.use(authenticateToken);
 
 // Lấy thông tin profile
