@@ -5,7 +5,8 @@ const {
     createMovieController, 
     getMovieById, 
     updateMovie, 
-    deleteMovie 
+    deleteMovie,
+
 } = require('../controllers/movie.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 

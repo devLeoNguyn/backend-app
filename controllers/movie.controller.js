@@ -86,7 +86,7 @@ const createMovieController = async (req, res) => {
 const getMovieById = async (req, res) => {
     try {
         const movie = await Movie.findById(req.params.id)
-            .select('movie_title description production_time producer movie_type price is_free price_display');
+            .populate('genres', 'genre_name description');
             
         if (!movie) {
             return res.status(404).json({

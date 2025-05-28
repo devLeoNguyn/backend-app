@@ -13,7 +13,7 @@ const createMovie = async (movieData) => {
         // Determine movie type
         const movie_type = determineMovieType(maxEpisodeNumber);
 
-        // Create movie
+        // Create movie with additional fields
         const newMovie = await Movie.create({
             movie_title: movieData.movie_title,
             description: movieData.description,
@@ -21,7 +21,9 @@ const createMovie = async (movieData) => {
             producer: movieData.producer,
             price: validatedPrice,
             movie_type: movie_type,
-            total_episodes: maxEpisodeNumber
+            total_episodes: maxEpisodeNumber,
+            poster_path: movieData.poster_path || '',
+            genres: movieData.genres || []
         });
 
         // Create episodes
@@ -34,6 +36,9 @@ const createMovie = async (movieData) => {
                 movie_id: newMovie._id
             });
         }));
+
+        // Populate genres information
+        await newMovie.populate('genres', 'genre_name description');
 
         return { newMovie, episodes };
     } catch (error) {

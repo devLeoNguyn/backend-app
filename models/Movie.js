@@ -4,7 +4,8 @@ const applyMovieMethods = require('./methods/movie.methods');
 const movieSchema = new mongoose.Schema({
   movie_title: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   description: {
     type: String,
@@ -33,15 +34,19 @@ const movieSchema = new mongoose.Schema({
   price: {
     type: Number,
     default: 0,
-    min: 0,
-    validate: {
-      validator: Number.isInteger,
-      message: 'Giá phải là số nguyên'
-    }
+    min: 0
   },
   is_free: {
     type: Boolean,
-    default: true
+    default: function() {
+      return this.price === 0;
+    }
+  },
+  price_display: {
+    type: String,
+    get: function() {
+      return this.is_free ? 'Miễn phí' : `${this.price.toLocaleString('vi-VN')} VNĐ`;
+    }
   },
   total_episodes: {
     type: Number,

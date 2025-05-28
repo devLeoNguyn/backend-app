@@ -4,6 +4,11 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
+// Swagger 
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const swaggerDocument = YAML.load('./swagger.yaml');
+
 var app = express();
 
 //connect moongose
@@ -27,7 +32,9 @@ const userRoutes = require('./routes/user.routes');
 const movieRoutes = require('./routes/movie.routes');
 const episodeRoutes = require('./routes/episode.routes');
 const favoriteRoutes = require('./routes/favorite.routes');
-const paymentRoutes = require('./routes/payment.routes')
+const paymentRoutes = require('./routes/payment.routes');
+const ratingRoutes = require('./routes/rating.routes');
+const genreRoutes = require('./routes/genre.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -36,7 +43,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/favorites', favoriteRoutes);
-app.use('/api/payment', paymentRoutes)
+app.use('/api/payments', paymentRoutes);
+app.use('/api/ratings', ratingRoutes);
+app.use('/api/genres', genreRoutes);
+
+// Swagger 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
