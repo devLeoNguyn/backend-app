@@ -7,19 +7,31 @@ info:
     email: your-email@example.com
 
 servers:
-  - url: http://localhost:3000/api
+  - url: http://localhost:3003
     description: Development server
-  - url: https://your-production-url.com/api
+  - url: https://backend-app-lou3.onrender.com
     description: Production server
 
 tags:
   - name: Authentication
-    description: Các API liên quan đến xác thực người dùng
+    description: Các API liên quan đến xác thực người dùng (/api/auth)
   - name: User
-    description: Các API liên quan đến thông tin người dùng
+    description: Các API liên quan đến thông tin người dùng (/api/users)
+  - name: Movie
+    description: Các API liên quan đến phim (/api/movies)
+  - name: Episode
+    description: Các API liên quan đến tập phim (/api/episodes)
+  - name: Favorite
+    description: Các API liên quan đến danh sách yêu thích (/api/favorites)
+  - name: Payment
+    description: Các API liên quan đến thanh toán (/api/payments)
+  - name: Rating
+    description: Các API liên quan đến đánh giá (/api/ratings)
+  - name: Genre
+    description: Các API liên quan đến thể loại phim (/api/genres)
 
 paths:
-  /auth/register/send-otp:
+  /api/auth/register/send-otp:
     post:
       tags:
         - Authentication
@@ -66,7 +78,7 @@ paths:
                 status: "error"
                 message: "Vui lòng thử lại sau"
 
-  /auth/register/verify-otp:
+  /api/auth/register/verify-otp:
     post:
       tags:
         - Authentication
@@ -102,7 +114,7 @@ paths:
                 status: "error"
                 message: "Mã OTP không hợp lệ hoặc đã hết hạn"
 
-  /auth/register/complete:
+  /api/auth/register/complete:
     post:
       tags:
         - Authentication
@@ -136,7 +148,7 @@ paths:
                 status: "error"
                 message: "Email đã được sử dụng"
 
-  /auth/login/send-otp:
+  /api/auth/login/send-otp:
     post:
       tags:
         - Authentication
@@ -174,7 +186,7 @@ paths:
                 status: "error"
                 message: "Số điện thoại chưa được đăng ký"
 
-  /auth/login/verify:
+  /api/auth/login/verify:
     post:
       tags:
         - Authentication
@@ -210,7 +222,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /user/profile:
+  /api/users/profile:
     get:
       tags:
         - User
