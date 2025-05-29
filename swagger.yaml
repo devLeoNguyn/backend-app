@@ -39,8 +39,10 @@ paths:
       description: |
         Gửi mã OTP đến số điện thoại để bắt đầu quá trình đăng ký.
         - Mã OTP sẽ được gửi qua SMS
-        - OTP có hiệu lực trong 5 phút
-        - Mỗi số điện thoại chỉ được gửi tối đa 5 lần trong 1 giờ
+        - OTP có 6 số
+        - Định dạng số điện thoại:
+          - Bắt đầu bằng 0 hoặc +84
+          - Chỉ chứa số, không có ký tự đặc biệt
       requestBody:
         required: true
         content:
@@ -86,8 +88,6 @@ paths:
       description: |
         Xác thực mã OTP đã gửi đến số điện thoại.
         - OTP phải đúng với mã đã gửi
-        - OTP chưa hết hạn (5 phút)
-        - OTP chưa được sử dụng trước đó
       requestBody:
         required: true
         content:
@@ -123,8 +123,9 @@ paths:
         Hoàn tất quá trình đăng ký sau khi đã xác thực số điện thoại.
         Yêu cầu:
         - Số điện thoại đã được xác thực OTP
-        - Email chưa được sử dụng
         - Điền đầy đủ thông tin bắt buộc
+        - Đăng ký xong sẽ cấp phát access token và refresh token 
+        => fontend có thể vào màn hình chính luôn không cần đăng nhập lại 
       requestBody:
         required: true
         content:
@@ -155,9 +156,8 @@ paths:
       summary: Gửi mã OTP đăng nhập
       description: |
         Gửi mã OTP đến số điện thoại để đăng nhập.
-        - Số điện thoại phải đã được đăng ký
-        - Mã OTP có hiệu lực 5 phút
-        - Giới hạn 5 lần gửi/giờ
+        - Đăng nhập khi đăng xuất hoặc người dùng chưa đăng nhập vào app.
+        - Số điện thoại phải đã được đăng ký.
       requestBody:
         required: true
         content:
@@ -210,7 +210,7 @@ paths:
             Authorization:
               schema:
                 type: string
-              description: 'Bearer token để sử dụng cho các API được bảo vệ'
+              description: 'Access token để sử dụng cho các API được bảo vệ'
           content:
             application/json:
               schema:
@@ -226,8 +226,8 @@ paths:
     get:
       tags:
         - User
-      summary: Lấy thông tin profile
-      description: Lấy thông tin chi tiết của user đang đăng nhập
+      summary: Lấy thông tin profile (phải có token hợp lệ)
+      description: Lấy thông tin chi tiết của user đang đăng nhập 
       security:
         - BearerAuth: []
       responses:
@@ -250,12 +250,13 @@ paths:
     put:
       tags:
         - User
-      summary: Cập nhật profile
+      summary: Cập nhật profile  (phải có token hợp lệ)
       description: |
         Cập nhật thông tin cá nhân của user đang đăng nhập
-        - Chỉ cập nhật các trường được gửi lên
-        - Email không thể thay đổi
-        - Số điện thoại mới phải xác thực OTP
+        Các trường có thể cập nhật:
+        - Họ và tên (full_name)
+        - Giới tính (gender: male/female)
+        - Ảnh đại diện (avatar: URL hoặc null để xóa)
       security:
         - BearerAuth: []
       requestBody:
@@ -271,18 +272,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponse'
+              example:
+                status: "success"
+                message: "Cập nhật profile thành công"
+                data:
+                  user:
+                    _id: "60d5ecb74f86f45f5c5e2c2e"
+                    full_name: "Nguyễn Văn A"
+                    email: "example@gmail.com"
+                    phone: "0912345678"
+                    gender: "male"
+                    avatar: "https://example.com/avatar.jpg"
+                    is_phone_verified: true
         '400':
           description: Lỗi validate dữ liệu
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                message: "Giới tính không hợp lệ"
         '401':
           description: Chưa đăng nhập hoặc token không hợp lệ
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                message: "Unauthorized"
 
 components:
   schemas:
@@ -343,16 +362,16 @@ components:
         full_name:
           type: string
           example: "Nguyễn Văn A"
-        phone:
-          type: string
-          example: "0912345678"
+          description: "Họ và tên người dùng"
         gender:
           type: string
           enum: [male, female]
           example: "male"
+          description: "Giới tính (male = Nam, female = Nữ)"
         avatar:
           type: string
           example: "https://example.com/avatar.jpg"
+          description: "URL ảnh đại diện (null để xóa avatar)"
 
     AuthResponse:
       type: object
