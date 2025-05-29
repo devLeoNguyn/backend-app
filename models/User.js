@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female'],
+    default: null
+  },
   avatar: {
     type: String,
     default: null // URL của avatar
@@ -28,8 +33,8 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
-  
-  // Trạng thái xác thực cơ bản
+
+
   is_phone_verified: {
     type: Boolean,
     default: false

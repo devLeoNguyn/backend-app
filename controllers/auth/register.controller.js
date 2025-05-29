@@ -54,13 +54,22 @@ exports.register = async (req, res) => {
 // Bước 2: Xác thực OTP và nhập thông tin cá nhân
 exports.registerWithOTP = async (req, res) => {
     try {
-        const { full_name, email } = req.body;
+        const { full_name, email, gender } = req.body;
 
         // Validate dữ liệu cơ bản
-        if (!full_name || !email) {
+        if (!full_name || !email || !gender) {
             return res.status(400).json({
                 status: 'error',
-                message: 'Vui lòng điền đầy đủ họ tên và email'
+                message: 'Vui lòng điền đầy đủ họ tên, email và giới tính'
+            });
+        }
+
+        // Validate gender
+        const validGenders = ['male', 'female'];
+        if (!validGenders.includes(gender)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Giới tính không hợp lệ'
             });
         }
 
@@ -95,6 +104,7 @@ exports.registerWithOTP = async (req, res) => {
         const user = await User.create({
             full_name,
             email,
+            gender,
             phone: verifiedOTP.phone,
             is_phone_verified: true
         });
@@ -115,6 +125,7 @@ exports.registerWithOTP = async (req, res) => {
                     full_name: user.full_name,
                     email: user.email,
                     phone: user.phone,
+                    gender: user.gender,
                     is_phone_verified: user.is_phone_verified
                 },
                 tokens

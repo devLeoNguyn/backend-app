@@ -22,13 +22,14 @@ exports.getProfile = async (req, res) => {
 // Cập nhật profile
 exports.updateProfile = async (req, res) => {
     try {
-        const { full_name, phone, avatar } = req.body;
+        const { full_name, phone, avatar, gender } = req.body;
         const updateData = {};
 
         // Chỉ cập nhật các trường được gửi lên
         if (full_name) updateData.full_name = full_name;
         if (phone) updateData.phone = phone;
         if (avatar !== undefined) updateData.avatar = avatar; // Cho phép gửi null để xóa avatar
+        if (gender !== undefined) updateData.gender = gender; // Cho phép cập nhật gender
 
         // Kiểm tra số điện thoại đã tồn tại chưa
         if (phone) {
