@@ -29,6 +29,8 @@ tags:
     description: Các API liên quan đến đánh giá (/api/ratings)
   - name: Genre
     description: Các API liên quan đến thể loại phim (/api/genres)
+  - name: Home
+    description: Các API trang chủ (/api/home) - Banner, phim mới, đề xuất
 
 paths:
   /api/auth/register/send-otp:
@@ -303,6 +305,141 @@ paths:
                 status: "error"
                 message: "Unauthorized"
 
+  /api/home/new-releases:
+    get:
+      tags:
+        - Home
+      summary: API Banner và Phim đề xuất
+      description: |
+        Lấy danh sách phim mới ra mắt cho Banner đầu trang và danh sách ở dưới "Phim dành cho bạn".
+        
+        **Sử dụng cho:**
+        - Banner section ở đầu trang (hiển thị list phim mới với thông tin đầy đủ)
+        - Grid "Phim dành cho bạn" (hiển thị poster grid 2x3 hoặc 3x2)
+        
+        **Đặc điểm:**
+        - Public API (không cần đăng nhập)
+        - Chỉ lấy phim có release_status = "released"
+        - Sắp xếp theo ngày tạo mới nhất
+        - Trả về 2 sections riêng biệt
+      parameters:
+        - name: bannerLimit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            minimum: 1
+            maximum: 10
+          description: Số lượng phim trong banner list (mặc định 5)
+          example: 3
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 6
+            minimum: 1
+            maximum: 12
+          description: Số lượng phim trong grid "Phim dành cho bạn" (mặc định 6)
+          example: 4
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+          description: Lấy phim mới trong X ngày gần đây (mặc định 30 ngày)
+          example: 15
+      responses:
+        '200':
+          description: Lấy dữ liệu thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      banner:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            example: "Phim mới ra mắt"
+                          type:
+                            type: string
+                            example: "banner_list"
+                          movies:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/BannerMovie'
+                      recommended:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            example: "Phim dành cho bạn"
+                          type:
+                            type: string
+                            example: "grid"
+                          movies:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/GridMovie'
+              example:
+                status: "success"
+                data:
+                  banner:
+                    title: "Phim mới ra mắt"
+                    type: "banner_list"
+                    movies:
+                      - movieId: "683fb76c88e880e019875aca"
+                        title: "1000 Years Old"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        description: null
+                        releaseYear: 2024
+                        movieType: "Phim bộ"
+                        producer: "WeTV Thailand"
+                        genres: ["Tình cảm", "Kinh dị"]
+                      - movieId: "683fb6e188e880e019875ac3"
+                        title: "Ngày Xưa Có Một Chuyện Tình"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/ngay-xua-co-cau-chuyen-tinh.jpg"
+                        description: "Phim lẻ Việt Nam dựa trên truyện dài cùng tên của Nguyễn Nhật Ánh..."
+                        releaseYear: 2024
+                        movieType: "Phim lẻ"
+                        producer: "HK Film, Hãng phim Anh Tễu"
+                        genres: ["Tình cảm"]
+                  recommended:
+                    title: "Phim dành cho bạn"
+                    type: "grid"
+                    movies:
+                      - movieId: "683fb76c88e880e019875aca"
+                        title: "1000 Years Old"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        movieType: "Phim bộ"
+                        producer: "WeTV Thailand"
+                      - movieId: "683fb6e188e880e019875ac3"
+                        title: "Ngày Xưa Có Một Chuyện Tình"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/ngay-xua-co-cau-chuyen-tinh.jpg"
+                        movieType: "Phim lẻ"
+                        producer: "HK Film, Hãng phim Anh Tễu"
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                message: "Lỗi khi lấy phim mới"
+
 components:
   schemas:
     PhoneRequest:
@@ -451,6 +588,72 @@ components:
         message:
           type: string
           example: "Lỗi xử lý yêu cầu"
+
+    BannerMovie:
+      type: object
+      description: Schema cho phim trong banner section
+      properties:
+        movieId:
+          type: string
+          example: "683fb76c88e880e019875aca"
+          description: ID của phim
+        title:
+          type: string
+          example: "1000 Years Old"
+          description: Tên phim
+        poster:
+          type: string
+          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          description: URL poster phim
+        description:
+          type: string
+          nullable: true
+          example: "Phim lẻ Việt Nam dựa trên truyện dài cùng tên của Nguyễn Nhật Ánh..."
+          description: Mô tả phim (có thể null)
+        releaseYear:
+          type: integer
+          nullable: true
+          example: 2024
+          description: Năm phát hành (có thể null)
+        movieType:
+          type: string
+          example: "Phim bộ"
+          description: Loại phim (Phim bộ, Phim lẻ, Thể thao)
+        producer:
+          type: string
+          example: "WeTV Thailand"
+          description: Nhà sản xuất
+        genres:
+          type: array
+          items:
+            type: string
+          example: ["Tình cảm", "Kinh dị"]
+          description: Danh sách thể loại (tối đa 3)
+
+    GridMovie:
+      type: object
+      description: Schema cho phim trong grid section
+      properties:
+        movieId:
+          type: string
+          example: "683fb76c88e880e019875aca"
+          description: ID của phim
+        title:
+          type: string
+          example: "1000 Years Old"
+          description: Tên phim
+        poster:
+          type: string
+          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          description: URL poster phim
+        movieType:
+          type: string
+          example: "Phim bộ"
+          description: Loại phim (Phim bộ, Phim lẻ, Thể thao)
+        producer:
+          type: string
+          example: "WeTV Thailand"
+          description: Nhà sản xuất
 
   securitySchemes:
     BearerAuth:

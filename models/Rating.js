@@ -11,11 +11,9 @@ const ratingSchema = new mongoose.Schema({
         ref: 'Movie',
         required: true
     },
-    star: {
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5
+    is_like: {
+        type: Boolean,
+        required: true
     },
     comment: {
         type: String,

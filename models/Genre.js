@@ -11,6 +11,11 @@ const genreSchema = new mongoose.Schema({
     description: {
         type: String,
         trim: true
+    },
+    is_active: {
+        type: Boolean,
+        default: true,
+        index: true // Thêm index để query nhanh hơn
     }
 }, {
     timestamps: true,
@@ -25,6 +30,7 @@ genreSchema.virtual('movies', {
     foreignField: 'genres'
 });
 
-
+// Index cho query optimization
+genreSchema.index({ is_active: 1, genre_name: 1 });
 
 module.exports = mongoose.model('Genre', genreSchema);

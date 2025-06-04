@@ -107,4 +107,24 @@ exports.verifyRefreshToken = (token) => {
         throw new Error('Refresh token không hợp lệ');
     }
 };
+
+// Optional authentication - không bắt buộc phải có token
+exports.optional = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        // Không có token - tiếp tục mà không set user
+        return next();
+    }
+    
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            // Token không hợp lệ - tiếp tục mà không set user  
+            return next();
+        }
+        req.user = user;
+        next();
+    });
+};
  

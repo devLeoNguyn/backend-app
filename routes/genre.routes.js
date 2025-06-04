@@ -3,17 +3,28 @@ const router = express.Router();
 const genreController = require('../controllers/genre.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 
-// Route lấy phim theo >1  thể loại note: truoc pram
+// === PUBLIC ROUTES (Không cần đăng nhập) ===
+
+// Lấy danh sách thể loại hoạt động (cho user)
+router.get('/active', genreController.getActiveGenres);
+
+// Lấy phim theo nhiều thể loại (hoạt động)
 router.get('/movies', genreController.getMoviesByGenres);
 
-// CRUD genre
-router.post('/', authenticateToken, genreController.createGenre);
+
+// Lấy tất cả thể loại (có thể bao gồm inactive nếu có query param)
 router.get('/', genreController.getAllGenres);
-router.get('/:id', genreController.getGenreById);
+
+// === PROTECTED ROUTES (Cần đăng nhập - Admin) ===
+
+// CRUD operations
+router.post('/', authenticateToken, genreController.createGenre);
 router.put('/:id', authenticateToken, genreController.updateGenre);
 router.delete('/:id', authenticateToken, genreController.deleteGenre);
 
-// Route lấy phim theo một thể loại
-router.get('/:genre_id/movies', genreController.getMoviesByGenre);
+// Genre status management
+router.put('/:id/toggle', authenticateToken, genreController.toggleGenreStatus);
+router.put('/:id/activate', authenticateToken, genreController.activateGenre);
+router.put('/:id/deactivate', authenticateToken, genreController.deactivateGenre);
 
 module.exports = router; 

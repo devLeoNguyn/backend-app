@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "nodemon ./bin/www"
+    "dev": "nodemon ./bin/www",
+    "seed": "node scripts/seedTestData.js",
+    "clean": "node scripts/cleanTestData.js",
+    "reseed": "npm run clean && npm run seed"
   },
   "dependencies": {
     "@payos/node": "^1.0.10",

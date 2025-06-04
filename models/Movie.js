@@ -16,7 +16,8 @@ const movieSchema = new mongoose.Schema({
     required: true
   },
   poster_path: {
-    type: String
+    type: String,
+    required: true
   },
   genres: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -28,7 +29,7 @@ const movieSchema = new mongoose.Schema({
   },
   movie_type: {
     type: String,
-    enum: ['Phim bộ', 'Phim lẻ'],
+    enum: ['Phim bộ', 'Phim lẻ', 'Thể thao'],
     required: true
   },
   price: {
@@ -51,21 +52,44 @@ const movieSchema = new mongoose.Schema({
   total_episodes: {
     type: Number,
     min: 1
+  },
+  
+  // Các trường cơ bản cho sections
+  release_status: {
+    type: String,
+    enum: ['upcoming', 'released', 'ended'],
+    default: 'released',
+    index: true
+  },
+  
+  // Trường đặc biệt cho sports events
+  event_start_time: {
+    type: Date,
+    default: null // Chỉ dùng cho movie_type: 'Thể thao'
+  },
+  event_status: {
+    type: String,
+    enum: ['upcoming', 'released'],
+    default: null // Chỉ dùng cho movie_type: 'Thể thao'
   }
 }, {
-  timestamps: true, // Tự động thêm createdAt và updatedAt
-  // toJSON: { 
-  //   virtuals: true,
-  //   getters: true 
-  // },
-  // toObject: { 
-  //   virtuals: true,
-  //   getters: true 
-  // }
+  timestamps: true,
+  toJSON: { 
+    virtuals: true,
+    getters: true 
+  },
+  toObject: { 
+    virtuals: true,
+    getters: true 
+  }
 });
 
+// Basic indexes
+movieSchema.index({ release_status: 1, production_time: -1 });
+movieSchema.index({ movie_type: 1, createdAt: -1 });
+movieSchema.index({ movie_type: 1, event_start_time: 1 });
 
+// Apply all methods from methods/movie.methods.js
 applyMovieMethods(movieSchema);
 
-
-module.exports = mongoose.model('Movie', movieSchema);
+module.exports = mongoose.model('Movie', movieSchema);    

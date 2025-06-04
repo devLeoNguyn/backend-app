@@ -18,7 +18,20 @@ const episodeSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Movie',
         required: true
+    },
+    subtitle: {
+        vi: String, // URL phụ đề tiếng Việt cho tập phim
+        en: String  // URL phụ đề tiếng Anh cho tập phim
+    },
+    duration: {
+        type: Number, // Thời lượng tập phim (phút)
+        required: true
     }
+}, {
+    timestamps: true
 });
+
+// Index để tối ưu query
+episodeSchema.index({ movie_id: 1, episode_number: 1 }, { unique: true });
 
 module.exports = mongoose.model('Episode', episodeSchema);

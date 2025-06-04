@@ -49,16 +49,27 @@ exports.createGenre = async (req, res) => {
     }
 };
 
-// Lấy danh sách thể loại
+// Lấy danh sách thể loại cho admin
 exports.getAllGenres = async (req, res) => {
     try {
-        const genres = await Genre.find().sort({ genre_name: 1 });
+        // Thêm query parameter để filter theo status
+        const { include_inactive } = req.query;
+        
+        // Mặc định chỉ lấy thể loại active, admin có thể xem tất cả
+        let query = {};
+        if (include_inactive !== 'true') {
+            query.is_active = true;
+        }
+
+        const genres = await Genre.find(query).sort({ genre_name: 1 });
 
         res.json({
             status: 'success',
             data: {
                 genres,
-                total: genres.length
+                total: genres.length,
+                active_count: await Genre.countDocuments({ is_active: true }),
+                inactive_count: await Genre.countDocuments({ is_active: false })
             }
         });
 
@@ -72,29 +83,26 @@ exports.getAllGenres = async (req, res) => {
     }
 };
 
-// Lấy chi tiết một thể loại
-exports.getGenreById = async (req, res) => {
+// Lấy danh sách thể loại đang hoạt động (cho user)
+exports.getActiveGenres = async (req, res) => {
     try {
-        const { id } = req.params;
-        const genre = await Genre.findById(id);
-
-        if (!genre) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Không tìm thấy thể loại'
-            });
-        }
+        const activeGenres = await Genre.find({ is_active: true })
+            .select('genre_name description')
+            .sort({ genre_name: 1 });
 
         res.json({
             status: 'success',
-            data: { genre }
+            data: {
+                genres: activeGenres,
+                total: activeGenres.length
+            }
         });
 
     } catch (error) {
-        console.error('Get genre error:', error);
+        console.error('Get active genres error:', error);
         res.status(500).json({
             status: 'error',
-            message: 'Lỗi khi lấy thông tin thể loại',
+            message: 'Lỗi khi lấy danh sách thể loại hoạt động',
             error: error.message
         });
     }
@@ -203,25 +211,36 @@ exports.getMoviesByGenres = async (req, res) => {
         // Chuyển đổi string genre_ids thành array
         const genreIdArray = genre_ids.split(',').map(id => id.trim());
 
-        // Kiểm tra các thể loại có tồn tại
-        const genres = await Genre.find({ _id: { $in: genreIdArray } });
+        // Kiểm tra các thể loại có tồn tại và đang hoạt động
+        const genres = await Genre.find({ 
+            _id: { $in: genreIdArray },
+            is_active: true // Chỉ lấy thể loại đang hoạt động
+        });
+        
         if (genres.length === 0) {
             return res.status(404).json({
                 status: 'error',
-                message: 'Không tìm thấy thể loại nào'
+                message: 'Không tìm thấy thể loại hoạt động nào'
             });
         }
 
-        // Tìm phim có tất cả các thể loại được chọn
+        // Lấy ID của các thể loại hoạt động
+        const activeGenreIds = genres.map(genre => genre._id);
+
+        // Tìm phim có tất cả các thể loại được chọn (chỉ trong số các thể loại hoạt động)
         const query = {
             genres: {
-                $all: genreIdArray // Sử dụng $all để tìm phim có tất cả thể loại
+                $all: activeGenreIds // Sử dụng $all để tìm phim có tất cả thể loại
             }
         };
 
         // Thực hiện truy vấn lấy tất cả phim
         const movies = await Movie.find(query)
-            .populate('genres', 'genre_name description')
+            .populate({
+                path: 'genres',
+                match: { is_active: true }, // Chỉ populate thể loại hoạt động
+                select: 'genre_name description is_active'
+            })
             .select('movie_title description production_time producer movie_type price is_free price_display')
             .sort({ production_time: -1 });
 
@@ -232,7 +251,8 @@ exports.getMoviesByGenres = async (req, res) => {
                 genres: genres.map(genre => ({
                     _id: genre._id,
                     genre_name: genre.genre_name,
-                    description: genre.description
+                    description: genre.description,
+                    is_active: genre.is_active
                 })),
                 movies: movies.map(movie => ({
                     _id: movie._id,
@@ -244,7 +264,7 @@ exports.getMoviesByGenres = async (req, res) => {
                     price: movie.price,
                     is_free: movie.is_free,
                     price_display: movie.price_display,
-                    genres: movie.genres
+                    genres: movie.genres.filter(g => g.is_active) // Lọc chỉ thể loại hoạt động
                 })),
                 total_movies: movies.length
             }
@@ -262,13 +282,27 @@ exports.getMoviesByGenres = async (req, res) => {
     }
 };
 
-// Lấy danh sách phim theo một thể loại
-exports.getMoviesByGenre = async (req, res) => {
-    try {
-        const { genre_id } = req.params;
 
-        // Kiểm tra thể loại tồn tại
-        const genre = await Genre.findById(genre_id);
+// Bật/tắt trạng thái thể loại
+exports.toggleGenreStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_active } = req.body;
+
+        // Validate is_active
+        if (typeof is_active !== 'boolean') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'is_active phải là boolean (true/false)'
+            });
+        }
+
+        const genre = await Genre.findByIdAndUpdate(
+            id,
+            { is_active },
+            { new: true, runValidators: true }
+        );
+
         if (!genre) {
             return res.status(404).json({
                 status: 'error',
@@ -276,31 +310,100 @@ exports.getMoviesByGenre = async (req, res) => {
             });
         }
 
-        // Tìm tất cả phim có thể loại này
-        const movies = await Movie.find({ genres: genre_id })
-            .populate('genres', 'genre_name description')
-            .select('movie_title description production_time producer movie_type price is_free price_display')
-            .sort({ production_time: -1 });
+        // Đếm số phim sử dụng thể loại này
+        const movieCount = await Movie.countDocuments({ genres: id });
 
         res.json({
             status: 'success',
-            data: {
-                genre: {
-                    _id: genre._id,
-                    genre_name: genre.genre_name,
-                    description: genre.description
-                },
-                movies,
-                total_movies: movies.length
+            message: `Đã ${is_active ? 'kích hoạt' : 'vô hiệu hóa'} thể loại thành công`,
+            data: { 
+                genre,
+                affected_movies: movieCount
             }
         });
 
     } catch (error) {
-        console.error('Get movies by genre error:', error);
+        console.error('Toggle genre status error:', error);
         res.status(500).json({
             status: 'error',
-            message: 'Lỗi khi lấy danh sách phim theo thể loại',
+            message: 'Lỗi khi cập nhật trạng thái thể loại',
             error: error.message
         });
     }
-}; 
+};
+
+// Kích hoạt thể loại
+exports.activateGenre = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const genre = await Genre.findByIdAndUpdate(
+            id,
+            { is_active: true },
+            { new: true, runValidators: true }
+        );
+
+        if (!genre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại'
+            });
+        }
+
+        res.json({
+            status: 'success',
+            message: 'Đã kích hoạt thể loại thành công',
+            data: { genre }
+        });
+
+    } catch (error) {
+        console.error('Activate genre error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi kích hoạt thể loại',
+            error: error.message
+        });
+    }
+};
+
+// Vô hiệu hóa thể loại
+exports.deactivateGenre = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Kiểm tra số phim sử dụng thể loại này
+        const movieCount = await Movie.countDocuments({ genres: id });
+
+        const genre = await Genre.findByIdAndUpdate(
+            id,
+            { is_active: false },
+            { new: true, runValidators: true }
+        );
+
+        if (!genre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại'
+            });
+        }
+
+        res.json({
+            status: 'success',
+            message: 'Đã vô hiệu hóa thể loại thành công',
+            data: { 
+                genre,
+                affected_movies: movieCount,
+                note: movieCount > 0 ? `${movieCount} phim sử dụng thể loại này sẽ không hiển thị trong danh sách thể loại` : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Deactivate genre error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi vô hiệu hóa thể loại',
+            error: error.message
+        });
+    }
+};
+
