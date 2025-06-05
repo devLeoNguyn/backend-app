@@ -137,8 +137,15 @@ const getNewReleases = async (req, res) => {
 // 2. ▶️ Continue Watching - Đang xem (không cần rating/view)
 const getContinueWatching = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const { userId } = req.query;
         const limit = parseInt(req.query.limit) || 8;
+
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
 
         const watchingData = await Watching.find({
             user_id: userId,
@@ -271,17 +278,17 @@ const getGenreSections = async (req, res) => {
     }
 };
 
-// 4. 🔥 Trending Movies - Phim thịnh hành (có rating & viewCount)
+// 4. 🔥 Trending Movies - Phim thịnh hành (tính toán nhưng trả về đơn giản)
 const getTrendingMovies = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
 
         // Lấy movies để tính view count
-        const allMovies = await Movie.find()
-            .select('_id movie_title poster_path movie_type production_time')
+        const allMovies = await Movie.find({ release_status: 'released' })
+            .select('_id movie_title poster_path movie_type producer')
             .limit(50); // Giới hạn để performance tốt hơn
 
-        // Tính rating và view count cho từng movie
+        // Tính rating và view count cho từng movie (để sort)
         const moviesWithStats = await Promise.all(
             allMovies.map(async (movie) => {
                 const [ratingData, viewCount] = await Promise.all([
@@ -294,26 +301,30 @@ const getTrendingMovies = async (req, res) => {
                     title: movie.movie_title,
                     poster: movie.poster_path,
                     movieType: movie.movie_type,
-                    releaseDate: movie.production_time,
-                    rating: ratingData.rating,
-                    likeCount: ratingData.likeCount,
-                    viewCount,
-                    viewCountFormatted: formatViewCount(viewCount)
+                    producer: movie.producer,
+                    viewCount // Chỉ dùng để sort, không trả về
                 };
             })
         );
 
-        // Sort theo view count và lấy top
+        // Sort theo view count và lấy top, nhưng chỉ trả về format đơn giản
         const trendingMovies = moviesWithStats
             .sort((a, b) => b.viewCount - a.viewCount)
-            .slice(0, limit);
+            .slice(0, limit)
+            .map(movie => ({
+                movieId: movie.movieId,
+                title: movie.title,
+                poster: movie.poster,
+                movieType: movie.movieType,
+                producer: movie.producer
+            }));
 
         res.json({
             status: 'success',
             data: {
                 title: "Phim đang thịnh hành",
-                type: "trending",
-                data: trendingMovies
+                type: "grid",
+                movies: trendingMovies
             }
         });
     } catch (error) {
@@ -326,16 +337,16 @@ const getTrendingMovies = async (req, res) => {
     }
 };
 
-// 5. ⭐ Top Rated Movies - Phim được đánh giá cao (có rating & viewCount)
+// 5. ⭐ Top Rated Movies - Phim được đánh giá cao (tính toán nhưng trả về đơn giản)
 const getTopRatedMovies = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 8;
 
-        const allMovies = await Movie.find()
-            .select('_id movie_title poster_path movie_type production_time')
-            .limit(50);
+        const allMovies = await Movie.find({ release_status: 'released' })
+            .select('_id movie_title poster_path movie_type producer')
+            .limit(50); // Giới hạn để performance tốt hơn
 
-        // Tính rating và view count cho từng movie
+        // Tính rating và view count cho từng movie (để sort)
         const moviesWithStats = await Promise.all(
             allMovies.map(async (movie) => {
                 const [ratingData, viewCount] = await Promise.all([
@@ -348,27 +359,31 @@ const getTopRatedMovies = async (req, res) => {
                     title: movie.movie_title,
                     poster: movie.poster_path,
                     movieType: movie.movie_type,
-                    releaseDate: movie.production_time,
-                    rating: ratingData.rating,
-                    likeCount: ratingData.likeCount,
-                    viewCount,
-                    viewCountFormatted: formatViewCount(viewCount)
+                    producer: movie.producer,
+                    rating: ratingData.rating // Chỉ dùng để sort, không trả về
                 };
             })
         );
 
-        // Sort theo rating và lấy top (chỉ lấy movies có rating > 0)
+        // Sort theo rating và lấy top, nhưng chỉ trả về format đơn giản
         const topRatedMovies = moviesWithStats
-            .filter(movie => movie.rating > 0)
+            .filter(movie => movie.rating > 0) // Chỉ lấy phim có rating
             .sort((a, b) => b.rating - a.rating)
-            .slice(0, limit);
+            .slice(0, limit)
+            .map(movie => ({
+                movieId: movie.movieId,
+                title: movie.title,
+                poster: movie.poster,
+                movieType: movie.movieType,
+                producer: movie.producer
+            }));
 
         res.json({
             status: 'success',
             data: {
                 title: "Phim được đánh giá cao",
-                type: "top_rated",
-                data: topRatedMovies
+                type: "grid",
+                movies: topRatedMovies
             }
         });
     } catch (error) {
@@ -381,24 +396,25 @@ const getTopRatedMovies = async (req, res) => {
     }
 };
 
-// 6. ⚽ Sports Events - Sự kiện thể thao (có rating & viewCount)
+// 6. ⚽ Sports Events - Sự kiện thể thao (giữ logic đặc trưng nhưng trả về đơn giản)
 const getSportsEvents = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
-        const status = req.query.status; // upcoming, live, ended
+        const limit = parseInt(req.query.limit) || 8;
+        const status = req.query.status; // upcoming, released, ended
 
+        // Logic đặc trưng: Query theo movie_type và status
         let query = { movie_type: 'Thể thao' };
 
-        if (status && ['upcoming', 'live', 'ended'].includes(status)) {
+        if (status && ['upcoming', 'released', 'ended'].includes(status)) {
             query.event_status = status;
         }
 
         const sportsEvents = await Movie.find(query)
-            .select('_id movie_title poster_path description event_start_time event_status producer')
-            .sort({ event_start_time: 1, createdAt: -1 })
+            .select('_id movie_title poster_path event_start_time event_status producer')
+            .sort({ event_start_time: 1, createdAt: -1 }) // Logic đặc trưng: Sort theo event time
             .limit(limit);
 
-        // Tính rating và view count cho sports events
+        // Tính rating và view count (để sort nếu cần) nhưng chỉ trả về format đơn giản
         const eventsWithStats = await Promise.all(
             sportsEvents.map(async (event) => {
                 const [ratingData, viewCount] = await Promise.all([
@@ -407,27 +423,35 @@ const getSportsEvents = async (req, res) => {
                 ]);
 
                 return {
-                    eventId: event._id,
+                    movieId: event._id,
                     title: event.movie_title,
                     poster: event.poster_path,
-                    description: event.description,
-                    startTime: event.event_start_time,
-                    status: event.event_status || 'upcoming',
+                    movieType: 'Thể thao', // Fixed cho sports
                     producer: event.producer,
-                    rating: ratingData.rating,
-                    likeCount: ratingData.likeCount,
-                    viewCount,
-                    viewCountFormatted: formatViewCount(viewCount)
+                    // Logic đặc trưng: Giữ lại để sort hoặc filter trong tương lai
+                    startTime: event.event_start_time,
+                    status: event.event_status || 'released', // Thay đổi mặc định thành 'released'
+                    viewCount: viewCount, 
+                    rating: ratingData.rating
                 };
             })
         );
+
+        // Chỉ trả về format đơn giản cho frontend
+        const simpleSportsEvents = eventsWithStats.map(event => ({
+            movieId: event.movieId,
+            title: event.title,
+            poster: event.poster,
+            movieType: event.movieType,
+            producer: event.producer
+        }));
 
         res.json({
             status: 'success',
             data: {
                 title: "Sự kiện thể thao",
-                type: "sports",
-                data: eventsWithStats
+                type: "grid",
+                movies: simpleSportsEvents
             }
         });
     } catch (error) {
@@ -440,22 +464,26 @@ const getSportsEvents = async (req, res) => {
     }
 };
 
-// 7. 🌸 Anime Hot - Anime nổi bật (có rating & viewCount)
+// 7. 🌸 Anime Hot - Anime nổi bật (giữ logic đặc trưng nhưng trả về đơn giản)
 const getAnimeHot = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 8;
 
-        const animeGenre = await Genre.findOne({ genre_name: /anime/i });
+        // Logic đặc trưng: Tìm genre anime
+        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
         let animeMovies = [];
 
         if (animeGenre) {
-            animeMovies = await Movie.find({ genres: animeGenre._id })
-                .select('_id movie_title poster_path production_time')
+            animeMovies = await Movie.find({ 
+                genres: animeGenre._id,
+                release_status: 'released' 
+            })
+                .select('_id movie_title poster_path movie_type producer')
                 .sort({ createdAt: -1 })
                 .limit(limit);
         }
 
-        // Tính rating và view count cho anime
+        // Tính rating và view count (để sort nếu cần) nhưng chỉ trả về format đơn giản
         const animeWithStats = await Promise.all(
             animeMovies.map(async (movie) => {
                 const [ratingData, viewCount] = await Promise.all([
@@ -467,21 +495,31 @@ const getAnimeHot = async (req, res) => {
                     movieId: movie._id,
                     title: movie.movie_title,
                     poster: movie.poster_path,
-                    releaseDate: movie.production_time,
-                    rating: ratingData.rating,
-                    likeCount: ratingData.likeCount,
-                    viewCount,
-                    viewCountFormatted: formatViewCount(viewCount)
+                    movieType: movie.movie_type,
+                    producer: movie.producer,
+                    rating: ratingData.rating, // Chỉ dùng để sort, không trả về
+                    viewCount: viewCount
                 };
             })
         );
+
+        // Sort theo popularity (viewCount) và chỉ trả về format đơn giản
+        const simpleAnimeMovies = animeWithStats
+            .sort((a, b) => b.viewCount - a.viewCount)
+            .map(movie => ({
+                movieId: movie.movieId,
+                title: movie.title,
+                poster: movie.poster,
+                movieType: movie.movieType,
+                producer: movie.producer
+            }));
 
         res.json({
             status: 'success',
             data: {
                 title: "Anime hot",
-                type: "anime_hot",
-                data: animeWithStats
+                type: "grid",
+                movies: simpleAnimeMovies
             }
         });
     } catch (error) {
@@ -494,13 +532,15 @@ const getAnimeHot = async (req, res) => {
     }
 };
 
-// 8. 🇻🇳 Vietnamese Series - Phim Việt đặc sắc (có rating & viewCount)
+// 8. 🇻🇳 Vietnamese Series - Phim Việt đặc sắc (giữ logic đặc trưng nhưng trả về đơn giản)
 const getVietnameseSeries = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 8;
 
+        // Logic đặc trưng: Complex query tìm phim Việt Nam
         const vietnamSeries = await Movie.find({
             movie_type: { $in: ['Phim bộ', 'Phim lẻ'] }, // ✅ Both types
+            release_status: 'released',
             $or: [
                 { producer: /việt nam/i },
                 { producer: /vietnam/i },
@@ -511,11 +551,11 @@ const getVietnameseSeries = async (req, res) => {
                 { description: /phim việt/i }
             ]
         })
-            .select('_id movie_title poster_path producer production_time movie_type')
+            .select('_id movie_title poster_path producer movie_type')
             .sort({ createdAt: -1 })
             .limit(limit);
 
-        // Tính rating và view count cho Vietnamese series
+        // Tính rating và view count (để sort nếu cần) nhưng chỉ trả về format đơn giản
         const seriesWithStats = await Promise.all(
             vietnamSeries.map(async (movie) => {
                 const [ratingData, viewCount] = await Promise.all([
@@ -528,22 +568,30 @@ const getVietnameseSeries = async (req, res) => {
                     title: movie.movie_title,
                     poster: movie.poster_path,
                     producer: movie.producer,
-                    releaseDate: movie.production_time,
                     movieType: movie.movie_type,
-                    rating: ratingData.rating,
-                    likeCount: ratingData.likeCount,
-                    viewCount,
-                    viewCountFormatted: formatViewCount(viewCount)
+                    rating: ratingData.rating, // Chỉ dùng để sort, không trả về
+                    viewCount: viewCount
                 };
             })
         );
+
+        // Sort theo rating và chỉ trả về format đơn giản
+        const simpleVietnameseSeries = seriesWithStats
+            .sort((a, b) => b.rating - a.rating)
+            .map(movie => ({
+                movieId: movie.movieId,
+                title: movie.title,
+                poster: movie.poster,
+                movieType: movie.movieType,
+                producer: movie.producer
+            }));
 
         res.json({
             status: 'success',
             data: {
                 title: "Phim Việt đặc sắc",
-                type: "vietnam_series",
-                data: seriesWithStats
+                type: "grid",
+                movies: simpleVietnameseSeries
             }
         });
     } catch (error) {

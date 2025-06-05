@@ -1,8 +1,7 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
-const TokenService = require('../../services/token.service');
 
-// Đăng nhập bằng OTP
+// Đăng nhập bằng OTP - Simple version (chỉ trả về userId)
 exports.loginWithOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -28,13 +27,12 @@ exports.loginWithOTP = async (req, res) => {
         user.is_phone_verified = true;
         await user.save();
 
-        // Tạo token cho thiết bị mới
-        const tokens = await TokenService.createTokens(user, deviceInfo);
-
+        // Chỉ trả về userId và thông tin user cơ bản
         res.json({
             status: 'success',
             message: 'Đăng nhập thành công',
             data: {
+                userId: user._id,
                 user: {
                     _id: user._id,
                     full_name: user.full_name,
@@ -43,7 +41,7 @@ exports.loginWithOTP = async (req, res) => {
                     avatar: user.avatar,
                     is_phone_verified: user.is_phone_verified
                 },
-                tokens,
+
                 device_info: deviceInfo
             }
         });
@@ -52,6 +50,22 @@ exports.loginWithOTP = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: error.message || 'Lỗi khi xác thực đăng nhập'
+        });
+    }
+};
+
+// Đăng xuất - Simple version
+exports.logout = async (req, res) => {
+    try {
+        res.json({
+            status: 'success',
+            message: 'Đăng xuất thành công'
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi đăng xuất'
         });
     }
 };

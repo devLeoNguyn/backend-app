@@ -1,10 +1,26 @@
 const User = require('../models/User');
 
-// Lấy thông tin profile
+// Lấy thông tin profile (userId từ query params)
 exports.getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id)
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        const user = await User.findById(userId)
             .select('-__v');
+        
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy user'
+            });
+        }
         
         res.json({
             status: 'success',
@@ -19,10 +35,18 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// Cập nhật profile
+// Cập nhật profile (userId từ body)
 exports.updateProfile = async (req, res) => {
     try {
-        const { full_name, phone, avatar, gender } = req.body;
+        const { userId, full_name, phone, avatar, gender } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
         const updateData = {};
 
         // Chỉ cập nhật các trường được gửi lên
@@ -35,7 +59,7 @@ exports.updateProfile = async (req, res) => {
         if (phone) {
             const existingPhone = await User.findOne({ 
                 phone, 
-                _id: { $ne: req.user._id } 
+                _id: { $ne: userId } 
             });
             
             if (existingPhone) {
@@ -47,7 +71,7 @@ exports.updateProfile = async (req, res) => {
         }
 
         const updatedUser = await User.findByIdAndUpdate(
-            req.user._id,
+            userId,
             updateData,
             { new: true }
         ).select('-__v');

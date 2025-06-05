@@ -2,22 +2,19 @@ const express = require("express");
 const router = express.Router();
 const payOS = require("../utils/payos.util");
 const Payment = require("../models/MoviePayment");
-const { authenticateToken } = require("../middleware/auth.middleware");
-
-
 
 // Utility function to delay execution
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 1. Tạo đơn thanh toán
-router.post("/create", authenticateToken, async (req, res) => {
+// 1. Tạo đơn thanh toán (userId từ body)
+router.post("/create", async (req, res) => {
   const { description, returnUrl, cancelUrl, amount, userId, movieId } = req.body;
 
-  // Kiểm tra xem user có quyền tạo payment cho userId này không
-  if (req.user._id.toString() !== userId) {
-    return res.status(403).json({
+  // Validation đơn giản
+  if (!userId) {
+    return res.status(400).json({
       error: -1,
-      message: "Unauthorized: You can only create payments for yourself",
+      message: "userId là bắt buộc",
       data: null
     });
   }
@@ -108,11 +105,19 @@ router.post("/create", authenticateToken, async (req, res) => {
   }
 });
 
-// 2. Truy vấn đơn hàng
-router.get("/:orderId",
-  authenticateToken,
-  async (req, res) => {
+// 2. Truy vấn đơn hàng (userId từ query params)
+router.get("/:orderId", async (req, res) => {
     try {
+      const { userId } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({
+          error: -1,
+          message: "userId là bắt buộc",
+          data: null
+        });
+      }
+
       // Tìm trong database local trước
       const localPayment = await Payment.findOne({ orderCode: req.params.orderId })
         .populate('userId', 'name email')
@@ -127,7 +132,7 @@ router.get("/:orderId",
       }
 
       // Kiểm tra quyền truy cập
-      if (localPayment.userId._id.toString() !== req.user._id.toString()) {
+      if (localPayment.userId._id.toString() !== userId) {
         return res.status(403).json({
           error: -1,
           message: "Unauthorized: You can only view your own payments",
@@ -169,13 +174,19 @@ router.get("/:orderId",
     }
 });
 
-// 3. Hủy đơn thanh toán
-router.put("/:orderId",
-  authenticateToken,
-  async (req, res) => {
+// 3. Hủy đơn thanh toán (userId từ body)
+router.put("/:orderId", async (req, res) => {
     try {
       const { orderId } = req.params;
-      const { cancellationReason } = req.body;
+      const { cancellationReason, userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          error: -1,
+          message: "userId là bắt buộc",
+          data: null
+        });
+      }
 
       // Kiểm tra quyền hủy đơn
       const payment = await Payment.findOne({ orderCode: orderId });
@@ -187,7 +198,7 @@ router.put("/:orderId",
         });
       }
 
-      if (payment.userId.toString() !== req.user._id.toString()) {
+      if (payment.userId.toString() !== userId) {
         return res.status(403).json({
           error: -1,
           message: "Unauthorized: You can only cancel your own payments",

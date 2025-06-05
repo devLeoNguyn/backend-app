@@ -1,6 +1,6 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
-const TokenService = require('../../services/token.service');
+// const TokenService = require('../../services/token.service'); // Removed token service
 
 // Gửi OTP đăng ký
 exports.sendRegisterOTP = async (req, res) => {
@@ -64,7 +64,7 @@ exports.verifyRegisterOTP = async (req, res) => {
     }
 };
 
-// Xác thực OTP và tạo token
+// Xác thực OTP đăng nhập (bỏ token)
 exports.verifyOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -83,13 +83,11 @@ exports.verifyOTP = async (req, res) => {
         user.is_phone_verified = true;
         await user.save();
 
-        // Tạo token cho thiết bị mới
-        const tokens = await TokenService.createTokens(user, deviceInfo);
-
         res.json({
             status: 'success',
             message: 'Xác thực thành công',
             data: {
+                userId: user._id,
                 user: {
                     _id: user._id,
                     full_name: user.full_name,
@@ -98,7 +96,6 @@ exports.verifyOTP = async (req, res) => {
                     avatar: user.avatar,
                     is_phone_verified: user.is_phone_verified
                 },
-                tokens,
                 device_info: deviceInfo
             }
         });

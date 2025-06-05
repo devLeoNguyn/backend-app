@@ -11,15 +11,14 @@ const {
     getComingSoon,
     getTopRatedMovies
 } = require('../controllers/home.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
 
 // 1. API Phim mới ra mắt - Section Banner - Public
 // Query params: limit (default: 10), days (default: 30)
 router.get('/new-releases', getNewReleases);
 
-// 2. API Đang xem - Private (cần đăng nhập)
-// Query params: limit (default: 8)
-router.get('/continue-watching', authenticateToken, getContinueWatching);
+// 2. API Đang xem - Private (cần userId trong query)
+// Query params: limit (default: 8), userId (required)
+router.get('/continue-watching', getContinueWatching);
 
 // 3. API Thể loại - Public
 // Query params: genreLimit (default: 4), movieLimit (default: 4)

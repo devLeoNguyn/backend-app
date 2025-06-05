@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth.middleware');
 const { 
     createRating,
     // updateRating,
@@ -15,22 +14,22 @@ const {
 // PUBLIC
 router.get('/movie/:movie_id', getMovieRatings);
 
-// PROTECTED
-// Thêm đánh giá mới
-router.post('/', authenticateToken, createRating);
+// PROTECTED - cần userId
+// Thêm đánh giá mới (userId từ body)
+router.post('/', createRating);
 
 // Cập nhật đánh giá
-// router.put('/:id', authenticateToken, updateRating);
+// router.put('/:id', updateRating);
 
-// Xóa đánh giá
-router.delete('/:id', authenticateToken, deleteRating);
+// Xóa đánh giá (userId từ body)
+router.delete('/:id', deleteRating);
 
-// New like routes
-router.post('/movies/:movie_id/like', authenticateToken, likeMovie);
-router.delete('/movies/:movie_id/like', authenticateToken, unlikeMovie);
+// New like routes (userId từ body)
+router.post('/movies/:movie_id/like', likeMovie);
+router.delete('/movies/:movie_id/like', unlikeMovie);
 
-// New comment routes
-router.post('/movies/:movie_id/comment', authenticateToken, addComment);
+// New comment routes (userId từ body)
+router.post('/movies/:movie_id/comment', addComment);
 router.get('/movies/:movie_id/comments', getComments);
 
 module.exports = router; 

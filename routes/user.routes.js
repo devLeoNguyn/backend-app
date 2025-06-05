@@ -1,18 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth.middleware');
 const { 
     getProfile,
     updateProfile
 } = require('../controllers/user.controller');
 
-// auth all
-router.use(authenticateToken);
-
-// Lấy thông tin profile
+// Get current user profile (userId từ query params)
 router.get('/profile', getProfile);
 
-// Cập nhật profile
+// Update user profile (userId từ body)
 router.put('/profile', updateProfile);
 
 module.exports = router;

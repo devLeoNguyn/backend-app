@@ -9,7 +9,6 @@ const {
     deleteMovie,
     getMovieStats
 } = require('../controllers/movie.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
 
@@ -22,18 +21,18 @@ router.get('/:id', getMovieById);
 // Get movie stats (likes, views, comments) - Public
 router.get('/:movie_id/stats', getMovieStats);
 
-// === ADMIN ROUTES (Cần đăng nhập và quyền admin) ===
+// === ADMIN ROUTES (Cần userId) ===
 
-// Tạo phim mới - chỉ admin
-router.post('/', authenticateToken, createMovieController);
+// Tạo phim mới - userId từ body
+router.post('/', createMovieController);
 
-// Tạo sự kiện thể thao - chỉ admin
-router.post('/sports-event', authenticateToken, createSportsEvent);
+// Tạo sự kiện thể thao - userId từ body
+router.post('/sports-event', createSportsEvent);
 
-// Cập nhật phim - chỉ admin
-router.put('/:id', authenticateToken, updateMovie);
+// Cập nhật phim - userId từ body
+router.put('/:id', updateMovie);
 
-// Xóa phim - chỉ admin
-router.delete('/:id', authenticateToken, deleteMovie);
+// Xóa phim - userId từ body
+router.delete('/:id', deleteMovie);
 
 module.exports = router;

@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth');
-const { authenticateToken } = require('../middleware/auth.middleware');
 
 // === ĐĂNG KÝ ===
 // Đăng ký bằng OTP (không cần auth)
@@ -14,15 +13,8 @@ router.post('/register/complete', authController.registerWithOTP);
 router.post('/login/send-otp', authController.requestLoginOTP);
 router.post('/login/verify', authController.loginWithOTP);
 
-// === TOKEN MANAGEMENT ===
-// Refresh access token (không cần auth - chỉ cần refresh token hợp lệ)
-router.post('/refresh-token', authController.refreshToken);
-
 // === ĐĂNG XUẤT ===
-// Đăng xuất thiết bị hiện tại (cần auth)
-router.post('/logout', authenticateToken, authController.logout);
-
-// Đăng xuất tất cả thiết bị (cần auth)
-router.post('/logout-all', authenticateToken, authController.logoutAll);
+// Đăng xuất (không cần auth)
+router.post('/logout', authController.logout);
 
 module.exports = router;

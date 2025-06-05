@@ -6,14 +6,13 @@ const {
     updateEpisode, 
     deleteEpisode 
 } = require('../controllers/episode.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
 
 // Public routes
 router.get('/:id', getEpisodeById);
 
-// Protected routes
-router.post('/', authenticateToken, createEpisode);
-router.put('/:id', authenticateToken, updateEpisode);
-router.delete('/:id', authenticateToken, deleteEpisode);
+// Protected routes (userId từ body)
+router.post('/', createEpisode);
+router.put('/:id', updateEpisode);
+router.delete('/:id', deleteEpisode);
 
 module.exports = router;
