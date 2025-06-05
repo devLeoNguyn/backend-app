@@ -9,10 +9,19 @@ info:
     - ❌ Đã bỏ authentication middleware
     - ✅ Sử dụng userId đơn giản
     
-    **📋 CÁCH SỬ DỤNG:**
-    1. **Đăng ký/Đăng nhập:** Nhận được `userId` từ response
-    2. **Lưu userId:** Store trong AsyncStorage/localStorage  
-  version: 1.0.0
+    **📋 FLOW AUTH MỚI (1 màn hình duy nhất):**
+    1. **Màn hình nhập SĐT:** User nhập số điện thoại
+    2. **Hệ thống check:** 
+       - Nếu SĐT đã đăng ký → Gửi OTP đăng nhập → Verify → Vào trang chủ
+       - Nếu SĐT chưa đăng ký → Gửi OTP đăng ký → Verify → Nhập thông tin → Vào trang chủ
+    3. **Lưu userId:** Store trong AsyncStorage/localStorage để dùng cho các API khác
+    
+    **📱 CÁC BƯỚC THỰC HIỆN:**
+    1. Gọi `/api/auth/send-otp` với số điện thoại
+    2. Gọi `/api/auth/verify-otp` để xác thực
+    3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`
+    4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ
+  version: 1.1.0
   contact:
     email: your-email@example.com
 
@@ -43,18 +52,24 @@ tags:
     description: Các API trang chủ (/api/home) - Banner, phim mới, đề xuất
 
 paths:
-  /api/auth/register/send-otp:
+  # === FLOW MỚI: 1 MÀN HÌNH DUY NHẤT ===
+  /api/auth/send-otp:
     post:
       tags:
         - Authentication
-      summary: Gửi mã OTP đăng ký
+      summary: 🔄 Gửi mã OTP (Đăng ký/Đăng nhập thống nhất)
       description: |
-        Gửi mã OTP đến số điện thoại để bắt đầu quá trình đăng ký.
-        - Mã OTP sẽ được gửi qua SMS
-        - OTP có 6 số
-        - Định dạng số điện thoại:
-          - Bắt đầu bằng 0 hoặc +84
-          - Chỉ chứa số, không có ký tự đặc biệt
+        **🔄 FLOW MỚI:** Gửi mã OTP cho cả đăng ký và đăng nhập trong 1 API duy nhất.
+        
+        **Logic xử lý:**
+        - Nếu số điện thoại đã tồn tại → Gửi OTP đăng nhập
+        - Nếu số điện thoại chưa tồn tại → Gửi OTP đăng ký
+        - Frontend không cần biết user đã đăng ký hay chưa
+        
+        **Đặc điểm:**
+        - Mã OTP có 6 số, gửi qua SMS
+        - OTP có thời hạn (thường 5 phút)
+        - Rate limiting: Tối đa 3 lần/phút
       requestBody:
         required: true
         content:
@@ -67,39 +82,48 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã gửi mã OTP"
+                  data:
+                    type: object
+                    properties:
+                      phone:
+                        type: string
+                        example: "0912345678"
+                      isExistingUser:
+                        type: boolean
+                        example: true
+                        description: "true = user đã đăng ký (đăng nhập), false = user mới (đăng ký)"
               example:
                 status: "success"
-                message: "Vui lòng xác thực số điện thoại của bạn"
+                message: "Đã gửi mã OTP đăng nhập"
                 data:
                   phone: "0912345678"
+                  isExistingUser: true
         '400':
           description: Lỗi validate số điện thoại
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Số điện thoại không hợp lệ"
-        '429':
-          description: Vượt quá số lần gửi OTP cho phép
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Vui lòng thử lại sau"
 
-  /api/auth/register/verify-otp:
+  /api/auth/verify-otp:
     post:
       tags:
         - Authentication
-      summary: Xác thực OTP đăng ký
+      summary: 🔄 Xác thực OTP (Đăng ký/Đăng nhập thống nhất)
       description: |
-        Xác thực mã OTP đã gửi đến số điện thoại.
-        - OTP phải đúng với mã đã gửi
+        **🔄 FLOW MỚI:** Xác thực mã OTP cho cả đăng ký và đăng nhập.
+        
+        **Response paths:**
+        1. **User đã đăng ký:** `needsRegistration: false` → Frontend vào trang chủ
+        2. **User chưa đăng ký:** `needsRegistration: true` → Frontend chuyển màn hình nhập thông tin
       requestBody:
         required: true
         content:
@@ -112,38 +136,94 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-              example:
-                status: "success"
-                message: "Xác thực OTP thành công"
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Xác thực OTP thành công"
+                  data:
+                    type: object
+                    properties:
+                      needsRegistration:
+                        type: boolean
+                        example: false
+                        description: "false = đăng nhập thành công, true = cần nhập thông tin đăng ký"
+                      userId:
+                        type: string
+                        example: "683d7b63d0ee4aeb15a11369"
+                        description: "Chỉ có khi needsRegistration = false"
+                      user:
+                        $ref: '#/components/schemas/UserInfo'
+                        description: "Chỉ có khi needsRegistration = false"
+                      tempToken:
+                        type: string
+                        example: "temp_abc123"
+                        description: "Token tạm để hoàn tất đăng ký (chỉ có khi needsRegistration = true)"
+              examples:
+                existing_user:
+                  summary: User đã đăng ký (đăng nhập thành công)
+                  value:
+                    status: "success"
+                    message: "Đăng nhập thành công"
+                    data:
+                      needsRegistration: false
+                      userId: "683d7b63d0ee4aeb15a11369"
+                      user:
+                        _id: "683d7b63d0ee4aeb15a11369"
+                        full_name: "Nguyễn Văn A"
+                        email: "example@gmail.com"
+                        phone: "0912345678"
+                        avatar: "https://example.com/avatar.jpg"
+                        is_phone_verified: true
+                new_user:
+                  summary: User chưa đăng ký (cần nhập thông tin)
+                  value:
+                    status: "success"
+                    message: "Xác thực OTP thành công, vui lòng nhập thông tin"
+                    data:
+                      needsRegistration: true
+                      tempToken: "temp_abc123xyz"
         '400':
           description: Mã OTP không hợp lệ hoặc đã hết hạn
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Mã OTP không hợp lệ hoặc đã hết hạn"
 
-  /api/auth/register/complete:
+  /api/auth/complete-registration:
     post:
       tags:
         - Authentication
-      summary: Hoàn tất đăng ký
+      summary: 🔄 Hoàn tất đăng ký (Sau khi verify OTP)
       description: |
-        Hoàn tất quá trình đăng ký sau khi đã xác thực số điện thoại.
+        **🔄 FLOW MỚI:** Hoàn tất quá trình đăng ký sau khi verify OTP thành công.
         
-        **⚠️ QUAN TRỌNG:** 
-        - Response sẽ trả về `userId` thay vì tokens
-        - Frontend cần lưu `userId` để sử dụng cho các API khác
-        - Không cần quản lý tokens nữa
+        **Khi nào sử dụng:**
+        - Khi `/api/auth/verify-otp` trả về `needsRegistration: true`
+        - User đã xác thực số điện thoại, giờ cần nhập thông tin cá nhân
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              allOf:
+                - type: object
+                  properties:
+                    tempToken:
+                      type: string
+                      example: "temp_abc123xyz"
+                      description: "Token tạm từ response verify-otp (BẮT BUỘC)"
+                  required:
+                    - tempToken
+                - $ref: '#/components/schemas/RegisterRequest'
+            example:
+              tempToken: "temp_abc123xyz"
+              full_name: "Nguyễn Văn A"
+              email: "example@gmail.com"
+              gender: "male"
       responses:
         '201':
           description: Đăng ký thành công
@@ -151,104 +231,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-              example:
-                status: "success"
-                message: "Đăng ký thành công"
-                data:
-                  userId: "683d7b63d0ee4aeb15a11369"
-                  user:
-                    _id: "683d7b63d0ee4aeb15a11369"
-                    full_name: "Nguyễn Văn A"
-                    email: "example@gmail.com"
-                    phone: "0912345678"
-                    gender: "male"
-                    is_phone_verified: true
         '400':
-          description: Lỗi validate dữ liệu hoặc email đã tồn tại
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Email đã được sử dụng"
-
-  /api/auth/login/send-otp:
-    post:
-      tags:
-        - Authentication
-      summary: Gửi mã OTP đăng nhập
-      description: |
-        Gửi mã OTP đến số điện thoại để đăng nhập.
-        - Đăng nhập khi đăng xuất hoặc người dùng chưa đăng nhập vào app.
-        - Số điện thoại phải đã được đăng ký.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PhoneRequest'
-      responses:
-        '200':
-          description: Gửi OTP thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-              example:
-                status: "success"
-                message: "Đã gửi mã OTP đăng nhập"
-                data:
-                  phone: "0912345678"
-        '404':
-          description: Số điện thoại chưa đăng ký
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Số điện thoại chưa được đăng ký"
-
-  /api/auth/login/verify:
-    post:
-      tags:
-        - Authentication
-      summary: Xác thực OTP và đăng nhập
-      description: |
-        Xác thực mã OTP để đăng nhập.
-        
-        **⚠️ QUAN TRỌNG:**
-        - Response sẽ trả về `userId` thay vì tokens
-        - Frontend cần lưu `userId` để sử dụng cho các API khác
-        - Không cần quản lý access/refresh tokens nữa
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifyOTPRequest'
-      responses:
-        '200':
-          description: Đăng nhập thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-              example:
-                status: "success"
-                message: "Đăng nhập thành công"
-                data:
-                  userId: "683d7b63d0ee4aeb15a11369"
-                  user:
-                    _id: "683d7b63d0ee4aeb15a11369"
-                    full_name: "Nguyễn Văn A"
-                    email: "example@gmail.com"
-                    phone: "0912345678"
-                    avatar: "https://example.com/avatar.jpg"
-                    is_phone_verified: true
-        '400':
-          description: Mã OTP không hợp lệ hoặc đã hết hạn
+          description: Lỗi validate dữ liệu, email đã tồn tại, hoặc tempToken không hợp lệ
           content:
             application/json:
               schema:
@@ -258,7 +242,7 @@ paths:
     post:
       tags:
         - Authentication
-      summary: Đăng xuất
+      summary: 🔄 Đăng xuất
       description: |
         Đăng xuất người dùng (chỉ trả về success message).
         
