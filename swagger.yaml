@@ -158,10 +158,6 @@ paths:
                       user:
                         $ref: '#/components/schemas/UserInfo'
                         description: "Chỉ có khi needsRegistration = false"
-                      tempToken:
-                        type: string
-                        example: "temp_abc123"
-                        description: "Token tạm để hoàn tất đăng ký (chỉ có khi needsRegistration = true)"
               examples:
                 existing_user:
                   summary: User đã đăng ký (đăng nhập thành công)
@@ -173,9 +169,11 @@ paths:
                       userId: "683d7b63d0ee4aeb15a11369"
                       user:
                         _id: "683d7b63d0ee4aeb15a11369"
+                        uid: "683d7b63d0ee4aeb15a11369"
                         full_name: "Nguyễn Văn A"
                         email: "example@gmail.com"
                         phone: "0912345678"
+                        gender: "male"
                         avatar: "https://example.com/avatar.jpg"
                         is_phone_verified: true
                 new_user:
@@ -185,7 +183,6 @@ paths:
                     message: "Xác thực OTP thành công, vui lòng nhập thông tin"
                     data:
                       needsRegistration: true
-                      tempToken: "temp_abc123xyz"
         '400':
           description: Mã OTP không hợp lệ hoặc đã hết hạn
           content:
@@ -204,23 +201,17 @@ paths:
         **Khi nào sử dụng:**
         - Khi `/api/auth/verify-otp` trả về `needsRegistration: true`
         - User đã xác thực số điện thoại, giờ cần nhập thông tin cá nhân
+        
+        **⚠️ QUAN TRỌNG:**
+        - Không cần truyền phone, hệ thống tự động lấy từ OTP record đã verify
+        - Phải gọi trong vòng 10 phút sau khi verify OTP thành công
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              allOf:
-                - type: object
-                  properties:
-                    tempToken:
-                      type: string
-                      example: "temp_abc123xyz"
-                      description: "Token tạm từ response verify-otp (BẮT BUỘC)"
-                  required:
-                    - tempToken
-                - $ref: '#/components/schemas/RegisterRequest'
+              $ref: '#/components/schemas/RegisterRequest'
             example:
-              tempToken: "temp_abc123xyz"
               full_name: "Nguyễn Văn A"
               email: "example@gmail.com"
               gender: "male"
@@ -232,7 +223,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '400':
-          description: Lỗi validate dữ liệu, email đã tồn tại, hoặc tempToken không hợp lệ
+          description: Lỗi validate dữ liệu, email đã tồn tại, hoặc phone không hợp lệ
           content:
             application/json:
               schema:
@@ -293,6 +284,7 @@ paths:
                 data:
                   user:
                     _id: "683d7b63d0ee4aeb15a11369"
+                    uid: "683d7b63d0ee4aeb15a11369"
                     full_name: "Nguyễn Văn A"
                     email: "example@gmail.com"
                     phone: "0912345678"
@@ -325,30 +317,28 @@ paths:
       description: |
         Cập nhật thông tin cá nhân của user.
         
-        **🔄 THAY ĐỔI:** Không cần Bearer token, chỉ cần truyền userId trong request body
+        **🔄 THAY ĐỔI:** userId lấy từ query params, KHÔNG cần trong request body
         
         Các trường có thể cập nhật:
         - Họ và tên (full_name)
         - Số điện thoại (phone)
         - Giới tính (gender: male/female)
         - Ảnh đại diện (avatar: URL hoặc null để xóa)
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "683d7b63d0ee4aeb15a11369"
+          description: "ID của user cần cập nhật"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              allOf:
-                - type: object
-                  properties:
-                    userId:
-                      type: string
-                      example: "683d7b63d0ee4aeb15a11369"
-                      description: "ID của user cần cập nhật (BẮT BUỘC)"
-                  required:
-                    - userId
-                - $ref: '#/components/schemas/UpdateProfileRequest'
+              $ref: '#/components/schemas/UpdateProfileRequest'
             example:
-              userId: "683d7b63d0ee4aeb15a11369"
               full_name: "Nguyễn Văn A Updated"
               phone: "0987654321"
               gender: "male"
@@ -366,6 +356,7 @@ paths:
                 data:
                   user:
                     _id: "683d7b63d0ee4aeb15a11369"
+                    uid: "683d7b63d0ee4aeb15a11369"
                     full_name: "Nguyễn Văn A Updated"
                     email: "example@gmail.com"
                     phone: "0987654321"
@@ -1072,6 +1063,10 @@ components:
         _id:
           type: string
           example: "683d7b63d0ee4aeb15a11369"
+        uid:
+          type: string
+          example: "683d7b63d0ee4aeb15a11369"
+          description: "UID để hiển thị trên màn hình (giống _id)"
         full_name:
           type: string
           example: "Nguyễn Văn A"
@@ -1108,7 +1103,6 @@ components:
           example: "error"
         message:
           type: string
-          example: "Lỗi xử lý yêu cầu"
 
     BannerMovie:
       type: object

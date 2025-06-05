@@ -32,6 +32,10 @@ const otpSchema = new mongoose.Schema({
     attempts: {
         type: Number,
         default: 0
+    },
+    isUsed: {
+        type: Boolean,
+        default: false
     }
 });
 

@@ -24,7 +24,12 @@ exports.getProfile = async (req, res) => {
         
         res.json({
             status: 'success',
-            data: { user }
+            data: { 
+                user: {
+                    ...user.toObject(),
+                    uid: user._id  // Thêm UID cho frontend hiển thị
+                }
+            }
         });
     } catch (error) {
         console.error('Get profile error:', error);
@@ -35,10 +40,11 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// Cập nhật profile (userId từ body)
+// Cập nhật profile (userId từ query params)
 exports.updateProfile = async (req, res) => {
     try {
-        const { userId, full_name, phone, avatar, gender } = req.body;
+        const { userId } = req.query;
+        const { full_name, phone, avatar, gender } = req.body;
         
         if (!userId) {
             return res.status(400).json({
@@ -86,7 +92,12 @@ exports.updateProfile = async (req, res) => {
         res.json({
             status: 'success',
             message: 'Cập nhật profile thành công',
-            data: { user: updatedUser }
+            data: { 
+                user: {
+                    ...updatedUser.toObject(),
+                    uid: updatedUser._id  // Thêm UID cho frontend hiển thị
+                }
+            }
         });
     } catch (error) {
         console.error('Update profile error:', error);

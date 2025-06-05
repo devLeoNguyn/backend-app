@@ -1,9 +1,5 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
-const { v4: uuidv4 } = require('uuid');
-
-// Temporary storage cho pending registrations
-const pendingRegistrations = new Map();
 
 /**
  * FLOW MỚI: Gửi OTP thống nhất (đăng ký + đăng nhập)
@@ -63,7 +59,7 @@ exports.sendUnifiedOTP = async (req, res) => {
 /**
  * FLOW MỚI: Xác thực OTP thống nhất
  * - Nếu user đã đăng ký → Trả về userId + user info (đăng nhập thành công)
- * - Nếu user chưa đăng ký → Trả về needsRegistration: true + tempToken
+ * - Nếu user chưa đăng ký → Trả về needsRegistration: true
  */
 exports.verifyUnifiedOTP = async (req, res) => {
     try {
@@ -120,24 +116,12 @@ exports.verifyUnifiedOTP = async (req, res) => {
                 });
             }
 
-            // Tạo tempToken để track pending registration
-            const tempToken = uuidv4();
-            pendingRegistrations.set(tempToken, {
-                phone,
-                verifiedAt: new Date(),
-                expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 phút
-            });
-
-            // Cleanup expired tokens
-            this.cleanupExpiredTokens();
-
             // Cần nhập thông tin đăng ký
             return res.json({
                 status: 'success',
                 message: 'Xác thực OTP thành công, vui lòng nhập thông tin',
                 data: {
-                    needsRegistration: true,
-                    tempToken
+                    needsRegistration: true
                 }
             });
         }
@@ -155,32 +139,7 @@ exports.verifyUnifiedOTP = async (req, res) => {
  */
 exports.completeRegistration = async (req, res) => {
     try {
-        const { tempToken, full_name, email, gender } = req.body;
-
-        if (!tempToken) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'tempToken là bắt buộc'
-            });
-        }
-
-        // Kiểm tra tempToken có hợp lệ không
-        const pendingData = pendingRegistrations.get(tempToken);
-        if (!pendingData) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Token không hợp lệ hoặc đã hết hạn'
-            });
-        }
-
-        // Kiểm tra token có hết hạn không
-        if (new Date() > pendingData.expiresAt) {
-            pendingRegistrations.delete(tempToken);
-            return res.status(400).json({
-                status: 'error',
-                message: 'Token đã hết hạn, vui lòng thực hiện lại từ đầu'
-            });
-        }
+        const { full_name, email, gender } = req.body;
 
         // Validate dữ liệu cơ bản
         if (!full_name || !email || !gender) {
@@ -217,13 +176,21 @@ exports.completeRegistration = async (req, res) => {
             });
         }
 
-        // Lấy phone từ pending data
-        const { phone } = pendingData;
+        // Tìm OTP record đã verify gần đây nhất (trong 10 phút)
+        const recentVerifiedOTP = await OTPService.findLatestRecentVerifiedOTP();
+        if (!recentVerifiedOTP) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Vui lòng xác thực OTP trước khi đăng ký'
+            });
+        }
 
-        // Kiểm tra phone có bị đăng ký bởi ai khác trong lúc pending không
+        // Lấy phone từ OTP record
+        const phone = recentVerifiedOTP.phone;
+
+        // Kiểm tra phone có bị đăng ký bởi ai khác không
         const existingPhone = await User.findOne({ phone });
         if (existingPhone) {
-            pendingRegistrations.delete(tempToken);
             return res.status(400).json({
                 status: 'error',
                 message: 'Số điện thoại đã được đăng ký bởi tài khoản khác'
@@ -239,8 +206,9 @@ exports.completeRegistration = async (req, res) => {
             is_phone_verified: true
         });
 
-        // Xóa tempToken đã sử dụng
-        pendingRegistrations.delete(tempToken);
+        // Đánh dấu OTP đã sử dụng
+        recentVerifiedOTP.isUsed = true;
+        await recentVerifiedOTP.save();
 
         res.status(201).json({
             status: 'success',
@@ -262,17 +230,5 @@ exports.completeRegistration = async (req, res) => {
             status: 'error',
             message: error.message
         });
-    }
-};
-
-/**
- * Cleanup expired temp tokens
- */
-exports.cleanupExpiredTokens = () => {
-    const now = new Date();
-    for (const [token, data] of pendingRegistrations.entries()) {
-        if (now > data.expiresAt) {
-            pendingRegistrations.delete(token);
-        }
     }
 }; 
