@@ -16,4 +16,7 @@ router.post('/complete-registration', authController.completeRegistration);
 // Đăng xuất (không cần auth)
 router.post('/logout', authController.logout);
 
+// Debug route
+router.get('/debug-otps', authController.debugOTPs);
+
 module.exports = router;

@@ -205,16 +205,24 @@ class OTPService {
         return user;
     }
 
-    // Tìm OTP đăng ký đã verify gần đây nhất (trong 10 phút) - không cần phone
+    // Tìm OTP đăng ký đã verify gần đây nhất (đơn giản hóa)
     static async findLatestRecentVerifiedOTP() {
-        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        console.log('=== DEBUG findLatestRecentVerifiedOTP ===');
         
-        return await OTP.findOne({
+        const result = await OTP.findOne({
             purpose: 'REGISTER',
             isVerified: true,
-            isUsed: { $ne: true }, // Chưa được sử dụng
-            updatedAt: { $gte: tenMinutesAgo } // Trong 10 phút gần đây
-        }).sort({ updatedAt: -1 });
+            isUsed: { $ne: true } // Chưa được sử dụng
+        }).sort({ createdAt: -1 });
+        
+        console.log('Kết quả tìm được:', result ? {
+            phone: result.phone,
+            isVerified: result.isVerified,
+            isUsed: result.isUsed,
+            createdAt: result.createdAt
+        } : null);
+        
+        return result;
     }
 
     // Tìm OTP đăng ký đã verify gần đây (trong 10 phút) - theo phone cụ thể
@@ -226,8 +234,8 @@ class OTPService {
             purpose: 'REGISTER',
             isVerified: true,
             isUsed: { $ne: true }, // Chưa được sử dụng
-            updatedAt: { $gte: tenMinutesAgo } // Trong 10 phút gần đây
-        }).sort({ updatedAt: -1 });
+            createdAt: { $gte: tenMinutesAgo } // Trong 10 phút gần đây - sử dụng createdAt
+        }).sort({ createdAt: -1 });
     }
 }
 

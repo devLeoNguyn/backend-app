@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
+const OTP = require('../../models/OTP');
 
 /**
  * FLOW MỚI: Gửi OTP thống nhất (đăng ký + đăng nhập)
@@ -177,7 +178,21 @@ exports.completeRegistration = async (req, res) => {
         }
 
         // Tìm OTP record đã verify gần đây nhất (trong 10 phút)
+        console.log('=== DEBUG: Tìm OTP đã verify ===');
+        
+        // Debug: Kiểm tra tất cả OTP records
+        const allOTPs = await OTP.find({ purpose: 'REGISTER' }).sort({ updatedAt: -1 });
+        console.log('Tất cả OTP REGISTER:', allOTPs.map(otp => ({
+            phone: otp.phone,
+            isVerified: otp.isVerified,
+            isUsed: otp.isUsed,
+            updatedAt: otp.updatedAt,
+            createdAt: otp.createdAt
+        })));
+        
         const recentVerifiedOTP = await OTPService.findLatestRecentVerifiedOTP();
+        console.log('OTP đã verify gần đây:', recentVerifiedOTP);
+        
         if (!recentVerifiedOTP) {
             return res.status(400).json({
                 status: 'error',
@@ -227,6 +242,22 @@ exports.completeRegistration = async (req, res) => {
         });
     } catch (error) {
         res.status(400).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// Debug function để kiểm tra OTP records
+exports.debugOTPs = async (req, res) => {
+    try {
+        const otps = await OTP.find().sort({ createdAt: -1 }).limit(5);
+        res.json({
+            status: 'success',
+            data: { otps }
+        });
+    } catch (error) {
+        res.status(500).json({
             status: 'error',
             message: error.message
         });
