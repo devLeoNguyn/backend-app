@@ -21,7 +21,20 @@ info:
     2. Gọi `/api/auth/verify-otp` để xác thực
     3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`
     4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ
-  version: 1.1.0
+    
+    **📁 AWS S3 CONFIGURATION:**
+    - **Bucket:** locdev-bucket (ap-southeast-1)
+    - **Avatar path:** assets/avatar-users/{uuid}.{extension}
+    - **Supported formats:** JPEG, PNG, GIF
+    - **Max file size:** 2MB
+    - **Auto cleanup:** Old avatars deleted when uploading new ones
+    
+    **🎯 PROFILE UPDATE API:**
+    - **Endpoint:** PUT `/api/users/profile?userId={id}`
+    - **Content-Type:** multipart/form-data
+    - **Fields:** full_name, gender, avatar (file)
+    - **Integration:** Direct S3 upload + MongoDB update
+  version: 1.2.0
   contact:
     email: your-email@example.com
 
@@ -313,67 +326,140 @@ paths:
     put:
       tags:
         - User
-      summary: Cập nhật profile
+      summary: 🔄 Cập nhật profile (với upload avatar)
       description: |
-        Cập nhật thông tin cá nhân của user.
+        **🔄 API ĐÃ CẬP NHẬT:** Hỗ trợ upload avatar trực tiếp lên AWS S3 + cập nhật thông tin profile.
         
-        **🔄 THAY ĐỔI:** userId lấy từ query params, KHÔNG cần trong request body
+        **📋 TÍNH NĂNG:**
+        - ✅ Cập nhật họ tên, giới tính
+        - ✅ Upload avatar lên AWS S3 (auto delete avatar cũ)
+        - ✅ Validation file ảnh (JPEG, PNG, GIF, max 2MB)
+        - ✅ Unified API: có thể update chỉ text hoặc chỉ avatar hoặc cả hai
         
-        Các trường có thể cập nhật:
-        - Họ và tên (full_name)
-        - Số điện thoại (phone)
-        - Giới tính (gender: male/female)
-        - Ảnh đại diện (avatar: URL hoặc null để xóa)
+        **📤 REQUEST FORMAT:**
+        - **Content-Type:** `multipart/form-data` (bắt buộc)
+        - **Text fields:** full_name, gender
+        - **File field:** avatar (optional)
+        
+        **📁 S3 STORAGE:**
+        - Path: `assets/avatar-users/{uuid}.{ext}`
+        - Auto generate unique filename
+        - Auto delete old avatar khi upload mới
+        
+        **⚠️ LƯU Ý:**
+        - Phone, email KHÔNG thể cập nhật qua API này (readonly)
+        - Avatar file: JPEG/PNG/GIF, max 2MB
+        - Nếu không upload avatar → chỉ update text fields
       parameters:
         - name: userId
           in: query
           required: true
           schema:
             type: string
-          example: "683d7b63d0ee4aeb15a11369"
+          example: "684269635fb34def3a1e28fd"
           description: "ID của user cần cập nhật"
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UpdateProfileRequest'
-            example:
-              full_name: "Nguyễn Văn A Updated"
-              phone: "0987654321"
-              gender: "male"
-              avatar: "https://example.com/new-avatar.jpg"
+              type: object
+              properties:
+                full_name:
+                  type: string
+                  description: "Họ và tên người dùng"
+                  example: "Đạt Thiện"
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                  description: "Giới tính: male=Nam, female=Nữ, other=Khác"
+                  example: "male"
+                avatar:
+                  type: string
+                  format: binary
+                  description: "File ảnh đại diện (JPEG/PNG/GIF, max 2MB)"
+            encoding:
+              avatar:
+                contentType: image/jpeg, image/png, image/gif
+            examples:
+              update_text_only:
+                summary: "Chỉ cập nhật text (không upload avatar)"
+                value:
+                  full_name: "Đạt Thiện Updated"
+                  gender: "male"
+              update_with_avatar:
+                summary: "Cập nhật text + upload avatar"
+                value:
+                  full_name: "Đạt Thiện Updated"
+                  gender: "male"
+                  avatar: "[BINARY FILE DATA]"
       responses:
         '200':
-          description: Cập nhật thành công
+          description: ✅ Cập nhật thành công
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponse'
-              example:
-                status: "success"
-                message: "Cập nhật profile thành công"
-                data:
-                  user:
-                    _id: "683d7b63d0ee4aeb15a11369"
-                    uid: "683d7b63d0ee4aeb15a11369"
-                    full_name: "Nguyễn Văn A Updated"
-                    email: "example@gmail.com"
-                    phone: "0987654321"
-                    gender: "male"
-                    avatar: "https://example.com/new-avatar.jpg"
-                    is_phone_verified: true
+              examples:
+                text_only_update:
+                  summary: "Cập nhật chỉ text thành công"
+                  value:
+                    status: "success"
+                    message: "✅ User profile updated successfully"
+                    data:
+                      user:
+                        _id: "684269635fb34def3a1e28fd"
+                        uid: "684269635fb34def3a1e28fd"
+                        full_name: "Đạt Thiện Updated"
+                        email: "datthien@gmail.com"
+                        phone: "0288348192"
+                        gender: "male"
+                        avatar: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/avatar-users/old-avatar.jpg"
+                        is_phone_verified: true
+                avatar_upload_success:
+                  summary: "Upload avatar + cập nhật text thành công"
+                  value:
+                    status: "success"
+                    message: "✅ User profile updated successfully"
+                    data:
+                      user:
+                        _id: "684269635fb34def3a1e28fd"
+                        uid: "684269635fb34def3a1e28fd"
+                        full_name: "Đạt Thiện Updated"
+                        email: "datthien@gmail.com"
+                        phone: "0288348192"
+                        gender: "male"
+                        avatar: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/avatar-users/32c5a14e-3fa0-497a-b036-32de0cdc842a.jpg"
+                        is_phone_verified: true
         '400':
-          description: Lỗi validate dữ liệu hoặc thiếu userId
+          description: ❌ Lỗi validation hoặc file
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "userId là bắt buộc"
+              examples:
+                missing_userId:
+                  summary: "Thiếu userId"
+                  value:
+                    status: "error"
+                    message: "userId là bắt buộc"
+                file_too_large:
+                  summary: "File quá lớn"
+                  value:
+                    status: "error"
+                    message: "Tệp quá lớn. Chỉ cho phép tệp nhỏ hơn 2MB"
+                invalid_file_type:
+                  summary: "Loại file không hợp lệ"
+                  value:
+                    status: "error"
+                    message: "Chỉ cho phép file ảnh (JPEG, PNG, GIF)"
+                s3_upload_error:
+                  summary: "Lỗi upload S3"
+                  value:
+                    status: "error"
+                    message: "Lỗi khi upload file lên S3"
         '404':
-          description: Không tìm thấy user
+          description: ❌ Không tìm thấy user
           content:
             application/json:
               schema:
@@ -381,6 +467,15 @@ paths:
               example:
                 status: "error"
                 message: "Không tìm thấy user"
+        '500':
+          description: ❌ Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: "error"
+                message: "Lỗi server khi xử lý upload"
 
   /api/home/new-releases:
     get:
@@ -1003,24 +1098,41 @@ components:
 
     UpdateProfileRequest:
       type: object
+      description: "🔄 Schema for multipart/form-data profile update with avatar upload"
       properties:
         full_name:
           type: string
-          example: "Nguyễn Văn A"
-          description: "Họ và tên người dùng"
-        phone:
-          type: string
-          example: "0987654321"
-          description: "Số điện thoại"
+          example: "Đạt Thiện"
+          description: "Họ và tên người dùng (có thể update)"
         gender:
           type: string
-          enum: [male, female]
+          enum: [male, female, other]
           example: "male"
-          description: "Giới tính (male = Nam, female = Nữ)"
+          description: "Giới tính (male=Nam, female=Nữ, other=Khác) - có thể update"
         avatar:
           type: string
-          example: "https://example.com/avatar.jpg"
-          description: "URL ảnh đại diện (null để xóa avatar)"
+          format: binary
+          description: "File ảnh đại diện (JPEG/PNG/GIF, max 2MB) - optional, upload lên S3"
+      additionalProperties: false
+      example:
+        full_name: "Đạt Thiện Updated"
+        gender: "male"
+        avatar: "[BINARY_FILE_DATA]"
+
+    UpdateProfileTextOnlyRequest:
+      type: object
+      description: "Schema for text-only profile update (no avatar)"
+      properties:
+        full_name:
+          type: string
+          example: "Đạt Thiện"
+          description: "Họ và tên người dùng"
+        gender:
+          type: string
+          enum: [male, female, other]
+          example: "male"
+          description: "Giới tính (male=Nam, female=Nữ, other=Khác)"
+      additionalProperties: false
 
     AuthResponse:
       type: object
@@ -1078,7 +1190,9 @@ components:
           example: "0912345678"
         gender:
           type: string
+          enum: [male, female, other]
           example: "male"
+          description: "Giới tính: male=Nam, female=Nữ, other=Khác"
         avatar:
           type: string
           example: "https://example.com/avatar.jpg"
