@@ -15,6 +15,9 @@ var app = express();
 require('dotenv').config();
 const mongoose = require('mongoose');
 
+// Test S3 connection
+const { testS3Connection } = require('./utils/s3Config');
+
 // Enable CORS
 app.use(cors());
 
@@ -79,9 +82,13 @@ app.use(function (err, req, res, next) {
 
 //mongoose connect
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     const db = mongoose.connection;
     console.log("MongoDB connected to:", db.name);
+    
+    // Test S3 connection sau khi MongoDB connected
+    console.log('Testing S3 connection...');
+    await testS3Connection();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 

@@ -4,11 +4,12 @@ const {
     getProfile,
     updateProfile
 } = require('../controllers/user.controller');
+const { upload } = require('../utils/s3Config');
 
 // Get current user profile (userId từ query params)
 router.get('/profile', getProfile);
 
-// Update user profile (userId từ body)
-router.put('/profile', updateProfile);
+// Update user profile (có thể kèm upload avatar - userId từ query params, file từ form-data)
+router.put('/profile', upload.single('avatar'), updateProfile);
 
 module.exports = router;

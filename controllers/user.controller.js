@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { uploadToS3, deleteFromS3 } = require('../utils/s3Config');
 
 // Lấy thông tin profile (userId từ query params)
 exports.getProfile = async (req, res) => {
@@ -40,12 +41,20 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// Cập nhật profile (userId từ query params)
+// Cập nhật profile (có thể kèm upload avatar)
 exports.updateProfile = async (req, res) => {
     try {
         const { userId } = req.query;
-        const { full_name, phone, avatar, gender } = req.body;
+        const { full_name, phone, gender } = req.body;
         
+        console.log('📝 Update profile request:', {
+            userId,
+            full_name,
+            phone,
+            gender,
+            hasFile: !!req.file
+        });
+
         if (!userId) {
             return res.status(400).json({
                 status: 'error',
@@ -53,13 +62,50 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
+        // Tìm user hiện tại
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy user'
+            });
+        }
+
         const updateData = {};
 
-        // Chỉ cập nhật các trường được gửi lên
+        // Cập nhật các trường thông tin
         if (full_name) updateData.full_name = full_name;
         if (phone) updateData.phone = phone;
-        if (avatar !== undefined) updateData.avatar = avatar; // Cho phép gửi null để xóa avatar
-        if (gender !== undefined) updateData.gender = gender; // Cho phép cập nhật gender
+        if (gender !== undefined) updateData.gender = gender;
+
+        // Xử lý upload avatar nếu có file
+        if (req.file) {
+            try {
+                console.log('📤 Uploading avatar to S3:', {
+                    originalname: req.file.originalname,
+                    mimetype: req.file.mimetype,
+                    size: req.file.size
+                });
+
+                // Upload file mới lên S3
+                const avatarUrl = await uploadToS3(req.file, 'assets/avatar-users');
+                updateData.avatar = avatarUrl;
+
+                console.log('✅ Avatar uploaded successfully:', avatarUrl);
+
+                // Xóa avatar cũ nếu có
+                if (user.avatar) {
+                    console.log('🗑️ Deleting old avatar:', user.avatar);
+                    await deleteFromS3(user.avatar);
+                }
+            } catch (uploadError) {
+                console.error('❌ Avatar upload error:', uploadError);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Lỗi khi upload avatar: ' + uploadError.message
+                });
+            }
+        }
 
         // Kiểm tra số điện thoại đã tồn tại chưa
         if (phone) {
@@ -76,34 +122,40 @@ exports.updateProfile = async (req, res) => {
             }
         }
 
+        // Cập nhật user
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             updateData,
             { new: true }
         ).select('-__v');
 
-        if (!updatedUser) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Không tìm thấy user'
-            });
-        }
+        console.log('✅ User profile updated successfully');
 
         res.json({
             status: 'success',
-            message: 'Cập nhật profile thành công',
+            message: req.file ? 'Cập nhật profile và avatar thành công' : 'Cập nhật profile thành công',
             data: { 
                 user: {
                     ...updatedUser.toObject(),
-                    uid: updatedUser._id  // Thêm UID cho frontend hiển thị
+                    uid: updatedUser._id
                 }
             }
         });
+
     } catch (error) {
-        console.error('Update profile error:', error);
+        console.error('❌ Update profile error:', error);
+        
+        // Xử lý lỗi file quá lớn
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'File quá lớn. Vui lòng chọn file nhỏ hơn 2MB'
+            });
+        }
+
         res.status(500).json({
             status: 'error',
-            message: 'Lỗi khi cập nhật profile'
+            message: error.message || 'Lỗi khi cập nhật profile'
         });
     }
 }; 

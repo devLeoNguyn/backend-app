@@ -205,24 +205,13 @@ class OTPService {
         return user;
     }
 
-    // Tìm OTP đăng ký đã verify gần đây nhất (đơn giản hóa)
+    // Tìm OTP đăng ký đã verify gần đây nhất
     static async findLatestRecentVerifiedOTP() {
-        console.log('=== DEBUG findLatestRecentVerifiedOTP ===');
-        
-        const result = await OTP.findOne({
+        return await OTP.findOne({
             purpose: 'REGISTER',
             isVerified: true,
             isUsed: { $ne: true } // Chưa được sử dụng
         }).sort({ createdAt: -1 });
-        
-        console.log('Kết quả tìm được:', result ? {
-            phone: result.phone,
-            isVerified: result.isVerified,
-            isUsed: result.isUsed,
-            createdAt: result.createdAt
-        } : null);
-        
-        return result;
     }
 
     // Tìm OTP đăng ký đã verify gần đây (trong 10 phút) - theo phone cụ thể

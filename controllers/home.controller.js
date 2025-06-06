@@ -196,19 +196,43 @@ const getGenreSections = async (req, res) => {
     try {
         const genreLimit = parseInt(req.query.genreLimit) || 4;
         const movieLimit = 4; // Fixed to 4 movies per genre for 2x2 grid
+        const { use_hierarchy = 'false' } = req.query; // Option để chọn hierarchical hay simple
 
-        // Chỉ lấy thể loại đang hoạt động
-        const topGenres = await Genre.find({ is_active: true })
-            .sort({ createdAt: -1 })
+        let topGenres;
+
+        if (use_hierarchy === 'true') {
+            // Sử dụng hierarchical genres - chỉ lấy parent genres
+            topGenres = await Genre.find({ 
+                parent_genre: null, // Chỉ lấy thể loại cha
+                is_active: true 
+            })
+            .sort({ sort_order: 1, createdAt: -1 })
             .limit(genreLimit);
+        } else {
+            // Sử dụng simple flow - lấy tất cả genres như cũ
+            topGenres = await Genre.find({ is_active: true })
+                .sort({ createdAt: -1 })
+                .limit(genreLimit);
+        }
 
         const genreSections = await Promise.all(
             topGenres.map(async (genre) => {
-                const movies = await Movie.find({ genres: genre._id })
+                let genreIds = [genre._id];
+                
+                // Nếu dùng hierarchy và là parent genre, bao gồm cả children
+                if (use_hierarchy === 'true' && (!genre.parent_genre)) {
+                    const childGenres = await Genre.find({ 
+                        parent_genre: genre._id, 
+                        is_active: true 
+                    }).select('_id');
+                    genreIds.push(...childGenres.map(child => child._id));
+                }
+
+                const movies = await Movie.find({ genres: { $in: genreIds } })
                     .populate({
                         path: 'genres',
                         match: { is_active: true }, // Chỉ populate thể loại hoạt động
-                        select: 'genre_name'
+                        select: 'genre_name parent_genre is_parent'
                     })
                     .select('_id movie_title poster_path movie_type')
                     .sort({ createdAt: -1 })
@@ -238,11 +262,17 @@ const getGenreSections = async (req, res) => {
                     })
                 );
 
+                // Check if has children (for hierarchical flow)
+                const hasChildren = use_hierarchy === 'true' ? await genre.hasChildren() : false;
+
                 // Format for UI: genre name + 4 posters (2x2 grid)
                 return {
                     genre: genre.genre_name,
                     genreId: genre._id,
                     isActive: genre.is_active,
+                    isParent: !genre.parent_genre, // true nếu là parent genre
+                    hasChildren: hasChildren,
+                    useHierarchy: use_hierarchy === 'true',
                     totalMovies: moviesWithStats.length,
                     movies: moviesWithStats,
                     // Simplified format for UI grid display
@@ -265,6 +295,8 @@ const getGenreSections = async (req, res) => {
             data: {
                 title: "Theo thể loại",
                 type: "genre_sections",
+                use_hierarchy: use_hierarchy === 'true',
+                flow_type: use_hierarchy === 'true' ? 'hierarchical' : 'simple',
                 data: validSections
             }
         });

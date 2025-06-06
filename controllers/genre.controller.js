@@ -407,3 +407,276 @@ exports.deactivateGenre = async (req, res) => {
     }
 };
 
+// === NEW HIERARCHICAL GENRE CONTROLLERS ===
+
+// Lấy cây thể loại đầy đủ (parent + children)
+exports.getGenreTree = async (req, res) => {
+    try {
+        const genreTree = await Genre.getGenreTree();
+        
+        res.json({
+            status: 'success',
+            data: {
+                genres: genreTree,
+                total_parents: genreTree.length,
+                total_children: genreTree.reduce((sum, parent) => sum + (parent.children?.length || 0), 0)
+            }
+        });
+    } catch (error) {
+        console.error('Get genre tree error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy cây thể loại',
+            error: error.message
+        });
+    }
+};
+
+// Lấy danh sách thể loại cha (cho HomeScreen)
+exports.getParentGenres = async (req, res) => {
+    try {
+        const parentGenres = await Genre.find({ 
+            parent_genre: null, 
+            is_active: true 
+        })
+        .select('genre_name description sort_order')
+        .sort({ sort_order: 1, genre_name: 1 });
+
+        // Đếm số phim cho mỗi thể loại cha (bao gồm cả con)
+        const genresWithCounts = await Promise.all(
+            parentGenres.map(async (genre) => {
+                // Lấy tất cả thể loại con
+                const childGenres = await Genre.find({ 
+                    parent_genre: genre._id, 
+                    is_active: true 
+                }).select('_id');
+                
+                const allGenreIds = [genre._id, ...childGenres.map(child => child._id)];
+                
+                // Đếm phim thuộc thể loại cha hoặc con
+                const movieCount = await Movie.countDocuments({ 
+                    genres: { $in: allGenreIds } 
+                });
+                
+                return {
+                    ...genre.toObject(),
+                    movie_count: movieCount,
+                    has_children: childGenres.length > 0,
+                    children_count: childGenres.length
+                };
+            })
+        );
+
+        res.json({
+            status: 'success',
+            data: {
+                genres: genresWithCounts,
+                total: genresWithCounts.length
+            }
+        });
+    } catch (error) {
+        console.error('Get parent genres error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy danh sách thể loại cha',
+            error: error.message
+        });
+    }
+};
+
+// Lấy danh sách thể loại con theo parent (cho GenreChildrenScreen)
+exports.getChildrenGenres = async (req, res) => {
+    try {
+        const { parentId } = req.params;
+
+        // Kiểm tra parent genre tồn tại
+        const parentGenre = await Genre.findById(parentId);
+        if (!parentGenre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại cha'
+            });
+        }
+
+        // Lấy thể loại con
+        const childrenGenres = await Genre.find({ 
+            parent_genre: parentId, 
+            is_active: true 
+        })
+        .select('genre_name description sort_order')
+        .sort({ sort_order: 1, genre_name: 1 });
+
+        // Đếm số phim cho mỗi thể loại con
+        const genresWithCounts = await Promise.all(
+            childrenGenres.map(async (genre) => {
+                const movieCount = await Movie.countDocuments({ 
+                    genres: genre._id 
+                });
+                
+                return {
+                    ...genre.toObject(),
+                    movie_count: movieCount
+                };
+            })
+        );
+
+        res.json({
+            status: 'success',
+            data: {
+                parent_genre: {
+                    _id: parentGenre._id,
+                    genre_name: parentGenre.genre_name,
+                    description: parentGenre.description
+                },
+                children_genres: genresWithCounts,
+                total_children: genresWithCounts.length
+            }
+        });
+    } catch (error) {
+        console.error('Get children genres error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy danh sách thể loại con',
+            error: error.message
+        });
+    }
+};
+
+// Tạo thể loại con
+exports.createChildGenre = async (req, res) => {
+    try {
+        const { parent_genre_id, genre_name, description, sort_order } = req.body;
+
+        // Kiểm tra parent genre tồn tại
+        const parentGenre = await Genre.findById(parent_genre_id);
+        if (!parentGenre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại cha'
+            });
+        }
+
+        // Kiểm tra tên thể loại đã tồn tại chưa
+        const existingGenre = await Genre.findOne({ 
+            genre_name: { $regex: new RegExp(`^${genre_name}$`, 'i') }
+        });
+
+        if (existingGenre) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Tên thể loại này đã tồn tại'
+            });
+        }
+
+        // Tạo thể loại con
+        const childGenre = new Genre({
+            genre_name: genre_name.trim(),
+            description: description ? description.trim() : '',
+            parent_genre: parent_genre_id,
+            is_parent: false,
+            sort_order: sort_order || 0
+        });
+
+        await childGenre.save();
+        await childGenre.populate('parent', 'genre_name description');
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Đã tạo thể loại con thành công',
+            data: { 
+                genre: childGenre,
+                parent_info: childGenre.parent
+            }
+        });
+    } catch (error) {
+        console.error('Create child genre error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi tạo thể loại con',
+            error: error.message
+        });
+    }
+};
+
+// Lấy phim theo thể loại (bao gồm thể loại con)
+exports.getMoviesByGenreIncludeChildren = async (req, res) => {
+    try {
+        const { genreId } = req.params;
+        const { page = 1, limit = 10, include_children = 'true' } = req.query;
+
+        // Kiểm tra genre tồn tại
+        const genre = await Genre.findById(genreId);
+        if (!genre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại'
+            });
+        }
+
+        let genreIds = [genreId];
+
+        // Nếu include_children = true và là parent genre, thêm children
+        if (include_children === 'true' && genre.is_parent) {
+            const childGenres = await Genre.find({ 
+                parent_genre: genreId, 
+                is_active: true 
+            }).select('_id');
+            
+            genreIds.push(...childGenres.map(child => child._id));
+        }
+
+        // Tính pagination
+        const skip = (page - 1) * limit;
+
+        // Lấy phim
+        const movies = await Movie.find({ 
+            genres: { $in: genreIds } 
+        })
+        .populate({
+            path: 'genres',
+            match: { is_active: true },
+            select: 'genre_name description parent_genre is_parent'
+        })
+        .select('movie_title description production_time producer movie_type price is_free price_display poster_path')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+
+        // Đếm tổng số phim
+        const totalMovies = await Movie.countDocuments({ 
+            genres: { $in: genreIds } 
+        });
+
+        const totalPages = Math.ceil(totalMovies / limit);
+
+        res.json({
+            status: 'success',
+            data: {
+                genre_info: {
+                    _id: genre._id,
+                    genre_name: genre.genre_name,
+                    description: genre.description,
+                    is_parent: genre.is_parent,
+                    includes_children: include_children === 'true' && genre.is_parent
+                },
+                movies,
+                pagination: {
+                    current_page: parseInt(page),
+                    total_pages: totalPages,
+                    total_movies: totalMovies,
+                    limit: parseInt(limit),
+                    has_next: page < totalPages,
+                    has_prev: page > 1
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get movies by genre error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy phim theo thể loại',
+            error: error.message
+        });
+    }
+};
+
