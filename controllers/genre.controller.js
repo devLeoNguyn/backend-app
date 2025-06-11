@@ -432,6 +432,63 @@ exports.getGenreTree = async (req, res) => {
     }
 };
 
+//HOME: Lấy danh sách thể loại cha với poster cho trang chủ (giống FPT Play)
+exports.getHomeCategoriesWithPoster = async (req, res) => {
+    try {
+        const parentGenres = await Genre.find({ 
+            parent_genre: null, 
+            is_active: true 
+        })
+        .select('genre_name description poster sort_order')
+        .sort({ sort_order: 1, genre_name: 1 });
+
+        // Đếm số phim cho mỗi thể loại cha (bao gồm cả con)
+        const categoriesWithInfo = await Promise.all(
+            parentGenres.map(async (genre) => {
+                // Lấy tất cả thể loại con
+                const childGenres = await Genre.find({ 
+                    parent_genre: genre._id, 
+                    is_active: true 
+                }).select('_id');
+                
+                const allGenreIds = [genre._id, ...childGenres.map(child => child._id)];
+                
+                // Đếm phim thuộc thể loại cha hoặc con
+                const movieCount = await Movie.countDocuments({ 
+                    genres: { $in: allGenreIds } 
+                });
+                
+                return {
+                    _id: genre._id,
+                    title: genre.genre_name,
+                    description: genre.description,
+                    poster: genre.poster || '', // URL poster cho category
+                    movie_count: movieCount,
+                    has_children: childGenres.length > 0,
+                    children_count: childGenres.length,
+                    sort_order: genre.sort_order
+                };
+            })
+        );
+
+        res.json({
+            status: 'success',
+            message: 'Danh sách thể loại cho trang chủ',
+            data: {
+                categories: categoriesWithInfo,
+                total: categoriesWithInfo.length
+            }
+        });
+    } catch (error) {
+        console.error('Get home categories error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy danh sách thể loại cho trang chủ',
+            error: error.message
+        });
+    }
+};
+
 // Lấy danh sách thể loại cha (cho HomeScreen)
 exports.getParentGenres = async (req, res) => {
     try {
@@ -439,7 +496,7 @@ exports.getParentGenres = async (req, res) => {
             parent_genre: null, 
             is_active: true 
         })
-        .select('genre_name description sort_order')
+        .select('genre_name description sort_order poster')
         .sort({ sort_order: 1, genre_name: 1 });
 
         // Đếm số phim cho mỗi thể loại cha (bao gồm cả con)

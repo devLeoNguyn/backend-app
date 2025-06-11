@@ -15,7 +15,10 @@ router.get('/tree', genreController.getGenreTree);
 // Lấy danh sách thể loại cha (cho HomeScreen)
 router.get('/parents', genreController.getParentGenres);
 
-// Lấy danh sách thể loại con theo parent (cho GenreChildrenScreen)
+// Lấy danh sách thể loại cha với poster cho trang chủ (giống FPT Play)
+router.get('/home-categories', genreController.getHomeCategoriesWithPoster);
+
+//HOME: Lấy danh sách thể loại con theo parent (cho GenreChildrenScreen)
 router.get('/parent/:parentId/children', genreController.getChildrenGenres);
 
 // Lấy phim theo thể loại (bao gồm thể loại con nếu có)
