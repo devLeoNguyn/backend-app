@@ -12,6 +12,11 @@ const genreSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    poster: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     // Thêm support cho thể loại cha-con
     parent_genre: {
         type: mongoose.Schema.Types.ObjectId,
