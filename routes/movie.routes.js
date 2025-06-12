@@ -7,13 +7,17 @@ const {
     getMovieById, 
     updateMovie, 
     deleteMovie,
-    getMovieStats
+    getMovieStats,
+    searchMovies
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
 
 // Lấy danh sách phim mới - ai cũng xem được
 router.get('/new-week', getNewWeekMovies);
+
+// Tìm kiếm phim
+router.get('/search', searchMovies);
 
 // Lấy chi tiết một phim - ai cũng xem được
 router.get('/:id', getMovieById);
