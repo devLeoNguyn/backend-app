@@ -39,13 +39,13 @@ const movieSchema = new mongoose.Schema({
   },
   is_free: {
     type: Boolean,
-    default: function() {
+    default: function () {
       return this.price === 0;
     }
   },
   price_display: {
     type: String,
-    get: function() {
+    get: function () {
       return this.is_free ? 'Miễn phí' : `${this.price.toLocaleString('vi-VN')} VNĐ`;
     }
   },
@@ -53,43 +53,57 @@ const movieSchema = new mongoose.Schema({
     type: Number,
     min: 1
   },
-  
-  // Các trường cơ bản cho sections
   release_status: {
     type: String,
     enum: ['upcoming', 'released', 'ended'],
     default: 'released',
     index: true
   },
-  
-  // Trường đặc biệt cho sports events
   event_start_time: {
     type: Date,
-    default: null // Chỉ dùng cho movie_type: 'Thể thao'
+    default: null
   },
   event_status: {
     type: String,
     enum: ['upcoming', 'released'],
-    default: null // Chỉ dùng cho movie_type: 'Thể thao'
+    default: null
+  },
+  view_count: {
+    type: Number,
+    default: 0
+  },
+  favorite_count: {
+    type: Number,
+    default: 0
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  language: {
+    type: String,
+    default: 'vi',
+    enum: ['vi', 'en', 'ja', 'ko', 'zh', 'other']
   }
 }, {
   timestamps: true,
-  toJSON: { 
+  toJSON: {
     virtuals: true,
-    getters: true 
+    getters: true
   },
-  toObject: { 
+  toObject: {
     virtuals: true,
-    getters: true 
+    getters: true
   }
 });
 
-// Basic indexes
+// Indexes for better query performance
 movieSchema.index({ release_status: 1, production_time: -1 });
 movieSchema.index({ movie_type: 1, createdAt: -1 });
 movieSchema.index({ movie_type: 1, event_start_time: 1 });
+movieSchema.index({ movie_title: 'text', description: 'text', producer: 'text' }); // full-text search
 
-// Apply all methods from methods/movie.methods.js
+// Custom methods
 applyMovieMethods(movieSchema);
 
-module.exports = mongoose.model('Movie', movieSchema);    
+module.exports = mongoose.model('Movie', movieSchema);

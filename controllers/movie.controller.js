@@ -450,6 +450,106 @@ const getMovieStats = async (req, res) => {
     }
 };
 
+const searchMovies = async (req, res) => {
+  try {
+    const {
+      tuKhoa,     // Từ khóa tìm kiếm (tên phim, nhà sản xuất)
+      theLoai,    // ID thể loại (ObjectId)
+      loaiPhim,   // 'Phim lẻ', 'Phim bộ'
+      mienphi,    // true / false (string)
+      sapXep      // 'moi-nhat' / 'cu-nhat'
+    } = req.query;
+
+    const dieuKien = {};
+
+    // Tìm theo từ khóa
+    if (tuKhoa && tuKhoa.trim()) {
+      dieuKien.$or = [
+        { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },
+        { producer: { $regex: tuKhoa.trim(), $options: 'i' } }
+      ];
+    }
+
+    // Lọc theo thể loại
+    if (theLoai) {
+      dieuKien.genres = theLoai;
+    }
+
+    // Lọc theo loại phim
+    if (loaiPhim) {
+      dieuKien.movie_type = loaiPhim;
+    }
+
+    // Lọc theo miễn phí
+    if (mienphi !== undefined) {
+      dieuKien.is_free = mienphi === 'true';
+    }
+
+    // Khởi tạo truy vấn
+    let query = Movie.find(dieuKien)
+      .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres')
+      .populate('genres', 'name');
+
+    // Sắp xếp
+    if (sapXep === 'moi-nhat') {
+      query = query.sort({ production_time: -1 });
+    } else if (sapXep === 'cu-nhat') {
+      query = query.sort({ production_time: 1 });
+    }
+
+    const movies = await query.exec();
+
+    // Xử lý chi tiết tập phim
+    const moviesWithDetails = await Promise.all(
+      movies.map(async (movie) => {
+        const episodes = await Episode.find({ movie_id: movie._id })
+          .select('episode_title uri episode_number episode_description')
+          .sort({ episode_number: 1 });
+
+        const movieObj = movie.toObject();
+
+        if (episodes.length > 1) {
+          movieObj.movie_type = 'Phim bộ';
+          movieObj.episodes = episodes.map((ep) => ({
+            episode_title: ep.episode_title,
+            episode_number: ep.episode_number,
+            uri: movieObj.is_free ? ep.uri : null
+          }));
+          movieObj.total_episodes = episodes.length;
+        } else if (episodes.length === 1) {
+          movieObj.movie_type = 'Phim lẻ';
+          movieObj.uri = movieObj.is_free ? episodes[0].uri : null;
+          movieObj.episode_description = episodes[0].episode_description;
+        }
+
+        // Trả về ảnh poster chính xác (nếu có)
+        movieObj.poster = movie.poster_path || null;
+
+        return movieObj;
+      })
+    );
+
+    res.json({
+      status: 'success',
+      data: {
+        movies: moviesWithDetails,
+        total: moviesWithDetails.length
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi khi tìm kiếm phim:', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Lỗi server',
+      error: err.message
+    });
+  }
+};
+
+module.exports = {
+  searchMovies
+};
+
 module.exports = {
     getNewWeekMovies,
     createMovieController,
@@ -457,5 +557,6 @@ module.exports = {
     getMovieById,
     updateMovie,
     deleteMovie,
-    getMovieStats
+    getMovieStats,
+    searchMovies
 };
