@@ -4,8 +4,16 @@ const Movie = require('../models/Movie');
 // Thêm phim vào danh sách yêu thích
 exports.addToFavorites = async (req, res) => {
     try {
-        const { movie_id } = req.body;
-        const user_id = req.user._id;
+        const { movie_id, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         // Kiểm tra phim có tồn tại không
         const movie = await Movie.findById(movie_id);
@@ -46,13 +54,24 @@ exports.addToFavorites = async (req, res) => {
 // Lấy danh sách phim yêu thích của user
 exports.getFavorites = async (req, res) => {
     try {
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
+        
         // Pagination cho mobile (default 10 items/page)
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
         // Query với pagination
-        const favorites = await Favorite.find({ user_id: req.user._id })
+        const favorites = await Favorite.find({ user_id })
             .populate({
                 path: 'movie_id',
                 select: 'movie_title description production_time producer movie_type price is_free price_display'
@@ -62,7 +81,7 @@ exports.getFavorites = async (req, res) => {
             .limit(limit);
 
         // Đếm tổng số item để check còn data không
-        const total = await Favorite.countDocuments({ user_id: req.user._id });
+        const total = await Favorite.countDocuments({ user_id });
         const hasMore = total > skip + favorites.length;
 
         // Format response phù hợp cho mobile
@@ -102,7 +121,16 @@ exports.getFavorites = async (req, res) => {
 exports.removeFromFavorites = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const user_id = req.user._id;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         const result = await Favorite.findOneAndDelete({
             user_id,
@@ -132,7 +160,16 @@ exports.removeFromFavorites = async (req, res) => {
 exports.checkFavorite = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const user_id = req.user._id;
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         const favorite = await Favorite.findOne({
             user_id,

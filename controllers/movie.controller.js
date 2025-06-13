@@ -8,58 +8,14 @@ const Watching = require('../models/Watching');
 const mongoose = require('mongoose');
 const { validatePrice, validateEpisodes, determineMovieType, validateMovieData } = require('../validators/movieValidator');
 
-// Helper functions for stats calculation
-const calculateMovieRating = async (movieId) => {
-    try {
-        const ratingStats = await Rating.aggregate([
-            { $match: { movie_id: mongoose.Types.ObjectId(movieId) } },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: 1 },
-                    likes: { $sum: { $cond: [{ $eq: ['$is_like', true] }, 1, 0] } }
-                }
-            }
-        ]);
-
-        if (!ratingStats.length) return { rating: 0, likeCount: 0, totalRatings: 0 };
-        const { total, likes } = ratingStats[0];
-        return {
-            rating: Number(((likes / total) * 10).toFixed(1)),
-            likeCount: likes,
-            totalRatings: total
-        };
-    } catch (error) {
-        console.error('Error calculating rating:', error);
-        return { rating: 0, likeCount: 0, totalRatings: 0 };
-    }
-};
-
-const calculateViewCount = async (movieId) => {
-    try {
-        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
-        const episodeIds = episodes.map(ep => ep._id);
-
-        const viewCount = await Watching.countDocuments({
-            episode_id: { $in: episodeIds },
-            completed: true
-        });
-
-        return viewCount;
-    } catch (error) {
-        console.error('Error calculating view count:', error);
-        return 0;
-    }
-};
-
-const formatViewCount = (count) => {
-    if (count >= 1000000) {
-        return (count / 1000000).toFixed(1) + 'M';
-    } else if (count >= 1000) {
-        return (count / 1000).toFixed(0) + 'k';
-    }
-    return count.toString();
-};
+// Import shared utility functions (eliminates duplication)
+const {
+    calculateMovieRating,
+    calculateViewCount,
+    formatViewCount,
+    calculateCommentCount,
+    getMovieStatistics
+} = require('../utils/movieStatsUtils');
 
 // Lấy 5 phim mới nhất
 const getNewWeekMovies = async (req, res) => {
@@ -405,7 +361,7 @@ const deleteMovie = async (req, res) => {
     }
 };
 
-// Get movie stats (likes, views, comments count)
+// UNIFIED: Get movie stats using shared utils (eliminates duplication)
 const getMovieStats = async (req, res) => {
     try {
         const { movie_id } = req.params;
@@ -419,26 +375,14 @@ const getMovieStats = async (req, res) => {
             });
         }
 
-        // Get all stats
-        const [ratingData, viewCount, commentCount] = await Promise.all([
-            calculateMovieRating(movie_id),
-            calculateViewCount(movie_id),
-            Rating.countDocuments({ 
-                movie_id, 
-                comment: { $exists: true, $ne: '' } 
-            })
-        ]);
+        // Use shared utility function for comprehensive stats
+        const stats = await getMovieStatistics(movie_id);
 
         res.json({
             status: 'success',
             data: {
                 movieId: movie_id,
-                likes: ratingData.likeCount,
-                rating: ratingData.rating,
-                views: viewCount,
-                viewsFormatted: formatViewCount(viewCount),
-                comments: commentCount,
-                totalRatings: ratingData.totalRatings
+                ...stats
             }
         });
 
@@ -449,6 +393,177 @@ const getMovieStats = async (req, res) => {
         });
     }
 };
+//HOME DETAIL--------------------------------
+
+// 🆕 API Tổng hợp chi tiết phim cho màn hình detail
+const getMovieDetailWithInteractions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.query; // Optional userId for interactions
+
+        // Lấy thông tin phim cơ bản
+        const movie = await Movie.findById(id)
+            .populate('genres', 'genre_name description');
+
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Lấy thông tin episodes
+        const episodes = await Episode.find({ movie_id: id })
+            .select('episode_title uri episode_number episode_description duration')
+            .sort({ episode_number: 1 });
+
+        // Lấy thống kê phim (views, likes, ratings)
+        const [ratingData, viewCount, commentCount] = await Promise.all([
+            calculateMovieRating(id),
+            calculateViewCount(id),
+            Rating.countDocuments({ 
+                movie_id: id, 
+                comment: { $exists: true, $ne: '' } 
+            })
+        ]);
+
+        // Lấy bình luận gần đây (5 bình luận mới nhất)
+        const recentComments = await Rating.find({ 
+            movie_id: id, 
+            comment: { $exists: true, $ne: '' } 
+        })
+        .populate('user_id', 'name email avatar')
+        .sort({ createdAt: -1 })
+        .limit(5);
+
+        // Nếu có user, lấy trạng thái tương tác của user
+        let userInteractions = null;
+        if (userId) {
+            const [userRating, userFavorite, userWatching] = await Promise.all([
+                Rating.findOne({ user_id: userId, movie_id: id }),
+                require('../models/Favorite').findOne({ user_id: userId, movie_id: id }),
+                Watching.findOne({ user_id: userId, episode_id: { $in: episodes.map(ep => ep._id) } })
+                    .populate('episode_id', 'episode_number')
+                    .sort({ last_watched: -1 })
+            ]);
+
+            userInteractions = {
+                hasLiked: userRating?.is_like || false,
+                hasRated: !!userRating,
+                userComment: userRating?.comment || null,
+                isFavorite: !!userFavorite,
+                isFollowing: !!userFavorite, // Assuming favorite = following
+                watchingProgress: userWatching ? {
+                    episodeNumber: userWatching.episode_id?.episode_number,
+                    watchPercentage: userWatching.watch_percentage,
+                    currentTime: userWatching.current_time,
+                    lastWatched: userWatching.last_watched
+                } : null
+            };
+        }
+
+        // Lấy phim liên quan (cùng thể loại, khác phim hiện tại)
+        const relatedMovies = await Movie.find({
+            _id: { $ne: id },
+            genres: { $in: movie.genres }
+        })
+        .select('movie_title poster_path movie_type producer')
+        .limit(10)
+        .sort({ createdAt: -1 });
+
+        // Format response khác nhau cho phim lẻ và phim bộ
+        let movieData = {};
+        
+        if (movie.movie_type === 'Phim lẻ') {
+            // Phim lẻ: Chỉ thông tin cơ bản + URI của tập duy nhất
+            const singleEpisode = episodes[0];
+            movieData = {
+                _id: movie._id,
+                movie_title: movie.movie_title,
+                description: movie.description,
+                production_time: movie.production_time,
+                producer: movie.producer,
+                poster_path: movie.poster_path,
+                genres: movie.genres,
+                movie_type: movie.movie_type,
+                price: movie.price,
+                is_free: movie.is_free,
+                price_display: movie.getPriceDisplay(),
+                // Thông tin video cho phim lẻ
+                uri: movie.is_free && singleEpisode ? singleEpisode.uri : null,
+                duration: singleEpisode ? singleEpisode.duration : null,
+                is_locked: !movie.is_free
+            };
+        } else {
+            // Phim bộ: Sử dụng method có sẵn
+            movieData = movie.formatMovieResponse(episodes);
+        }
+        
+        const responseData = {
+            // Thông tin phim
+            movie: {
+                ...movieData,
+                cast: [], // TODO: Thêm model Cast nếu cần
+                crew: [], // TODO: Thêm model Crew nếu cần
+            },
+            
+            // Thống kê và tương tác
+            stats: {
+                views: viewCount,
+                viewsFormatted: formatViewCount(viewCount),
+                likes: ratingData.likeCount,
+                rating: ratingData.rating,
+                totalRatings: ratingData.totalRatings,
+                comments: commentCount
+            },
+
+            // Bình luận gần đây
+            recentComments: recentComments.map(comment => ({
+                _id: comment._id,
+                user: {
+                    name: comment.user_id.name,
+                    email: comment.user_id.email
+                },
+                comment: comment.comment,
+                isLike: comment.is_like,
+                createdAt: comment.createdAt
+            })),
+
+            // Trạng thái tương tác của user (nếu đăng nhập)
+            userInteractions,
+
+            // Phim liên quan (cho tab "Liên quan")
+            relatedMovies: relatedMovies.map(relMovie => ({
+                movieId: relMovie._id,
+                title: relMovie.movie_title,
+                poster: relMovie.poster_path,
+                movieType: relMovie.movie_type,
+                producer: relMovie.producer
+            })),
+
+            // UI Config cho tabs
+            tabs: {
+                showEpisodesList: movie.movie_type === 'Phim bộ', // Chỉ show tab "Danh sách" cho phim bộ
+                showRelated: true // Luôn show tab "Liên quan"
+            }
+        };
+
+        res.json({
+            status: 'success',
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('Error fetching movie detail with interactions:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy chi tiết phim',
+            error: error.message
+        });
+    }
+};
+
+
 
 const searchMovies = async (req, res) => {
   try {
@@ -547,10 +662,6 @@ const searchMovies = async (req, res) => {
 };
 
 module.exports = {
-  searchMovies
-};
-
-module.exports = {
     getNewWeekMovies,
     createMovieController,
     createSportsEvent,
@@ -558,5 +669,6 @@ module.exports = {
     updateMovie,
     deleteMovie,
     getMovieStats,
-    searchMovies
+    searchMovies,
+    getMovieDetailWithInteractions
 };

@@ -8,7 +8,8 @@ const {
     updateMovie, 
     deleteMovie,
     getMovieStats,
-    searchMovies
+    searchMovies,
+    getMovieDetailWithInteractions
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
@@ -21,9 +22,14 @@ router.get('/search', searchMovies);
 
 // Lấy chi tiết một phim - ai cũng xem được
 router.get('/:id', getMovieById);
+// 🆕 Get movie detail with all interactions - Public/Protected (MUST BE BEFORE /:id)
+router.get('/:id/detail-with-interactions', getMovieDetailWithInteractions);
 
 // Get movie stats (likes, views, comments) - Public
 router.get('/:movie_id/stats', getMovieStats);
+
+// Lấy chi tiết một phim - ai cũng xem được
+router.get('/:id', getMovieById);
 
 // === ADMIN ROUTES (Cần userId) ===
 

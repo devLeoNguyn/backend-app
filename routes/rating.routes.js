@@ -8,7 +8,8 @@ const {
     likeMovie,
     unlikeMovie,
     addComment,
-    getComments
+    getComments,
+    deleteUserComment
 } = require('../controllers/rating.controller');
 
 // PUBLIC
@@ -28,8 +29,9 @@ router.delete('/:id', deleteRating);
 router.post('/movies/:movie_id/like', likeMovie);
 router.delete('/movies/:movie_id/like', unlikeMovie);
 
-// New comment routes (userId từ body)
-router.post('/movies/:movie_id/comment', addComment);
-router.get('/movies/:movie_id/comments', getComments);
+// UNIFIED comment routes (userId từ body)
+router.post('/movies/:movie_id/comment', addComment);    // Add/Update comment (unified)
+router.get('/movies/:movie_id/comments', getComments);   // Get comments with pagination & sorting
+router.delete('/movies/:movie_id/comment', deleteUserComment); // Delete comment
 
 module.exports = router; 

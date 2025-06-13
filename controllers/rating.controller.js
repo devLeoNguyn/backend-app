@@ -2,38 +2,22 @@ const Rating = require('../models/Rating');
 const Movie = require('../models/Movie');
 const mongoose = require('mongoose');
 
-// Helper function to calculate movie rating
-const calculateMovieRating = async (movieId) => {
-    try {
-        const ratingStats = await Rating.aggregate([
-            { $match: { movie_id: mongoose.Types.ObjectId(movieId) } },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: 1 },
-                    likes: { $sum: { $cond: [{ $eq: ['$is_like', true] }, 1, 0] } }
-                }
-            }
-        ]);
-
-        if (!ratingStats.length) return { rating: 0, likeCount: 0, totalRatings: 0 };
-        const { total, likes } = ratingStats[0];
-        return {
-            rating: Number(((likes / total) * 10).toFixed(1)),
-            likeCount: likes,
-            totalRatings: total
-        };
-    } catch (error) {
-        console.error('Error calculating rating:', error);
-        return { rating: 0, likeCount: 0, totalRatings: 0 };
-    }
-};
+// Import shared utility functions (eliminates duplication)
+const { calculateMovieRating } = require('../utils/movieStatsUtils');
 
 // Thêm đánh giá mới
 exports.createRating = async (req, res) => {
     try {
-        const { movie_id, comment } = req.body;
-        const user_id = req.user._id;
+        const { movie_id, comment, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         const rating = await Rating.create({
             user_id,
@@ -69,7 +53,16 @@ exports.createRating = async (req, res) => {
 exports.deleteRating = async (req, res) => {
     try {
         const { id } = req.params;
-        const user_id = req.user._id;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         const rating = await Rating.findOneAndDelete({ _id: id, user_id });
 
@@ -130,6 +123,46 @@ exports.getMovieRatings = async (req, res) => {
         });
     }
 };
+// 🆕 Xóa bình luận của user
+exports.deleteUserComment = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
+
+        // Tìm rating của user
+        const rating = await Rating.findOne({ user_id, movie_id });
+        if (!rating) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy bình luận'
+            });
+        }
+
+        // Xóa bình luận nhưng giữ lại like
+        rating.comment = '';
+        await rating.save();
+
+        res.json({
+            status: 'success',
+            message: 'Xóa bình luận thành công'
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
 
 // ==============================================
 // NEW LIKE FUNCTIONS
@@ -139,7 +172,17 @@ exports.getMovieRatings = async (req, res) => {
 exports.likeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const user_id = req.user._id;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        console.log('Debug - movie_id:', movie_id, 'userId:', userId);
+        const user_id = userId;
 
         // Check if movie exists
         const movie = await Movie.findById(movie_id);
@@ -189,7 +232,16 @@ exports.likeMovie = async (req, res) => {
 exports.unlikeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const user_id = req.user._id;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         await Rating.findOneAndDelete({ user_id, movie_id });
 
@@ -218,12 +270,20 @@ exports.unlikeMovie = async (req, res) => {
 // COMMENT FUNCTIONS
 // ==============================================
 
-// Add comment to a movie
+// UNIFIED: Add/Update comment to a movie (replaces both addComment and updateUserComment)
 exports.addComment = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const { comment } = req.body;
-        const user_id = req.user._id;
+        const { comment, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         if (!comment || comment.trim().length === 0) {
             return res.status(400).json({
@@ -243,6 +303,7 @@ exports.addComment = async (req, res) => {
 
         // Create or update rating with comment
         let rating = await Rating.findOne({ user_id, movie_id });
+        let isUpdate = !!rating;
         
         if (rating) {
             rating.comment = comment.trim();
@@ -256,23 +317,39 @@ exports.addComment = async (req, res) => {
             });
         }
 
+        // Populate user data for response
         await rating.populate('user_id', 'name email');
+
+        const message = isUpdate ? 'Đã cập nhật bình luận thành công' : 'Đã thêm bình luận thành công';
 
         res.json({
             status: 'success',
-            message: 'Đã thêm bình luận thành công',
+            message,
             data: {
                 movieId: movie_id,
-                comment: {
-                    id: rating._id,
+                rating: {
+                    _id: rating._id,
+                    user: {
+                        _id: rating.user_id._id,
+                        name: rating.user_id.name,
+                        email: rating.user_id.email
+                    },
                     comment: rating.comment,
-                    user: rating.user_id,
-                    createdAt: rating.createdAt
+                    isLike: rating.is_like,
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
                 }
             }
         });
 
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Bạn đã đánh giá phim này rồi'
+            });
+        }
+        
         res.status(500).json({
             status: 'error',
             message: error.message
@@ -280,13 +357,11 @@ exports.addComment = async (req, res) => {
     }
 };
 
-// Get movie comments
+// UNIFIED: Get movie comments with pagination (replaces both getComments and getMovieComments)
 exports.getComments = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        const { page = 1, limit = 10, sort = 'newest' } = req.query;
 
         // Check if movie exists
         const movie = await Movie.findById(movie_id);
@@ -297,35 +372,55 @@ exports.getComments = async (req, res) => {
             });
         }
 
+        // Calculate skip for pagination
+        const skip = (page - 1) * limit;
+
+        // Determine sort option
+        let sortOption = { createdAt: -1 }; // Default newest
+        if (sort === 'oldest') {
+            sortOption = { createdAt: 1 };
+        } else if (sort === 'most_liked') {
+            sortOption = { createdAt: -1 }; // Can be enhanced with like_count in future
+        }
+
         // Get comments with pagination
         const comments = await Rating.find({ 
             movie_id, 
             comment: { $exists: true, $ne: '' } 
         })
             .populate('user_id', 'name email')
-            .sort({ createdAt: -1 })
+            .sort(sortOption)
             .skip(skip)
-            .limit(limit);
+            .limit(parseInt(limit));
 
         const total = await Rating.countDocuments({ 
             movie_id, 
             comment: { $exists: true, $ne: '' } 
         });
 
+        const totalPages = Math.ceil(total / limit);
+
         res.json({
             status: 'success',
             data: {
                 comments: comments.map(rating => ({
-                    id: rating._id,
+                    _id: rating._id,
+                    user: {
+                        _id: rating.user_id._id,
+                        name: rating.user_id.name,
+                        email: rating.user_id.email
+                    },
                     comment: rating.comment,
-                    user: rating.user_id,
-                    createdAt: rating.createdAt
+                    isLike: rating.is_like,
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
                 })),
                 pagination: {
-                    currentPage: page,
-                    totalPages: Math.ceil(total / limit),
+                    currentPage: parseInt(page),
+                    totalPages,
                     totalComments: total,
-                    hasMore: total > skip + comments.length
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
                 }
             }
         });
