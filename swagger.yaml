@@ -3,32 +3,32 @@ info:
   title: Movie Backend API
   description: |
     API documentation cho ứng dụng Movie Backend
-    
+
     **🔄 PHIÊN BẢN ĐÃ CẬP NHẬT:**
     - ❌ Đã bỏ JWT tokens  
     - ❌ Đã bỏ authentication middleware
     - ✅ Sử dụng userId đơn giản
-    
+
     **📋 FLOW AUTH MỚI (1 màn hình duy nhất):**
     1. **Màn hình nhập SĐT:** User nhập số điện thoại
     2. **Hệ thống check:** 
        - Nếu SĐT đã đăng ký → Gửi OTP đăng nhập → Verify → Vào trang chủ
        - Nếu SĐT chưa đăng ký → Gửi OTP đăng ký → Verify → Nhập thông tin → Vào trang chủ
     3. **Lưu userId:** Store trong AsyncStorage/localStorage để dùng cho các API khác
-    
+
     **📱 CÁC BƯỚC THỰC HIỆN:**
     1. Gọi `/api/auth/send-otp` với số điện thoại
     2. Gọi `/api/auth/verify-otp` để xác thực
     3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`
     4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ
-    
+
     **📁 AWS S3 CONFIGURATION:**
     - **Bucket:** locdev-bucket (ap-southeast-1)
     - **Avatar path:** assets/avatar-users/{uuid}.{extension}
     - **Supported formats:** JPEG, PNG, GIF
     - **Max file size:** 2MB
     - **Auto cleanup:** Old avatars deleted when uploading new ones
-    
+
     **🎯 PROFILE UPDATE API:**
     - **Endpoint:** PUT `/api/users/profile?userId={id}`
     - **Content-Type:** multipart/form-data
@@ -73,12 +73,12 @@ paths:
       summary: 🔄 Gửi mã OTP (Đăng ký/Đăng nhập thống nhất)
       description: |
         **🔄 FLOW MỚI:** Gửi mã OTP cho cả đăng ký và đăng nhập trong 1 API duy nhất.
-        
+
         **Logic xử lý:**
         - Nếu số điện thoại đã tồn tại → Gửi OTP đăng nhập
         - Nếu số điện thoại chưa tồn tại → Gửi OTP đăng ký
         - Frontend không cần biết user đã đăng ký hay chưa
-        
+
         **Đặc điểm:**
         - Mã OTP có 6 số, gửi qua SMS
         - OTP có thời hạn (thường 5 phút)
@@ -88,9 +88,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PhoneRequest'
+              $ref: "#/components/schemas/PhoneRequest"
       responses:
-        '200':
+        "200":
           description: Gửi OTP thành công
           content:
             application/json:
@@ -119,12 +119,12 @@ paths:
                 data:
                   phone: "0912345678"
                   isExistingUser: true
-        '400':
+        "400":
           description: Lỗi validate số điện thoại
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/verify-otp:
     post:
@@ -133,7 +133,7 @@ paths:
       summary: 🔄 Xác thực OTP (Đăng ký/Đăng nhập thống nhất)
       description: |
         **🔄 FLOW MỚI:** Xác thực mã OTP cho cả đăng ký và đăng nhập.
-        
+
         **Response paths:**
         1. **User đã đăng ký:** `needsRegistration: false` → Frontend vào trang chủ
         2. **User chưa đăng ký:** `needsRegistration: true` → Frontend chuyển màn hình nhập thông tin
@@ -142,9 +142,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VerifyOTPRequest'
+              $ref: "#/components/schemas/VerifyOTPRequest"
       responses:
-        '200':
+        "200":
           description: Xác thực OTP thành công
           content:
             application/json:
@@ -169,7 +169,7 @@ paths:
                         example: "683d7b63d0ee4aeb15a11369"
                         description: "Chỉ có khi needsRegistration = false"
                       user:
-                        $ref: '#/components/schemas/UserInfo'
+                        $ref: "#/components/schemas/UserInfo"
                         description: "Chỉ có khi needsRegistration = false"
               examples:
                 existing_user:
@@ -196,12 +196,12 @@ paths:
                     message: "Xác thực OTP thành công, vui lòng nhập thông tin"
                     data:
                       needsRegistration: true
-        '400':
+        "400":
           description: Mã OTP không hợp lệ hoặc đã hết hạn
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/complete-registration:
     post:
@@ -210,11 +210,11 @@ paths:
       summary: 🔄 Hoàn tất đăng ký (Sau khi verify OTP)
       description: |
         **🔄 FLOW MỚI:** Hoàn tất quá trình đăng ký sau khi verify OTP thành công.
-        
+
         **Khi nào sử dụng:**
         - Khi `/api/auth/verify-otp` trả về `needsRegistration: true`
         - User đã xác thực số điện thoại, giờ cần nhập thông tin cá nhân
-        
+
         **⚠️ QUAN TRỌNG:**
         - Không cần truyền phone, hệ thống tự động lấy từ OTP record đã verify
         - Phải gọi trong vòng 10 phút sau khi verify OTP thành công
@@ -223,24 +223,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
             example:
               full_name: "Nguyễn Văn A"
               email: "example@gmail.com"
               gender: "male"
       responses:
-        '201':
+        "201":
           description: Đăng ký thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Lỗi validate dữ liệu, email đã tồn tại, hoặc phone không hợp lệ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/auth/logout:
     post:
@@ -249,12 +249,12 @@ paths:
       summary: 🔄 Đăng xuất
       description: |
         Đăng xuất người dùng (chỉ trả về success message).
-        
+
         **📱 Frontend cần làm:**
         - Xóa `userId` khỏi AsyncStorage/localStorage
         - Không cần gọi API refresh token hay gì cả
       responses:
-        '200':
+        "200":
           description: Đăng xuất thành công
           content:
             application/json:
@@ -275,7 +275,7 @@ paths:
       summary: Lấy thông tin profile
       description: |
         Lấy thông tin chi tiết của user.
-        
+
         **🔄 THAY ĐỔI:** Không cần Bearer token, chỉ cần truyền userId qua query params
       parameters:
         - name: userId
@@ -286,12 +286,12 @@ paths:
           example: "683d7b63d0ee4aeb15a11369"
           description: "ID của user cần lấy thông tin"
       responses:
-        '200':
+        "200":
           description: Lấy thông tin thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileResponse'
+                $ref: "#/components/schemas/ProfileResponse"
               example:
                 status: "success"
                 data:
@@ -304,21 +304,21 @@ paths:
                     gender: "male"
                     avatar: "https://example.com/avatar.jpg"
                     is_phone_verified: true
-        '400':
+        "400":
           description: Thiếu userId hoặc userId không hợp lệ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "userId là bắt buộc"
-        '404':
+        "404":
           description: Không tìm thấy user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Không tìm thấy user"
@@ -329,23 +329,23 @@ paths:
       summary: 🔄 Cập nhật profile (với upload avatar)
       description: |
         **🔄 API ĐÃ CẬP NHẬT:** Hỗ trợ upload avatar trực tiếp lên AWS S3 + cập nhật thông tin profile.
-        
+
         **📋 TÍNH NĂNG:**
         - ✅ Cập nhật họ tên, giới tính
         - ✅ Upload avatar lên AWS S3 (auto delete avatar cũ)
         - ✅ Validation file ảnh (JPEG, PNG, GIF, max 2MB)
         - ✅ Unified API: có thể update chỉ text hoặc chỉ avatar hoặc cả hai
-        
+
         **📤 REQUEST FORMAT:**
         - **Content-Type:** `multipart/form-data` (bắt buộc)
         - **Text fields:** full_name, gender
         - **File field:** avatar (optional)
-        
+
         **📁 S3 STORAGE:**
         - Path: `assets/avatar-users/{uuid}.{ext}`
         - Auto generate unique filename
         - Auto delete old avatar khi upload mới
-        
+
         **⚠️ LƯU Ý:**
         - Phone, email KHÔNG thể cập nhật qua API này (readonly)
         - Avatar file: JPEG/PNG/GIF, max 2MB
@@ -394,12 +394,12 @@ paths:
                   gender: "male"
                   avatar: "[BINARY FILE DATA]"
       responses:
-        '200':
+        "200":
           description: ✅ Cập nhật thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileResponse'
+                $ref: "#/components/schemas/ProfileResponse"
               examples:
                 text_only_update:
                   summary: "Cập nhật chỉ text thành công"
@@ -431,12 +431,12 @@ paths:
                         gender: "male"
                         avatar: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/avatar-users/32c5a14e-3fa0-497a-b036-32de0cdc842a.jpg"
                         is_phone_verified: true
-        '400':
+        "400":
           description: ❌ Lỗi validation hoặc file
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 missing_userId:
                   summary: "Thiếu userId"
@@ -458,21 +458,21 @@ paths:
                   value:
                     status: "error"
                     message: "Lỗi khi upload file lên S3"
-        '404':
+        "404":
           description: ❌ Không tìm thấy user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Không tìm thấy user"
-        '500':
+        "500":
           description: ❌ Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Lỗi server khi xử lý upload"
@@ -484,7 +484,7 @@ paths:
       summary: API Banner và Phim đề xuất
       description: |
         Lấy danh sách phim mới ra mắt cho Banner đầu trang và danh sách ở dưới "Phim dành cho bạn".
-        
+
         **Đặc điểm:**
         - Public API (không cần đăng nhập)
         - Chỉ lấy phim có release_status = "released"
@@ -522,7 +522,7 @@ paths:
           description: Lấy phim mới trong X ngày gần đây (mặc định 30 ngày)
           example: 15
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -547,7 +547,7 @@ paths:
                           movies:
                             type: array
                             items:
-                              $ref: '#/components/schemas/BannerMovie'
+                              $ref: "#/components/schemas/BannerMovie"
                       recommended:
                         type: object
                         properties:
@@ -560,13 +560,13 @@ paths:
                           movies:
                             type: array
                             items:
-                              $ref: '#/components/schemas/GridMovie'
-        '500':
+                              $ref: "#/components/schemas/GridMovie"
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/home/continue-watching:
     get:
@@ -575,7 +575,7 @@ paths:
       summary: API Đang xem (Cần userId sẽ phát triển trong tương lai)
       description: |
         Lấy danh sách phim đang xem của user.
-        
+
         **🔄 THAY ĐỔI:** Cần truyền userId qua query params thay vì Bearer token
       parameters:
         - name: userId
@@ -593,7 +593,7 @@ paths:
             default: 8
           example: 8
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -633,12 +633,12 @@ paths:
                               type: string
                               format: date-time
                               example: "2023-12-01T10:30:00Z"
-        '400':
+        "400":
           description: Thiếu userId
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "userId là bắt buộc"
@@ -650,7 +650,7 @@ paths:
       summary: API Phim đang thịnh hành
       description: |
         Lấy danh sách phim đang thịnh hành (được xem nhiều nhất).
-        
+
         **Đặc điểm:**
         - Public API (không cần đăng nhập)
         - Sắp xếp theo view count
@@ -667,7 +667,7 @@ paths:
           description: Số lượng phim trending (mặc định 7)
           example: 7
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -689,13 +689,13 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
-        '500':
+                          $ref: "#/components/schemas/GridMovie"
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/home/top-rated:
     get:
@@ -704,7 +704,7 @@ paths:
       summary: API Phim được đánh giá cao
       description: |
         Lấy danh sách phim được đánh giá cao nhất.
-        
+
         **Đặc điểm:**
         - Public API (không cần đăng nhập)
         - Sắp xếp theo rating
@@ -721,7 +721,7 @@ paths:
           description: Số lượng phim top-rated (mặc định 8)
           example: 8
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -743,13 +743,13 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
-        '500':
+                          $ref: "#/components/schemas/GridMovie"
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/home/sports:
     get:
@@ -758,7 +758,7 @@ paths:
       summary: API Sự kiện thể thao
       description: |
         Lấy danh sách sự kiện thể thao.
-        
+
         **Đặc điểm:**
         - Public API (không cần đăng nhập)
         - Chỉ lấy movie_type = "Thể thao"
@@ -787,7 +787,7 @@ paths:
             - ended: Sự kiện đã kết thúc
           example: released
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -809,13 +809,13 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
-        '500':
+                          $ref: "#/components/schemas/GridMovie"
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/home/anime:
     get:
@@ -840,7 +840,7 @@ paths:
           description: Số lượng anime hot (mặc định 8)
           example: 8
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -862,19 +862,19 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
+                          $ref: "#/components/schemas/GridMovie"
               example:
                 status: "success"
                 data:
                   title: "Anime hot"
                   type: "grid"
                   movies: []
-        '500':
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Lỗi khi lấy anime hot"
@@ -886,7 +886,7 @@ paths:
       summary: API Phim Việt đặc sắc
       description: |
         Lấy danh sách phim Việt Nam với logic tìm kiếm đặc trưng.
-        
+
         **Logic đặc trưng:**
         - Sắp xếp theo rating (phim có rating cao nhất)
         - Tính toán rating/viewCount        
@@ -906,7 +906,7 @@ paths:
           description: Số lượng phim Việt (mặc định 8)
           example: 8
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -928,7 +928,7 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
+                          $ref: "#/components/schemas/GridMovie"
               example:
                 status: "success"
                 data:
@@ -950,12 +950,12 @@ paths:
                       poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/ngay-xua-co-cau-chuyen-tinh.jpg"
                       movieType: "Phim lẻ"
                       producer: "HK Film, Hãng phim Anh Tễu"
-        '500':
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Lỗi khi lấy phim Việt"
@@ -994,7 +994,7 @@ paths:
           description: Lấy phim sắp chiếu trong X ngày tới (mặc định 30 ngày)
           example: 15
       responses:
-        '200':
+        "200":
           description: Lấy dữ liệu thành công
           content:
             application/json:
@@ -1016,7 +1016,7 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
+                          $ref: "#/components/schemas/GridMovie"
               example:
                 status: "success"
                 data:
@@ -1033,40 +1033,235 @@ paths:
                       poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/sports/world-cup-2026.jpg"
                       movieType: "Thể thao"
                       producer: "FIFA"
-        '500':
+        "500":
           description: Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Lỗi khi lấy phim sắp chiếu"
 
-  # === GENRES APIs ===
-  /api/genres/home-categories:
+  # === MOVIE DETAIL API ===
+  /api/movies/{id}/detail-with-interactions:
+    get:
+      tags:
+        - Movie
+      summary: 🎬 API Chi tiết phim tổng hợp cho màn hình detail
+      description: |
+        **🎯 Mục đích:** API tổng hợp mọi thông tin cần thiết cho màn hình chi tiết phim.
+
+        **🌟 Đặc điểm:**
+        - ✅ API hybrid: Public (không cần userId) hoặc Protected (có userId)
+        - ✅ Không có userId: Chỉ thông tin phim + stats + comments
+        - ✅ Có userId: Thêm user interactions (like, favorite, watching progress)
+        - ✅ Trả về cấu hình tabs cho UI (Danh sách/Liên quan)
+        - ✅ Thông tin khác nhau cho phim lẻ vs phim bộ
+
+        **💡 Use Cases:**
+        - Màn hình chi tiết phim (user chưa đăng nhập)
+        - Màn hình chi tiết phim (user đã đăng nhập) - có trạng thái tương tác
+        - UI render tabs dựa vào `tabs` config
+
+        **🔄 THAY ĐỔI:** Sử dụng userId thay vì Authorization header
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim (ObjectId)"
+        - name: userId
+          in: query
+          schema:
+            type: string
+          example: "683d7b63d0ee4aeb15a11369"
+          description: "ID của user (tùy chọn) - có userId thì trả về user interactions"
+      responses:
+        "200":
+          description: ✅ Lấy chi tiết phim thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: "#/components/schemas/MovieDetailResponse"
+              examples:
+                phim_bo_with_user:
+                  summary: "Phim bộ - Có userId (đăng nhập)"
+                  value:
+                    status: "success"
+                    data:
+                      movie:
+                        _id: "675a1234567890abcdef1234"
+                        movie_title: "Hồ Sơ Trinh Sát II - Tập 1"
+                        description: "Bộ phim trinh thám Hong Kong nổi tiếng..."
+                        production_time: "1995-12-15T00:00:00.000Z"
+                        producer: "TVB Hong Kong"
+                        poster_path: "https://example.com/poster.jpg"
+                        genres:
+                          - _id: "genre1"
+                            genre_name: "Trinh thám"
+                            description: "Phim trinh thám"
+                        movie_type: "Phim bộ"
+                        price: 0
+                        is_free: true
+                        price_display: "Miễn phí"
+                        episodes:
+                          - _id: "ep1"
+                            episode_number: 1
+                            episode_title: "Tập 1"
+                            episode_description: "Tập mở đầu"
+                            duration: 45
+                            uri: "https://cdn.example.com/episode1.m3u8"
+                            is_locked: false
+                      stats:
+                        views: 15420
+                        viewsFormatted: "15.4K"
+                        likes: 892
+                        rating: 4.6
+                        totalRatings: 1250
+                        comments: 156
+                      recentComments:
+                        - _id: "comment1"
+                          user:
+                            name: "Bình Luận"
+                            email: "user@example.com"
+                          comment: "2 sép nên độc thân là ok nhất"
+                          isLike: true
+                          createdAt: "2024-12-11T12:00:00.000Z"
+                      userInteractions:
+                        hasLiked: true
+                        hasRated: true
+                        userComment: "Phim hay quá!"
+                        isFavorite: true
+                        isFollowing: true
+                        watchingProgress:
+                          episodeNumber: 1
+                          watchPercentage: 75.5
+                          currentTime: 2040
+                          lastWatched: "2024-12-11T10:30:00.000Z"
+                      relatedMovies:
+                        - movieId: "675a1234567890abcdef5678"
+                          title: "Hồ Sơ Trinh Sát I"
+                          poster: "https://example.com/related1.jpg"
+                          movieType: "Phim bộ"
+                          producer: "TVB Hong Kong"
+                      tabs:
+                        showEpisodesList: true
+                        showRelated: true
+                phim_le_no_user:
+                  summary: "Phim lẻ - Không có userId (chưa đăng nhập)"
+                  value:
+                    status: "success"
+                    data:
+                      movie:
+                        _id: "675a1234567890abcdef9999"
+                        movie_title: "Spider-Man: No Way Home"
+                        description: "Bộ phim siêu anh hùng..."
+                        production_time: "2021-12-15T00:00:00.000Z"
+                        producer: "Sony Pictures"
+                        poster_path: "https://example.com/spiderman.jpg"
+                        genres:
+                          - _id: "genre2"
+                            genre_name: "Hành động"
+                            description: "Phim hành động"
+                        movie_type: "Phim lẻ"
+                        price: 50000
+                        is_free: false
+                        price_display: "50,000 VNĐ"
+                        uri: null
+                        duration: 148
+                        is_locked: true
+                      stats:
+                        views: 125340
+                        viewsFormatted: "125K"
+                        likes: 8934
+                        rating: 4.8
+                        totalRatings: 12450
+                        comments: 2156
+                      recentComments: []
+                      userInteractions: null
+                      relatedMovies: []
+                      tabs:
+                        showEpisodesList: false
+                        showRelated: true
+        "404":
+          description: ❌ Không tìm thấy phim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Không tìm thấy phim"
+        "500":
+          description: ❌ Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Lỗi khi lấy chi tiết phim"
+
+  # === GENRE APIs ===
+  /api/genres:
     get:
       tags:
         - Genre
-      summary: 🏠 API Danh sách thể loại cho trang chủ (giống FPT Play)
+      summary: 📂 API Lấy danh sách thể loại
       description: |
-        **🎯 Mục đích:** Lấy danh sách thể loại cha với poster để hiển thị dạng grid trên trang chủ, tương tự ứng dụng FPT Play.
-        
+        **🎯 Mục đích:** Lấy danh sách thể loại với nhiều tùy chọn khác nhau.
+
         **🌟 Đặc điểm:**
-        - ✅ Public API (không cần đăng nhập) 
-        - ✅ Chỉ lấy thể loại cha (`parent_genre: null`)
-        - ✅ Kèm poster/hình ảnh cho từng thể loại
-        - ✅ Đếm tổng số phim (bao gồm cả thể loại con)
-        - ✅ Thông tin về thể loại con
-        - ✅ Sắp xếp theo `sort_order`
-        - ✅ Chỉ lấy thể loại đang hoạt động
-        
-        **📱 UI Implementation:**
-        - Hiển thị dạng grid 2x4 hoặc 3x3
-        - Mỗi ô có poster, title và số lượng phim
-        - Tap vào ô → chuyển đến trang danh sách phim theo thể loại
+        - ✅ Public API (không cần đăng nhập)
+        - ✅ Hỗ trợ nhiều format và filter
+        - ✅ Có thể lấy dạng cây hoặc danh sách phẳng
+        - ✅ Tùy chọn bao gồm poster và thể loại con
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, parent, active]
+            default: all
+          description: |
+            Loại thể loại cần lấy:
+            - all: Tất cả thể loại
+            - parent: Chỉ thể loại cha
+            - active: Chỉ thể loại đang hoạt động
+        - name: include_poster
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Có bao gồm poster không
+        - name: include_children
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Có bao gồm thể loại con không (chỉ áp dụng khi type=parent và format=tree)
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [tree, list]
+            default: list
+          description: Format kết quả trả về
       responses:
-        '200':
+        "200":
           description: ✅ Lấy danh sách thể loại thành công
           content:
             application/json:
@@ -1076,73 +1271,42 @@ paths:
                   status:
                     type: string
                     example: "success"
-                  message:
-                    type: string
-                    example: "Danh sách thể loại cho trang chủ"
                   data:
                     type: object
                     properties:
-                      categories:
+                      genres:
                         type: array
                         items:
-                          $ref: '#/components/schemas/HomeCategoryItem'
+                          $ref: "#/components/schemas/Genre"
                       total:
                         type: integer
-                        example: 8
-                        description: "Tổng số thể loại cha"
-              example:
-                status: "success"
-                message: "Danh sách thể loại cho trang chủ"
-                data:
-                  categories:
-                    - _id: "6847d080101e640d01a0c37f"
-                      title: "Hoạt hình"
-                      description: "Phim hoạt hình, anime và phim động"
-                      poster: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop"
-                      movie_count: 9
-                      has_children: true
-                      children_count: 4
-                      sort_order: 1
-                    - _id: "683d7cfdd0ee4aeb15a1138a"
-                      title: "Phim Chiếu Rạp"
-                      description: "Các bộ phim đã và đang chiếu tại rạp"
-                      poster: "https://images.unsplash.com/photo-1489599904323-c1b3f2b90bb8?w=400&h=300&fit=crop"
-                      movie_count: 8
-                      has_children: false
-                      children_count: 0
-                      sort_order: 1
-                    - _id: "6847d080101e640d01a0c384"
-                      title: "Phim lẻ"
-                      description: "Các bộ phim lẻ đa thể loại"
-                      poster: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=400&h=300&fit=crop"
-                      movie_count: 58
-                      has_children: true
-                      children_count: 4
-                      sort_order: 2
-                  total: 8
-        '500':
+                        description: Tổng số thể loại
+                      type:
+                        type: string
+                        description: Loại thể loại đã lấy
+                      format:
+                        type: string
+                        description: Format kết quả
+        "500":
           description: ❌ Lỗi server
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Lỗi khi lấy danh sách thể loại cho trang chủ"
+                $ref: "#/components/schemas/ErrorResponse"
 
-  /api/genres/parent/{parentId}/children:
+  /api/genres/{parentId}/children:
     get:
       tags:
         - Genre
-      summary: 📂 API Lấy thể loại con theo thể loại cha
+      summary: 📂 API Lấy thể loại con
       description: |
-        **🎯 Mục đích:** Lấy danh sách thể loại con thuộc một thể loại cha cụ thể.
-        
+        **🎯 Mục đích:** Lấy danh sách thể loại con của một thể loại cha.
+
         **🌟 Đặc điểm:**
         - ✅ Public API (không cần đăng nhập)
-        - ✅ Lấy thể loại con theo `parent_genre = parentId`
-        - ✅ Kèm số lượng phim cho mỗi thể loại con
-        - ✅ Thông tin thể loại cha
+        - ✅ Trả về thông tin thể loại cha
+        - ✅ Trả về danh sách thể loại con
+        - ✅ Bao gồm số lượng phim cho mỗi thể loại
       parameters:
         - name: parentId
           in: path
@@ -1150,9 +1314,9 @@ paths:
           schema:
             type: string
           example: "6847d080101e640d01a0c37f"
-          description: "ID của thể loại cha"
+          description: ID của thể loại cha
       responses:
-        '200':
+        "200":
           description: ✅ Lấy thể loại con thành công
           content:
             application/json:
@@ -1166,23 +1330,26 @@ paths:
                     type: object
                     properties:
                       parent_genre:
-                        $ref: '#/components/schemas/GenreInfo'
+                        $ref: "#/components/schemas/Genre"
                       children_genres:
                         type: array
                         items:
-                          $ref: '#/components/schemas/ChildGenreItem'
+                          $ref: "#/components/schemas/Genre"
                       total_children:
                         type: integer
                         example: 4
-        '404':
+        "404":
           description: ❌ Không tìm thấy thể loại cha
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                status: "error"
-                message: "Không tìm thấy thể loại cha"
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: ❌ Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/genres/{genreId}/movies:
     get:
@@ -1191,7 +1358,7 @@ paths:
       summary: 🎬 API Lấy phim theo thể loại
       description: |
         **🎯 Mục đích:** Lấy danh sách phim thuộc một thể loại cụ thể.
-        
+
         **🌟 Đặc điểm:**
         - ✅ Public API (không cần đăng nhập)
         - ✅ Hỗ trợ pagination
@@ -1199,7 +1366,7 @@ paths:
         - ✅ Chỉ lấy phim đang hoạt động
       parameters:
         - name: genreId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1228,16 +1395,15 @@ paths:
           in: query
           required: false
           schema:
-            type: string
-            enum: ["true", "false"]
-            default: "true"
-          example: "true"
+            type: boolean
+            default: true
+          example: true
           description: |
             Có bao gồm phim từ thể loại con hay không:
-            - "true": Bao gồm phim từ thể loại con (mặc định)
-            - "false": Chỉ lấy phim thuộc chính thể loại này
+            - true: Bao gồm phim từ thể loại con (mặc định)
+            - false: Chỉ lấy phim thuộc chính thể loại này
       responses:
-        '200':
+        "200":
           description: ✅ Lấy danh sách phim thành công
           content:
             application/json:
@@ -1251,11 +1417,11 @@ paths:
                     type: object
                     properties:
                       genre:
-                        $ref: '#/components/schemas/GenreInfo'
+                        $ref: "#/components/schemas/GenreInfo"
                       movies:
                         type: array
                         items:
-                          $ref: '#/components/schemas/GridMovie'
+                          $ref: "#/components/schemas/GridMovie"
                       pagination:
                         type: object
                         properties:
@@ -1274,15 +1440,305 @@ paths:
                           has_prev:
                             type: boolean
                             example: false
-        '404':
+        "404":
           description: ❌ Không tìm thấy thể loại
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 status: "error"
                 message: "Không tìm thấy thể loại"
+
+  # === MOVIE INTERACTION APIs ===
+  /api/ratings/movies/{movie_id}/like:
+    post:
+      tags:
+        - Movie Interactions
+      summary: ❤️ Thích phim
+      description: |
+        **🎯 Mục đích:** User thích một bộ phim.
+
+        **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
+      parameters:
+        - name: movie_id
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+      responses:
+        "200":
+          description: ✅ Thích phim thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã thích phim thành công"
+                  data:
+                    type: object
+                    properties:
+                      movieId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      likeCount:
+                        type: integer
+                        example: 893
+                      rating:
+                        type: number
+                        format: float
+                        example: 4.6
+        "404":
+          description: ❌ Không tìm thấy phim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/ratings/movies/{movie_id}/unlike:
+    post:
+      tags:
+        - Movie Interactions
+      summary: 💔 Bỏ thích phim
+      description: |
+        **🎯 Mục đích:** User bỏ thích một bộ phim.
+
+        **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
+      parameters:
+        - name: movie_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+      responses:
+        "200":
+          description: ✅ Bỏ thích phim thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã bỏ thích phim thành công"
+                  data:
+                    type: object
+                    properties:
+                      movieId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      likeCount:
+                        type: integer
+                        example: 891
+                      rating:
+                        type: number
+                        format: float
+                        example: 4.5
+
+  /api/ratings/movies/{movie_id}/comment:
+    post:
+      tags:
+        - Movie Interactions
+      summary: 💬 Thêm bình luận phim
+      description: |
+        **🎯 Mục đích:** User thêm bình luận cho một bộ phim.
+
+        **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
+      parameters:
+        - name: movie_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - comment
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+                comment:
+                  type: string
+                  example: "Phim hay quá! Diễn viên diễn rất tự nhiên."
+                  description: "Nội dung bình luận"
+      responses:
+        "200":
+          description: ✅ Thêm bình luận thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã thêm bình luận thành công"
+                  data:
+                    type: object
+                    properties:
+                      movieId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      comment:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            example: "rating123"
+                          comment:
+                            type: string
+                            example: "Phim hay quá! Diễn viên diễn rất tự nhiên."
+                          user:
+                            $ref: "#/components/schemas/UserInfo"
+                          createdAt:
+                            type: string
+                            format: date-time
+                            example: "2024-12-11T12:00:00.000Z"
+        "400":
+          description: ❌ Bình luận không được để trống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/favorites/movies/{movie_id}/add:
+    post:
+      tags:
+        - Movie Interactions
+      summary: ⭐ Thêm vào danh sách yêu thích
+      description: |
+        **🎯 Mục đích:** User thêm phim vào danh sách yêu thích.
+
+        **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
+      parameters:
+        - name: movie_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+      responses:
+        "200":
+          description: ✅ Thêm vào yêu thích thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã thêm vào danh sách yêu thích"
+
+  /api/favorites/movies/{movie_id}/remove:
+    post:
+      tags:
+        - Movie Interactions
+      summary: ❌ Xóa khỏi danh sách yêu thích
+      description: |
+        **🎯 Mục đích:** User xóa phim khỏi danh sách yêu thích.
+
+        **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
+      parameters:
+        - name: movie_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+      responses:
+        "200":
+          description: ✅ Xóa khỏi yêu thích thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã xóa khỏi danh sách yêu thích"
 
 components:
   schemas:
@@ -1353,7 +1809,7 @@ components:
         avatar:
           type: string
           format: binary
-          description: "File ảnh đại diện (JPEG/PNG/GIF, max 2MB) - optional, upload lên S3"
+          description: "File ảnh đại diện (JPEG/PNG/GIF, max 2MB)"
       additionalProperties: false
       example:
         full_name: "Đạt Thiện Updated"
@@ -1392,7 +1848,7 @@ components:
               example: "683d7b63d0ee4aeb15a11369"
               description: "⚠️ LƯU LẠI CÁI NÀY! Dùng cho tất cả APIs cần authentication"
             user:
-              $ref: '#/components/schemas/UserInfo'
+              $ref: "#/components/schemas/UserInfo"
           description: "Không còn trả về tokens nữa, chỉ có userId và user info"
 
     ProfileResponse:
@@ -1408,7 +1864,7 @@ components:
           type: object
           properties:
             user:
-              $ref: '#/components/schemas/UserInfo'
+              $ref: "#/components/schemas/UserInfo"
 
     UserInfo:
       type: object
@@ -1604,3 +2060,259 @@ components:
           type: string
           example: "WeTV Thailand"
           description: Nhà sản xuất
+
+    # === MOVIE DETAIL SCHEMAS ===
+    MovieDetailResponse:
+      type: object
+      description: Schema response chi tiết phim tổng hợp cho màn hình detail
+      properties:
+        movie:
+          type: object
+          description: Thông tin chi tiết phim
+          properties:
+            _id:
+              type: string
+              example: "675a1234567890abcdef1234"
+            movie_title:
+              type: string
+              example: "Hồ Sơ Trinh Sát II - Tập 1"
+            description:
+              type: string
+              example: "Bộ phim trinh thám Hong Kong nổi tiếng..."
+            production_time:
+              type: string
+              format: date-time
+              example: "1995-12-15T00:00:00.000Z"
+            producer:
+              type: string
+              example: "TVB Hong Kong"
+            poster_path:
+              type: string
+              example: "https://example.com/poster.jpg"
+            genres:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  genre_name:
+                    type: string
+                  description:
+                    type: string
+            movie_type:
+              type: string
+              enum: ["Phim bộ", "Phim lẻ", "Thể thao"]
+              example: "Phim bộ"
+            price:
+              type: number
+              example: 0
+            is_free:
+              type: boolean
+              example: true
+            price_display:
+              type: string
+              example: "Miễn phí"
+            episodes:
+              type: array
+              description: "Danh sách tập (chỉ có khi là phim bộ)"
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  episode_number:
+                    type: integer
+                  episode_title:
+                    type: string
+                  episode_description:
+                    type: string
+                  duration:
+                    type: integer
+                  uri:
+                    type: string
+                    nullable: true
+                  is_locked:
+                    type: boolean
+            uri:
+              type: string
+              nullable: true
+              description: "Video URL (chỉ có khi là phim lẻ)"
+            duration:
+              type: integer
+              description: "Thời lượng phim lẻ (phút)"
+            is_locked:
+              type: boolean
+              description: "Phim có bị khóa không"
+        stats:
+          type: object
+          description: Thống kê phim
+          properties:
+            views:
+              type: integer
+              example: 15420
+            viewsFormatted:
+              type: string
+              example: "15.4K"
+            likes:
+              type: integer
+              example: 892
+            rating:
+              type: number
+              format: float
+              example: 4.6
+            totalRatings:
+              type: integer
+              example: 1250
+            comments:
+              type: integer
+              example: 156
+        recentComments:
+          type: array
+          description: 5 bình luận gần đây nhất
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              user:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  email:
+                    type: string
+              comment:
+                type: string
+              isLike:
+                type: boolean
+              createdAt:
+                type: string
+                format: date-time
+        userInteractions:
+          type: object
+          nullable: true
+          description: "Tương tác của user (null nếu chưa đăng nhập)"
+          properties:
+            hasLiked:
+              type: boolean
+              example: true
+              description: "User đã like phim chưa"
+            hasRated:
+              type: boolean
+              example: true
+              description: "User đã rate phim chưa"
+            userComment:
+              type: string
+              nullable: true
+              example: "Phim hay quá!"
+              description: "Bình luận của user"
+            isFavorite:
+              type: boolean
+              example: true
+              description: "Đã thêm vào yêu thích chưa"
+            isFollowing:
+              type: boolean
+              example: true
+              description: "Đã theo dõi phim chưa (giống isFavorite)"
+            watchingProgress:
+              type: object
+              nullable: true
+              description: "Tiến độ xem phim"
+              properties:
+                episodeNumber:
+                  type: integer
+                  example: 1
+                watchPercentage:
+                  type: number
+                  example: 75.5
+                currentTime:
+                  type: integer
+                  example: 2040
+                lastWatched:
+                  type: string
+                  format: date-time
+                  example: "2024-12-11T10:30:00.000Z"
+        relatedMovies:
+          type: array
+          description: Phim liên quan cho tab "Liên quan"
+          items:
+            type: object
+            properties:
+              movieId:
+                type: string
+                example: "675a1234567890abcdef5678"
+              title:
+                type: string
+                example: "Hồ Sơ Trinh Sát I"
+              poster:
+                type: string
+                example: "https://example.com/related1.jpg"
+              movieType:
+                type: string
+                example: "Phim bộ"
+              producer:
+                type: string
+                example: "TVB Hong Kong"
+        tabs:
+          type: object
+          description: Cấu hình tabs cho UI
+          properties:
+            showEpisodesList:
+              type: boolean
+              example: true
+              description: "true = hiện tab 'Danh sách' (chỉ phim bộ có true)"
+            showRelated:
+              type: boolean
+              example: true
+              description: "true = hiện tab 'Liên quan' (luôn luôn true)"
+
+    Genre:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "6847d080101e640d01a0c37f"
+          description: ID của thể loại
+        genre_name:
+          type: string
+          example: "Hoạt hình"
+          description: Tên thể loại
+        description:
+          type: string
+          example: "Phim hoạt hình, anime và phim động"
+          description: Mô tả thể loại
+        poster:
+          type: string
+          example: "https://example.com/poster.jpg"
+          description: URL poster của thể loại (chỉ có khi include_poster=true)
+        sort_order:
+          type: integer
+          example: 1
+          description: Thứ tự sắp xếp
+        is_active:
+          type: boolean
+          example: true
+          description: Trạng thái hoạt động
+        is_parent:
+          type: boolean
+          example: true
+          description: Có phải thể loại cha không
+        movie_count:
+          type: integer
+          example: 9
+          description: Số lượng phim thuộc thể loại
+        has_children:
+          type: boolean
+          example: true
+          description: Có thể loại con không
+        children_count:
+          type: integer
+          example: 4
+          description: Số lượng thể loại con
+        children:
+          type: array
+          description: Danh sách thể loại con (chỉ có khi include_children=true)
+          items:
+            $ref: "#/components/schemas/Genre"
+

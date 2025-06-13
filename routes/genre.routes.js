@@ -2,48 +2,61 @@ const express = require('express');
 const router = express.Router();
 const genreController = require('../controllers/genre.controller');
 
-// === PUBLIC ROUTES (Không cần đăng nhập) ===
+// === PUBLIC ROUTES ===
+/**
+ * @route   GET /api/genres
+ * @desc    Lấy danh sách thể loại với nhiều options
+ * @access  Public
+ * @query   {
+ *   type: 'all' | 'parent' | 'active' (default: 'all')
+ *   include_poster: boolean (default: false)
+ *   include_children: boolean (default: false)
+ *   format: 'tree' | 'list' (default: 'list')
+ * }
+ */
+router.get('/', genreController.getGenres);
 
-// Lấy danh sách thể loại hoạt động (cho user)
-router.get('/active', genreController.getActiveGenres);
+/**
+ * @route   GET /api/genres/:parentId/children
+ * @desc    Lấy danh sách thể loại con của một thể loại cha
+ * @access  Public
+ */
+router.get('/:parentId/children', genreController.getGenreChildren);
 
-// === NEW HIERARCHICAL ROUTES ===
+/**
+ * @route   GET /api/genres/:genreId/movies
+ * @desc    Lấy danh sách phim của một thể loại
+ * @access  Public
+ */
+router.get('/:genreId/movies', genreController.getGenreMovies);
 
-// Lấy cây thể loại đầy đủ (parent + children)
-router.get('/tree', genreController.getGenreTree);
-
-// Lấy danh sách thể loại cha (cho HomeScreen)
-router.get('/parents', genreController.getParentGenres);
-
-// Lấy danh sách thể loại cha với poster cho trang chủ (giống FPT Play)
-router.get('/home-categories', genreController.getHomeCategoriesWithPoster);
-
-//HOME: Lấy danh sách thể loại con theo parent (cho GenreChildrenScreen)
-router.get('/parent/:parentId/children', genreController.getChildrenGenres);
-
-// Lấy phim theo thể loại (bao gồm thể loại con nếu có)
-router.get('/:genreId/movies', genreController.getMoviesByGenreIncludeChildren);
-
-// Lấy phim theo nhiều thể loại (hoạt động)
-router.get('/movies', genreController.getMoviesByGenres);
-
-// Lấy tất cả thể loại (có thể bao gồm inactive nếu có query param)
-router.get('/', genreController.getAllGenres);
-
-// === PROTECTED ROUTES (Cần userId) ===
-
-// CRUD operations (userId từ body)
+// === ADMIN ROUTES (Không yêu cầu xác thực - Dự án sinh viên) ===
+/**
+ * @route   POST /api/genres
+ * @desc    Tạo thể loại mới (có thể là cha hoặc con)
+ * @access  Admin (Không yêu cầu xác thực)
+ */
 router.post('/', genreController.createGenre);
 
-// Tạo thể loại con
-router.post('/child', genreController.createChildGenre);
-
+/**
+ * @route   PUT /api/genres/:id
+ * @desc    Cập nhật thông tin thể loại
+ * @access  Admin (Không yêu cầu xác thực)
+ */
 router.put('/:id', genreController.updateGenre);
-router.delete('/:id', genreController.deleteGenre);
 
-// Genre status management (userId từ body)
-router.put('/:id/toggle', genreController.toggleGenreStatus);
-router.put('/:id/activate', genreController.activateGenre);
-router.put('/:id/deactivate', genreController.deactivateGenre);
+/**
+ * @route   PUT /api/genres/:id/status
+ * @desc    Cập nhật trạng thái thể loại (activate/deactivate/toggle)
+ * @access  Admin (Không yêu cầu xác thực)
+ */
+router.put('/:id/status', genreController.updateStatus);
+
+/**
+ * @route   DELETE /api/genres/:id
+ * @desc    Xóa thể loại
+ * @access  Admin (Không yêu cầu xác thực)
+ */
+router.delete('/:id', genreController.deleteGenre);
 
 module.exports = router; 
