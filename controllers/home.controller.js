@@ -5,64 +5,12 @@ const Episode = require('../models/Episode');
 const Rating = require('../models/Rating');
 const mongoose = require('mongoose');
 
-// ==============================================
-// HELPER FUNCTIONS - Dễ hiểu cho sinh viên
-// ==============================================
-
-// Tính rating từ Rating model (% like -> thang điểm 10)
-const calculateMovieRating = async (movieId) => {
-    try {
-        const ratingStats = await Rating.aggregate([
-            { $match: { movie_id: new mongoose.Types.ObjectId(movieId) } },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: 1 },
-                    likes: { $sum: { $cond: [{ $eq: ['$is_like', true] }, 1, 0] } }
-                }
-            }
-        ]);
-
-        if (!ratingStats.length) return { rating: 0, likeCount: 0, totalRatings: 0 };
-        const { total, likes } = ratingStats[0];
-        return {
-            rating: Number(((likes / total) * 10).toFixed(1)),
-            likeCount: likes,
-            totalRatings: total
-        };
-    } catch (error) {
-        console.error('Error calculating rating:', error);
-        return { rating: 0, likeCount: 0, totalRatings: 0 };
-    }
-};
-
-// Tính view count từ Watching model (đếm completed views)
-const calculateViewCount = async (movieId) => {
-    try {
-        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
-        const episodeIds = episodes.map(ep => ep._id);
-
-        const viewCount = await Watching.countDocuments({
-            episode_id: { $in: episodeIds },
-            completed: true
-        });
-
-        return viewCount;
-    } catch (error) {
-        console.error('Error calculating view count:', error);
-        return 0;
-    }
-};
-
-// Format view count cho UI (214k, 1.2M, etc.)
-const formatViewCount = (count) => {
-    if (count >= 1000000) {
-        return (count / 1000000).toFixed(1) + 'M';
-    } else if (count >= 1000) {
-        return (count / 1000).toFixed(0) + 'k';
-    }
-    return count.toString();
-};
+// Import shared utility functions (eliminates duplication)
+const {
+    calculateMovieRating,
+    calculateViewCount,
+    formatViewCount
+} = require('../utils/movieStatsUtils');
 
 // ==============================================
 // API CONTROLLERS - Từng section riêng biệt

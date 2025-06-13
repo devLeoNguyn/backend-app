@@ -73,11 +73,12 @@ const getGenreFullInfo = async (genre, includeChildren = false) => {
  */
 const getChildrenGenres = async (parentId) => {
     try {
+        // Chỉ lấy thể loại con đang active
         const children = await Genre.find({ 
             parent_genre: parentId, 
             is_active: true 
         })
-        .select('genre_name description sort_order poster')
+        .select('genre_name description sort_order poster is_active is_parent')
         .sort({ sort_order: 1, genre_name: 1 });
 
         return await Promise.all(

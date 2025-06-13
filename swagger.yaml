@@ -1067,7 +1067,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId thay vì Authorization header
       parameters:
         - name: id
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1216,53 +1216,25 @@ paths:
     get:
       tags:
         - Genre
-      summary: 📂 API Lấy danh sách thể loại
+      summary: Lấy danh sách thể loại
       description: |
-        **🎯 Mục đích:** Lấy danh sách thể loại với nhiều tùy chọn khác nhau.
-
-        **🌟 Đặc điểm:**
-        - ✅ Public API (không cần đăng nhập)
-        - ✅ Hỗ trợ nhiều format và filter
-        - ✅ Có thể lấy dạng cây hoặc danh sách phẳng
-        - ✅ Tùy chọn bao gồm poster và thể loại con
+        Endpoint này cho phép lấy danh sách thể loại với các tùy chọn:
+        1. Lấy tất cả thể loại (mặc định)
+        2. Lấy chỉ thể loại cha (luôn bao gồm thể loại con)
       parameters:
-        - name: type
-          in: query
-          required: false
+        - in: query
+          name: type
           schema:
             type: string
-            enum: [all, parent, active]
+            enum: [all, parent]
             default: all
           description: |
-            Loại thể loại cần lấy:
-            - all: Tất cả thể loại
-            - parent: Chỉ thể loại cha
-            - active: Chỉ thể loại đang hoạt động
-        - name: include_poster
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: false
-          description: Có bao gồm poster không
-        - name: include_children
-          in: query
-          required: false
-          schema:
-            type: boolean
-            default: false
-          description: Có bao gồm thể loại con không (chỉ áp dụng khi type=parent và format=tree)
-        - name: format
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [tree, list]
-            default: list
-          description: Format kết quả trả về
+            Loại thể loại muốn lấy:
+            - all: Tất cả thể loại (mặc định)
+            - parent: Chỉ thể loại cha (luôn bao gồm thể loại con)
       responses:
-        "200":
-          description: ✅ Lấy danh sách thể loại thành công
+        '200':
+          description: Thành công
           content:
             application/json:
               schema:
@@ -1270,29 +1242,32 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: "success"
+                    example: success
                   data:
                     type: object
                     properties:
                       genres:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Genre"
+                          $ref: '#/components/schemas/Genre'
                       total:
                         type: integer
-                        description: Tổng số thể loại
+                        example: 10
                       type:
                         type: string
-                        description: Loại thể loại đã lấy
-                      format:
-                        type: string
-                        description: Format kết quả
-        "500":
-          description: ❌ Lỗi server
+                        example: all
+        '404':
+          description: Không tìm thấy thể loại cha (khi type='children')
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/genres/{parentId}/children:
     get:
@@ -1309,7 +1284,7 @@ paths:
         - ✅ Bao gồm số lượng phim cho mỗi thể loại
       parameters:
         - name: parentId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1526,7 +1501,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
       parameters:
         - name: movie_id
-          in: path
+          in: query               
           required: true
           schema:
             type: string
@@ -1584,7 +1559,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
       parameters:
         - name: movie_id
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1661,7 +1636,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
       parameters:
         - name: movie_id
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1706,7 +1681,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
       parameters:
         - name: movie_id
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1739,6 +1714,108 @@ paths:
                   message:
                     type: string
                     example: "Đã xóa khỏi danh sách yêu thích"
+
+  /api/movies/search:
+    get:
+      tags:
+        - Movie
+      summary: Tìm kiếm phim
+      description: |
+        API tìm kiếm phim theo nhiều tiêu chí:
+        - Từ khóa (tên phim, nhà sản xuất)
+        - Thể loại
+        - Loại phim (Phim lẻ, Phim bộ)
+        - Miễn phí/Trả phí
+        - Sắp xếp theo ngày phát hành (mới nhất/cũ nhất)
+
+        **Public API** (không cần đăng nhập)
+      parameters:
+        - name: tuKhoa
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Từ khóa tìm kiếm (tên phim, nhà sản xuất)
+          example: "batman"
+        - name: theLoai
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ID thể loại (ObjectId)
+          example: "6847d080101e640d01a0c37f"
+        - name: loaiPhim
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Phim lẻ", "Phim bộ"]
+          description: Loại phim
+          example: "Phim lẻ"
+        - name: mienphi
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Lọc phim miễn phí (true/false)
+          example: "true"
+        - name: sapXep
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["moi-nhat", "cu-nhat"]
+          description: Sắp xếp theo ngày phát hành
+          example: "moi-nhat"
+      responses:
+        "200":
+          description: Lấy danh sách phim theo tiêu chí tìm kiếm
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+                      total:
+                        type: integer
+                        example: 2
+              examples:
+                default:
+                  summary: Kết quả tìm kiếm phim
+                  value:
+                    status: "success"
+                    data:
+                      movies:
+                        - movieId: "683fb76c88e880e019875aca"
+                          title: "1000 Years Old"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          movieType: "Phim bộ"
+                          producer: "WeTV Thailand"
+                        - movieId: "683fb76c88e880e019875acb"
+                          title: "Avatar: The Way of Water 2"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hanh-dong/avatar-way-of-water-2.jpg"
+                          movieType: "Phim lẻ"
+                          producer: "20th Century Studios"
+                      total: 2
+        "500":
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Lỗi server khi tìm kiếm phim"
 
 components:
   schemas:
@@ -2272,47 +2349,37 @@ components:
       properties:
         _id:
           type: string
-          example: "6847d080101e640d01a0c37f"
-          description: ID của thể loại
+          example: 60d5ecb8b5c9c62a5c8c1d4e
         genre_name:
           type: string
-          example: "Hoạt hình"
-          description: Tên thể loại
+          example: Hoạt Hình
         description:
           type: string
-          example: "Phim hoạt hình, anime và phim động"
-          description: Mô tả thể loại
+          example: Phim hoạt hình từ nhiều quốc gia
         poster:
           type: string
-          example: "https://example.com/poster.jpg"
-          description: URL poster của thể loại (chỉ có khi include_poster=true)
+          example: https://example.com/poster.jpg
         sort_order:
           type: integer
           example: 1
-          description: Thứ tự sắp xếp
         is_active:
           type: boolean
           example: true
-          description: Trạng thái hoạt động
         is_parent:
           type: boolean
           example: true
-          description: Có phải thể loại cha không
         movie_count:
           type: integer
-          example: 9
-          description: Số lượng phim thuộc thể loại
+          example: 15
         has_children:
           type: boolean
           example: true
-          description: Có thể loại con không
         children_count:
           type: integer
-          example: 4
-          description: Số lượng thể loại con
+          example: 3
         children:
           type: array
-          description: Danh sách thể loại con (chỉ có khi include_children=true)
+          description: Danh sách thể loại con (luôn được bao gồm cho thể loại cha)
           items:
-            $ref: "#/components/schemas/Genre"
+            $ref: '#/components/schemas/Genre'
 

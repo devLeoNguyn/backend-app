@@ -8,25 +8,32 @@ const genreController = require('../controllers/genre.controller');
  * @desc    Lấy danh sách thể loại với nhiều options
  * @access  Public
  * @query   {
- *   type: 'all' | 'parent' | 'active' (default: 'all')
+ *   type: 'all' | 'parent' | 'active' | 'children' (default: 'all')
+ *   parent_id: ObjectId (chỉ dùng khi type='children')
  *   include_poster: boolean (default: false)
- *   include_children: boolean (default: false)
  *   format: 'tree' | 'list' (default: 'list')
  * }
+ * @example
+ * 1. Lấy tất cả thể loại:
+ *    GET /api/genres
+ * 2. Lấy thể loại cha:
+ *    GET /api/genres?type=parent
+ * 3. Lấy thể loại con của một thể loại cha:
+ *    GET /api/genres?type=children&parent_id=123
+ * 4. Lấy thể loại cha dạng cây (bao gồm con):
+ *    GET /api/genres?type=parent&format=tree
  */
 router.get('/', genreController.getGenres);
-
-/**
- * @route   GET /api/genres/:parentId/children
- * @desc    Lấy danh sách thể loại con của một thể loại cha
- * @access  Public
- */
-router.get('/:parentId/children', genreController.getGenreChildren);
 
 /**
  * @route   GET /api/genres/:genreId/movies
  * @desc    Lấy danh sách phim của một thể loại
  * @access  Public
+ * @query   {
+ *   include_children: boolean (default: false)
+ *   page: number (default: 1)
+ *   limit: number (default: 10)
+ * }
  */
 router.get('/:genreId/movies', genreController.getGenreMovies);
 

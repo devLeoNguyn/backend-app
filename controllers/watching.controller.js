@@ -3,41 +3,24 @@ const Episode = require('../models/Episode');
 const Movie = require('../models/Movie');
 const mongoose = require('mongoose');
 
-// Helper function to calculate view count
-const calculateViewCount = async (movieId) => {
-    try {
-        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
-        const episodeIds = episodes.map(ep => ep._id);
+// Import shared utility functions (eliminates duplication)
+const { calculateViewCount, formatViewCount } = require('../utils/movieStatsUtils');
 
-        const viewCount = await Watching.countDocuments({
-            episode_id: { $in: episodeIds },
-            completed: true
-        });
-
-        return viewCount;
-    } catch (error) {
-        console.error('Error calculating view count:', error);
-        return 0;
-    }
-};
-
-// Format view count cho UI (214k, 1.2M, etc.)
-const formatViewCount = (count) => {
-    if (count >= 1000000) {
-        return (count / 1000000).toFixed(1) + 'M';
-    } else if (count >= 1000) {
-        return (count / 1000).toFixed(0) + 'k';
-    }
-    return count.toString();
-};
-
-// UNIFIED: Cập nhật tiến độ xem video
+// UNIFIED: Cập nhật tiến độ xem video (hỗ trợ cả start watching và update progress)
 exports.updateWatchProgress = async (req, res) => {
     try {
         // Support both URL params and request body for episode_id
-        const episode_id = req.params.episode_id
-        const current_time = req.body.current_time
-        const user_id = req.user._id;
+        const episode_id = req.params.episode_id || req.body.episode_id;
+        const { current_time, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         // Validate input
         if (!episode_id) {
@@ -47,7 +30,10 @@ exports.updateWatchProgress = async (req, res) => {
             });
         }
 
-        if (current_time === undefined || current_time < 0) {
+        // current_time = 0 means start watching, > 0 means update progress
+        const time = current_time || 0;
+        
+        if (time < 0) {
             return res.status(400).json({
                 status: 'error',
                 message: 'Thời gian hiện tại không hợp lệ'
@@ -58,12 +44,15 @@ exports.updateWatchProgress = async (req, res) => {
         let watching = await Watching.findOrCreateWatching(user_id, episode_id);
         
         // Sử dụng instance method để cập nhật progress
-        await watching.updateProgress(current_time);
+        await watching.updateProgress(time);
+
+        const isStarting = time === 0;
+        const message = isStarting ? 'Đã bắt đầu xem phim' : 'Đã cập nhật tiến trình xem thành công';
 
         // Return properly formatted response
-        res.json({
+        res.status(isStarting ? 201 : 200).json({
             status: 'success',
-            message: 'Đã cập nhật tiến trình xem thành công',
+            message,
             data: { 
                 watching: {
                     episode_id: watching.episode_id,
@@ -90,7 +79,14 @@ exports.updateWatchProgress = async (req, res) => {
 exports.getWatchProgress = async (req, res) => {
     try {
         const { episodeId } = req.params;
-        const userId = req.user._id;
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
 
         // Sử dụng query helpers
         const watching = await Watching.findOne()
@@ -103,35 +99,18 @@ exports.getWatchProgress = async (req, res) => {
     }
 };
 
-// Lấy danh sách phim đang xem
-exports.getContinueWatching = async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        // Sử dụng query helpers
-        const watching = await Watching.find()
-            .byUser(userId)
-            .notCompleted()
-            .recentlyWatched(10)
-            .populate('episode_id', 'episode_number episode_title')
-            .populate({
-                path: 'episode_id',
-                populate: {
-                    path: 'movie_id',
-                    select: 'movie_title poster_path'
-                }
-            });
-
-        res.json(watching);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
 // Lấy thống kê xem phim
 exports.getWatchingStats = async (req, res) => {
     try {
         const { episodeId } = req.params;
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
         
         const stats = await Watching.aggregate([
             { 
@@ -154,48 +133,34 @@ exports.getWatchingStats = async (req, res) => {
     }
 };
 
-// Bắt đầu xem phim mới
-exports.startWatching = async (req, res) => {
-    try {
-        const { episode_id } = req.body;
-        const user_id = req.user._id;
-
-        // Kiểm tra episode có tồn tại không
-        const episode = await Episode.findById(episode_id);
-        if (!episode) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Không tìm thấy tập phim'
-            });
-        }
-
-        // Sử dụng findOrCreateWatching để tạo hoặc lấy existing record
-        const watching = await Watching.findOrCreateWatching(user_id, episode_id);
-
-        // Trả về thông tin watching
-        res.status(201).json({
-            status: 'success',
-            message: 'Đã bắt đầu xem phim',
-            data: { watching }
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
-
-// Lấy lịch sử xem của user
+// Lấy lịch sử xem của user (hỗ trợ cả history và continue watching)
 exports.getWatchingHistory = async (req, res) => {
     try {
-        const user_id = req.user._id;
+        const { userId, type } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
         const skip = (page - 1) * limit;
 
-        const watchingHistory = await Watching.find({ user_id })
+        // Build query based on type
+        let query = { user_id };
+        let responseKey = 'watching_history';
+        
+        // Type: 'continue' = chỉ lấy phim chưa hoàn thành để tiếp tục xem
+        if (type === 'continue') {
+            query.completed = false;
+            responseKey = 'continue_watching';
+        }
+
+        const watchingData = await Watching.find(query)
             .populate({
                 path: 'episode_id',
                 populate: {
@@ -207,12 +172,12 @@ exports.getWatchingHistory = async (req, res) => {
             .skip(skip)
             .limit(limit);
 
-        const total = await Watching.countDocuments({ user_id });
+        const total = await Watching.countDocuments(query);
 
         res.json({
             status: 'success',
             data: {
-                watching_history: watchingHistory,
+                [responseKey]: watchingData,
                 pagination: {
                     current_page: page,
                     total_pages: Math.ceil(total / limit),
@@ -237,8 +202,16 @@ exports.getWatchingHistory = async (req, res) => {
 exports.addView = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const { episode_id, current_time } = req.body;
-        const user_id = req.user._id;
+        const { episode_id, current_time, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+        
+        const user_id = userId;
 
         // Check if movie and episode exist
         const [movie, episode] = await Promise.all([
