@@ -1218,73 +1218,36 @@ paths:
         - Genre
       summary: Lấy danh sách thể loại
       description: |
-        Lấy danh sách thể loại với nhiều options khác nhau.
+        Lấy danh sách thể loại với nhiều options.
         
         **Query Parameters:**
-        - `type`: Loại thể loại cần lấy
-          - `all`: Tất cả thể loại (mặc định)
-          - `parent`: Chỉ thể loại cha
-          - `active`: Chỉ thể loại đang active
-        - `include_poster`: Hiển thị poster (mặc định true)
-        - `include_children`: Bao gồm thể loại con (mặc định true)
-        - `format`: Định dạng response
-          - `tree`: Cấu trúc cây (mặc định)
-          - `list`: Danh sách phẳng
+        - `type`: Loại thể loại cần lấy ('all' | 'parent' | 'active' | 'children', mặc định: 'all')
+        - `parent_id`: ID thể loại cha (chỉ dùng khi type='children')
+        
+        **Lưu ý:**
+        - Luôn trả về poster (include_poster=true)
+        - Luôn trả về dạng cây (format=tree)
+        
+        **Ví dụ:**
+        1. Lấy tất cả thể loại:
+           GET /api/genres
+        2. Lấy thể loại cha:
+           GET /api/genres?type=parent
+        3. Lấy thể loại con của một thể loại cha:
+           GET /api/genres?type=children&parent_id=123
       parameters:
         - in: query
           name: type
           schema:
             type: string
-            enum: [all, parent]
+            enum: [all, parent, active, children]
             default: all
           description: Loại thể loại cần lấy
-      responses:
-        "200":
-          description: Thành công
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      genres:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Genre'
-                      total:
-                        type: integer
-                        example: 10
-                      type:
-                        type: string
-                        example: "all"
-                      format:
-                        type: string
-                        example: "tree"
-
-  /api/genres/children:
-    get:
-      tags:
-        - Genre
-      summary: Lấy danh sách thể loại con
-      description: |
-        Lấy danh sách thể loại con của một thể loại cha.
-        
-        **Lưu ý:**
-        - Chỉ lấy thể loại con của thể loại cha đang active
-        - Sắp xếp theo sort_order và tên thể loại
-        - Mặc định trả về đầy đủ thông tin thể loại cha và con
-      parameters:
         - in: query
-          name: parentId
-          required: true
+          name: parent_id
           schema:
             type: string
-          description: ID thể loại cha
+          description: ID thể loại cha (chỉ dùng khi type='children')
       responses:
         "200":
           description: Thành công
@@ -1299,17 +1262,21 @@ paths:
                   data:
                     type: object
                     properties:
-                      parent_genre:
-                        $ref: "#/components/schemas/Genre"
-                      children_genres:
+                      genres:
                         type: array
                         items:
                           $ref: "#/components/schemas/Genre"
-                      total_children:
+                      total:
                         type: integer
-                        example: 5
+                        example: 10
+                      type:
+                        type: string
+                        example: "all"
+                      format:
+                        type: string
+                        example: "tree"
         "404":
-          description: Không tìm thấy thể loại cha
+          description: Không tìm thấy thể loại
           content:
             application/json:
               schema:
@@ -2402,7 +2369,7 @@ components:
       type: object
       properties:
         _id:
-          type: strin
+          type: string
           example: "683d7b63d0ee4aeb15a11369"
         genre_name:
           type: string
