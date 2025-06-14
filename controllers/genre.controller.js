@@ -33,6 +33,10 @@ const getGenres = async (req, res) => {
         let query = {};
         if (type === 'parent') query.parent_genre = null;
         if (type === 'active') query.is_active = true;
+        if (type === 'children' && req.query.parent_id) {
+            query.parent_genre = req.query.parent_id;
+        }
+        
         const genres = await Genre.find(query)
             .select(include_poster ? '+poster' : '-poster')
             .sort({ sort_order: 1, genre_name: 1 });
@@ -40,7 +44,8 @@ const getGenres = async (req, res) => {
         let formattedGenres = await Promise.all(
             genres.map(async (genre) => {
                 const genreInfo = await getGenreFullInfo(genre, true);
-                if (include_children) {
+                // Chỉ thêm children khi type KHÔNG phải là 'parent'
+                if (include_children && type !== 'parent') {
                     genreInfo.children = await getChildrenGenres(genre._id);
                 }
                 return genreInfo;
