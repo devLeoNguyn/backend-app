@@ -1,3 +1,4 @@
+const { create } = require('hbs');
 const Genre = require('../models/Genre');
 const Movie = require('../models/Movie');
 const {
@@ -15,12 +16,12 @@ const {
  * Lấy danh sách thể loại với nhiều options
  * GET /api/genres
  * Query params:
+
  * - type: 'all' | 'parent' | 'active' (default: 'all')
  * - include_poster: boolean (default: true)
  * - include_children: boolean (default: true)
- * - format: 'tree' | 'list' (default: 'tree')
- */
-exports.getGenres = async (req, res) => {
+ * - format: 'tree' | 'list' (default: 'tree')**/
+const getGenres = async (req, res) => {
     try {
         const type = req.query.type || 'all';
 
@@ -32,7 +33,6 @@ exports.getGenres = async (req, res) => {
         let query = {};
         if (type === 'parent') query.parent_genre = null;
         if (type === 'active') query.is_active = true;
-
         const genres = await Genre.find(query)
             .select(include_poster ? '+poster' : '-poster')
             .sort({ sort_order: 1, genre_name: 1 });
@@ -50,8 +50,7 @@ exports.getGenres = async (req, res) => {
         res.json(createResponse({
             genres: formattedGenres,
             total: formattedGenres.length,
-            type,
-            format
+            type
         }));
     } catch (error) {
         console.error('Get genres error:', error);
@@ -64,40 +63,80 @@ exports.getGenres = async (req, res) => {
 };
 
 /**
- * Lấy thể loại con theo parent
- * GET /api/genres/:parentId/children
+ * Lấy danh sách phim của một thể loại
+ * GET /api/genres/:genreId/movies
  */
-exports.getGenreChildren = async (req, res) => {
+const getGenreMovies = async (req, res) => {
     try {
-        const { parentId } = req.params;
+        const { genreId } = req.params;
+        const { include_children = 'false', page = 1, limit = 10 } = req.query;
 
-        // Kiểm tra parent genre tồn tại và là thể loại cha đang active
-        const parentGenre = await Genre.findOne({
-            _id: parentId,
-            is_parent: true,
-            is_active: true
-        });
-        
-        if (!parentGenre) {
+        // Kiểm tra thể loại tồn tại
+        const genre = await Genre.findById(genreId);
+        if (!genre) {
             return res.status(404).json({
                 status: 'error',
-                message: 'Không tìm thấy thể loại cha hoặc thể loại này không phải là thể loại cha'
+                message: 'Không tìm thấy thể loại'
             });
         }
 
-        const children = await getChildrenGenres(parentId);
-        const parentInfo = await getGenreFullInfo(parentGenre, true);
+        // Lấy danh sách ID thể loại (bao gồm cả thể loại con nếu được yêu cầu)
+        let genreIds = [genreId];
+        if (include_children === 'true' && genre.is_parent) {
+            const childGenres = await Genre.find({ 
+                parent_genre: genreId, 
+                is_active: true 
+            }).select('_id');
+            genreIds.push(...childGenres.map(child => child._id));
+        }
+
+        // Tính toán skip cho pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Lấy danh sách phim
+        const movies = await Movie.find({ genres: { $in: genreIds } })
+            .select('movie_title description poster_path movie_type production_time')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .populate('genres', 'genre_name');
+
+        // Đếm tổng số phim
+        const totalMovies = await Movie.countDocuments({ genres: { $in: genreIds } });
+
+        // Format response
+        const formattedMovies = movies.map(movie => ({
+                    _id: movie._id,
+            title: movie.movie_title,
+                    description: movie.description,
+            poster: movie.poster_path,
+            movieType: movie.movie_type,
+            productionTime: movie.production_time,
+            genres: movie.genres.map(g => ({
+                _id: g._id,
+                name: g.genre_name
+            }))
+        }));
 
         res.json(createResponse({
-            parent_genre: parentInfo,
-            children_genres: children,
-            total_children: children.length
+            genre: {
+                _id: genre._id,
+                name: genre.genre_name,
+                isParent: genre.is_parent
+            },
+            movies: formattedMovies,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalMovies / parseInt(limit)),
+                totalMovies,
+                hasMore: skip + movies.length < totalMovies
+            }
         }));
     } catch (error) {
-        console.error('Get genre children error:', error);
+        console.error('Get genre movies error:', error);
         res.status(500).json({
             status: 'error',
-            message: 'Lỗi khi lấy danh sách thể loại con',
+            message: 'Lỗi khi lấy danh sách phim của thể loại',
             error: error.message
         });
     }
@@ -146,7 +185,7 @@ exports.getGenreMovies = async (req, res) => {
  * Tạo thể loại mới
  * POST /api/genres
  */
-exports.createGenre = async (req, res) => {
+const createGenre = async (req, res) => {
     try {
         const { genre_name, description, poster, parent_genre_id, sort_order } = req.body;
 
@@ -197,7 +236,7 @@ exports.createGenre = async (req, res) => {
  * Cập nhật thể loại
  * PUT /api/genres/:id
  */
-exports.updateGenre = async (req, res) => {
+const updateGenre = async (req, res) => {
     try {
         const { id } = req.params;
         const { genre_name, description, poster, sort_order } = req.body;
@@ -238,7 +277,7 @@ exports.updateGenre = async (req, res) => {
  * Cập nhật trạng thái thể loại
  * PUT /api/genres/:id/status
  */
-exports.updateStatus = async (req, res) => {
+const updateStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { action } = req.body;
@@ -270,7 +309,7 @@ exports.updateStatus = async (req, res) => {
  * Xóa thể loại
  * DELETE /api/genres/:id
  */
-exports.deleteGenre = async (req, res) => {
+const deleteGenre = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -304,5 +343,14 @@ exports.deleteGenre = async (req, res) => {
             error: error.message
         });
     }
+};
+
+module.exports = {
+    getGenres,
+    getGenreMovies,
+    createGenre,
+    updateGenre,
+    updateStatus,
+    deleteGenre
 };
 

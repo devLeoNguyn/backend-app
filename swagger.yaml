@@ -1235,7 +1235,7 @@ paths:
           name: type
           schema:
             type: string
-            enum: [all, parent, active]
+            enum: [all, parent]
             default: all
           description: Loại thể loại cần lấy
       responses:
@@ -1248,14 +1248,14 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: "success"
+                    example: success
                   data:
                     type: object
                     properties:
                       genres:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Genre"
+                          $ref: '#/components/schemas/Genre'
                       total:
                         type: integer
                         example: 10
@@ -1555,7 +1555,7 @@ paths:
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
       parameters:
         - name: movie_id
-          in: query
+          in: query             
           required: true
           schema:
             type: string
@@ -1768,6 +1768,108 @@ paths:
                   message:
                     type: string
                     example: "Đã xóa khỏi danh sách yêu thích"
+
+  /api/movies/search:
+    get:
+      tags:
+        - Movie
+      summary: Tìm kiếm phim
+      description: |
+        API tìm kiếm phim theo nhiều tiêu chí:
+        - Từ khóa (tên phim, nhà sản xuất)
+        - Thể loại
+        - Loại phim (Phim lẻ, Phim bộ)
+        - Miễn phí/Trả phí
+        - Sắp xếp theo ngày phát hành (mới nhất/cũ nhất)
+
+        **Public API** (không cần đăng nhập)
+      parameters:
+        - name: tuKhoa
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Từ khóa tìm kiếm (tên phim, nhà sản xuất)
+          example: "batman"
+        - name: theLoai
+          in: query
+          required: false
+          schema:
+            type: string
+          description: ID thể loại (ObjectId)
+          example: "6847d080101e640d01a0c37f"
+        - name: loaiPhim
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Phim lẻ", "Phim bộ"]
+          description: Loại phim
+          example: "Phim lẻ"
+        - name: mienphi
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Lọc phim miễn phí (true/false)
+          example: "true"
+        - name: sapXep
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["moi-nhat", "cu-nhat"]
+          description: Sắp xếp theo ngày phát hành
+          example: "moi-nhat"
+      responses:
+        "200":
+          description: Lấy danh sách phim theo tiêu chí tìm kiếm
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+                      total:
+                        type: integer
+                        example: 2
+              examples:
+                default:
+                  summary: Kết quả tìm kiếm phim
+                  value:
+                    status: "success"
+                    data:
+                      movies:
+                        - movieId: "683fb76c88e880e019875aca"
+                          title: "1000 Years Old"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          movieType: "Phim bộ"
+                          producer: "WeTV Thailand"
+                        - movieId: "683fb76c88e880e019875acb"
+                          title: "Avatar: The Way of Water 2"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hanh-dong/avatar-way-of-water-2.jpg"
+                          movieType: "Phim lẻ"
+                          producer: "20th Century Studios"
+                      total: 2
+        "500":
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Lỗi server khi tìm kiếm phim"
 
 components:
   schemas:
@@ -2300,7 +2402,7 @@ components:
       type: object
       properties:
         _id:
-          type: string
+          type: strin
           example: "683d7b63d0ee4aeb15a11369"
         genre_name:
           type: string
@@ -2330,6 +2432,4 @@ components:
         updated_at:
           type: string
           format: date-time
-
-
 

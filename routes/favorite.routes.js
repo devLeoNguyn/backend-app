@@ -19,4 +19,20 @@ router.delete('/:movie_id', removeFromFavorites);
 // Kiểm tra phim có trong danh sách yêu thích không (userId từ query)
 router.get('/check/:movie_id', checkFavorite);
 
+// ==============================================
+// LEGACY ROUTES (for backward compatibility)
+// ==============================================
+
+// Alternative add route (RESTful style)
+router.post('/movies/:movie_id/add', (req, res) => {
+    req.body.movie_id = req.params.movie_id;
+    addToFavorites(req, res);
+});
+
+// Alternative remove route (POST instead of DELETE for some clients)
+router.post('/movies/:movie_id/remove', (req, res) => {
+    req.params.movie_id = req.params.movie_id;
+    removeFromFavorites(req, res);
+});
+
 module.exports = router; 

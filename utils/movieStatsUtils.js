@@ -1,0 +1,130 @@
+const Rating = require('../models/Rating');
+const Watching = require('../models/Watching');
+const Episode = require('../models/Episode');
+const mongoose = require('mongoose');
+
+// ===================================================
+// SHARED HELPER FUNCTIONS (used across multiple controllers)
+// ===================================================
+
+/**
+ * Calculate movie rating statistics
+ * Used by: movie.controller.js, rating.controller.js, home.controller.js
+ */
+const calculateMovieRating = async (movieId) => {
+    try {
+        const ratingStats = await Rating.aggregate([
+            { $match: { movie_id: new mongoose.Types.ObjectId(movieId) } },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    likes: { $sum: { $cond: [{ $eq: ['$is_like', true] }, 1, 0] } }
+                }
+            }
+        ]);
+
+        if (!ratingStats.length) return { rating: 0, likeCount: 0, totalRatings: 0 };
+        const { total, likes } = ratingStats[0];
+        return {
+            rating: Number(((likes / total) * 10).toFixed(1)),
+            likeCount: likes,
+            totalRatings: total
+        };
+    } catch (error) {
+        console.error('Error calculating rating:', error);
+        return { rating: 0, likeCount: 0, totalRatings: 0 };
+    }
+};
+
+/**
+ * Calculate movie view count
+ * Used by: movie.controller.js, watching.controller.js
+ */
+const calculateViewCount = async (movieId) => {
+    try {
+        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
+        const episodeIds = episodes.map(ep => ep._id);
+
+        const viewCount = await Watching.countDocuments({
+            episode_id: { $in: episodeIds },
+            completed: true
+        });
+
+        return viewCount;
+    } catch (error) {
+        console.error('Error calculating view count:', error);
+        return 0;
+    }
+};
+
+/**
+ * Format view count for UI display
+ * Used by: movie.controller.js, watching.controller.js
+ */
+const formatViewCount = (count) => {
+    if (count >= 1000000) {
+        return (count / 1000000).toFixed(1) + 'M';
+    } else if (count >= 1000) {
+        return (count / 1000).toFixed(0) + 'k';
+    }
+    return count.toString();
+};
+
+/**
+ * Calculate movie comment count
+ * Used by: movie.controller.js, rating.controller.js
+ */
+const calculateCommentCount = async (movieId) => {
+    try {
+        const commentCount = await Rating.countDocuments({ 
+            movie_id: movieId, 
+            comment: { $exists: true, $ne: '' } 
+        });
+        return commentCount;
+    } catch (error) {
+        console.error('Error calculating comment count:', error);
+        return 0;
+    }
+};
+
+/**
+ * Get comprehensive movie statistics
+ * Used by: movie.controller.js
+ */
+const getMovieStatistics = async (movieId) => {
+    try {
+        const [ratingData, viewCount, commentCount] = await Promise.all([
+            calculateMovieRating(movieId),
+            calculateViewCount(movieId),
+            calculateCommentCount(movieId)
+        ]);
+
+        return {
+            likes: ratingData.likeCount,
+            rating: ratingData.rating,
+            totalRatings: ratingData.totalRatings,
+            views: viewCount,
+            viewsFormatted: formatViewCount(viewCount),
+            comments: commentCount
+        };
+    } catch (error) {
+        console.error('Error getting movie statistics:', error);
+        return {
+            likes: 0,
+            rating: 0,
+            totalRatings: 0,
+            views: 0,
+            viewsFormatted: '0',
+            comments: 0
+        };
+    }
+};
+
+module.exports = {
+    calculateMovieRating,
+    calculateViewCount,
+    formatViewCount,
+    calculateCommentCount,
+    getMovieStatistics
+}; 
