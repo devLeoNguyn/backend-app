@@ -8,9 +8,9 @@ const genreController = require('../controllers/genre.controller');
  * @desc    Lấy danh sách thể loại với nhiều options
  * @access  Public
  * @query   {
- *   type: 'all' | 'parent' | 'active' (default: 'all')
+ *   type: 'all' | 'parent' | 'active' | 'children' (default: 'all')
+ *   parent_id: ObjectId (chỉ dùng khi type='children')
  *   include_poster: boolean (default: false)
- *   include_children: boolean (default: false)
  *   format: 'tree' | 'list' (default: 'list')
  * }
  */

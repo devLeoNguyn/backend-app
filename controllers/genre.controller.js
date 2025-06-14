@@ -16,50 +16,36 @@ const {
  * GET /api/genres
  * Query params:
  * - type: 'all' | 'parent' | 'active' (default: 'all')
- * - include_poster: boolean (default: false)
- * - include_children: boolean (default: false)
- * - format: 'tree' | 'list' (default: 'list')
+ * - include_poster: boolean (default: true)
+ * - include_children: boolean (default: true)
+ * - format: 'tree' | 'list' (default: 'tree')
  */
 exports.getGenres = async (req, res) => {
     try {
-        const { 
-            type = 'all',
-            include_poster = 'false',
-            include_children = 'false',
-            format = 'list'
-        } = req.query;
+        const type = req.query.type || 'all';
 
-        // Xây dựng query base
+        // Luôn trả về poster, children, tree
+        const include_poster = true;
+        const include_children = true;
+        const format = 'tree';
+
         let query = {};
-        if (type === 'parent') {
-            query.parent_genre = null;
-        }
-        if (type === 'active') {
-            query.is_active = true;
-        }
+        if (type === 'parent') query.parent_genre = null;
+        if (type === 'active') query.is_active = true;
 
-        // Lấy danh sách thể loại
         const genres = await Genre.find(query)
-            .select(include_poster === 'true' ? '+poster' : '-poster')
+            .select(include_poster ? '+poster' : '-poster')
             .sort({ sort_order: 1, genre_name: 1 });
 
-        // Format response theo yêu cầu
-        let formattedGenres;
-        if (format === 'tree' && type === 'parent') {
-            formattedGenres = await Promise.all(
-                genres.map(async (genre) => {
-                    const genreInfo = await getGenreFullInfo(genre, true);
-                    if (include_children === 'true') {
-                        genreInfo.children = await getChildrenGenres(genre._id);
-                    }
-                    return genreInfo;
-                })
-            );
-        } else {
-            formattedGenres = await Promise.all(
-                genres.map(genre => getGenreFullInfo(genre, false))
-            );
-        }
+        let formattedGenres = await Promise.all(
+            genres.map(async (genre) => {
+                const genreInfo = await getGenreFullInfo(genre, true);
+                if (include_children) {
+                    genreInfo.children = await getChildrenGenres(genre._id);
+                }
+                return genreInfo;
+            })
+        );
 
         res.json(createResponse({
             genres: formattedGenres,
@@ -112,6 +98,43 @@ exports.getGenreChildren = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: 'Lỗi khi lấy danh sách thể loại con',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Lấy danh sách phim của một thể loại
+ * GET /api/genres/:genreId/movies
+ */
+exports.getGenreMovies = async (req, res) => {
+    try {
+        const { genreId } = req.params;
+        
+        // Kiểm tra thể loại tồn tại
+        const genre = await Genre.findById(genreId);
+        if (!genre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại'
+            });
+        }
+
+        // Lấy danh sách phim thuộc thể loại này
+        const movies = await Movie.find({ genres: genreId })
+            .select('title poster release_date rating')
+            .sort({ release_date: -1 });
+
+        res.json(createResponse({
+            genre: await getGenreBasicInfo(genre),
+            movies,
+            total: movies.length
+        }));
+    } catch (error) {
+        console.error('Get genre movies error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy danh sách phim của thể loại',
             error: error.message
         });
     }
