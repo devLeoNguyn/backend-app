@@ -33,6 +33,9 @@ const getGenres = async (req, res) => {
         let query = {};
         if (type === 'parent') query.parent_genre = null;
         if (type === 'active') query.is_active = true;
+        if (type === 'children' && req.query.parent_id) {
+            query.parent_genre = req.query.parent_id;
+        }
         const genres = await Genre.find(query)
             .select(include_poster ? '+poster' : '-poster')
             .sort({ sort_order: 1, genre_name: 1 });
