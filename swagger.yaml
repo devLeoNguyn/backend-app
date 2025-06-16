@@ -1740,38 +1740,89 @@ paths:
     get:
       tags:
         - Movie
-      summary: Tìm kiếm phim
+      summary: 🔍 Tìm kiếm phim (đơn giản và nâng cao)
       description: |
-        API tìm kiếm phim theo nhiều tiêu chí:
-        - Từ khóa (tên phim, nhà sản xuất)
-        - Thể loại
-        - Loại phim (Phim lẻ, Phim bộ)
-        - Miễn phí/Trả phí
-        - Sắp xếp theo ngày phát hành (mới nhất/cũ nhất)
+        **🎯 API TÌM KIẾM PHIM - ĐƠN GIẢN VÀ HIỆU QUẢ**
 
-        **Public API** (không cần đăng nhập)
+        **📚 CÁCH DÙNG ĐỚN GIẢN NHẤT:**
+        ```javascript
+        // 1. Tìm tất cả phim (không cần tham số)
+        GET /api/movies/search
+        
+        // 2. Tìm theo từ khóa
+        GET /api/movies/search?tuKhoa=avatar
+        
+        // 3. Lấy thêm phim (pagination)
+        GET /api/movies/search?page=2
+        ```
+
+        **🔧 TÍNH NĂNG NÂNG CAO:**
+        - ✅ **Tìm kiếm mở rộng:** tên phim, nhà sản xuất, mô tả, tags
+        - ✅ **Lọc thông minh:** thể loại, loại phim, miễn phí/trả phí  
+        - ✅ **Sắp xếp linh hoạt:** mới nhất, phổ biến, đánh giá cao
+        - ✅ **Pagination tự động:** hỗ trợ infinite scroll
+        - ✅ **Response tối ưu:** poster, stats, pricing info
+
+        **📱 FRONTEND EXAMPLES:**
+        ```javascript
+        // Tìm kiếm cơ bản
+        fetch('/api/movies/search?tuKhoa=batman')
+        
+        // Tìm kiếm nâng cao với filter
+        fetch('/api/movies/search?tuKhoa=avatar&theLoai=action&sapXep=phobien')
+        
+        // Load more cho FlatList
+        fetch('/api/movies/search?tuKhoa=batman&page=2&limit=20')
+        ```
+
+        **🎯 PERFECT FOR:**
+        - Search screens với FlatList/Grid
+        - Category/Genre pages  
+        - Home page movie lists
+        - Infinite scroll implementation
+
+        **🔓 Public API** (không cần đăng nhập)
       parameters:
         - name: tuKhoa
           in: query
           required: false
           schema:
             type: string
-          description: Từ khóa tìm kiếm (tên phim, nhà sản xuất)
+          description: |
+            **🔤 TỪ KHÓA TÌM KIẾM (Tùy chọn)**
+            
+            Tìm kiếm thông minh trong:
+            - 🎬 Tên phim 
+            - 🏭 Nhà sản xuất
+            - 📝 Mô tả phim
+            - 🏷️ Tags phim
+            
+            💡 **Tips:** Không phân biệt hoa thường, có thể tìm tiếng Việt có dấu
           example: "batman"
         - name: theLoai
           in: query
           required: false
           schema:
             type: string
-          description: ID thể loại (ObjectId)
+          description: |
+            **🎭 LỌC THEO THỂ LOẠI (Tùy chọn)**
+            
+            ID thể loại để lọc phim
+            💡 **Lấy từ:** `/api/genres` để có danh sách ID
           example: "6847d080101e640d01a0c37f"
         - name: loaiPhim
           in: query
           required: false
           schema:
             type: string
-            enum: ["Phim lẻ", "Phim bộ"]
-          description: Loại phim
+            enum: ["Phim lẻ", "Phim bộ", "Thể thao"]
+          description: |
+            **🎬 LỌC THEO LOẠI PHIM (Tùy chọn)**
+            
+            Chọn loại phim muốn xem:
+            - `Phim lẻ`: Phim một tập duy nhất
+            - `Phim bộ`: Phim nhiều tập 
+            - `Thể thao`: Sự kiện thể thao
           example: "Phim lẻ"
         - name: mienphi
           in: query
@@ -1779,19 +1830,61 @@ paths:
           schema:
             type: string
             enum: ["true", "false"]
-          description: Lọc phim miễn phí (true/false)
+          description: |
+            **💰 LỌC THEO GIÁ (Tùy chọn)**
+            
+            - `true`: Chỉ phim miễn phí
+            - `false`: Chỉ phim trả phí
+            - Không truyền: Tất cả phim
           example: "true"
         - name: sapXep
           in: query
           required: false
           schema:
             type: string
-            enum: ["moi-nhat", "cu-nhat"]
-          description: Sắp xếp theo ngày phát hành
-          example: "moi-nhat"
+            enum: ["moi-nhat", "cu-nhat", "phobien", "danhgia"]
+          description: |
+            **⬆️⬇️ CÁCH SẮP XẾP (Tùy chọn)**
+            
+            - `moi-nhat`: Phim mới phát hành trước ⭐ **Khuyên dùng**
+            - `phobien`: Phim được xem nhiều nhất 🔥 **Hot**
+            - `danhgia`: Phim đánh giá cao nhất ⭐
+            - `cu-nhat`: Phim cũ nhất
+          example: "phobien"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: |
+            **📄 TRANG HIỆN TẠI (Tùy chọn)**
+            
+            Dùng cho infinite scroll trong FlatList
+            - Trang đầu: `1` (mặc định)
+            - Load more: `2`, `3`, `4`...
+          example: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: |
+            **📊 SỐ PHIM MỖI TRANG (Tùy chọn)**
+            
+            - Mặc định: `20` phim ⭐ **Khuyên dùng**
+            - Tối thiểu: `1` phim
+            - Tối đa: `100` phim
+            
+            💡 **FlatList tip:** Dùng 20 cho performance tốt
+          example: 20
       responses:
         "200":
-          description: Lấy danh sách phim theo tiêu chí tìm kiếm
+          description: ✅ Tìm kiếm phim thành công
           content:
             application/json:
               schema:
@@ -1806,13 +1899,14 @@ paths:
                       movies:
                         type: array
                         items:
-                          $ref: "#/components/schemas/GridMovie"
-                      total:
-                        type: integer
-                        example: 2
+                          $ref: "#/components/schemas/SearchMovieResult"
+                      pagination:
+                        $ref: "#/components/schemas/PaginationInfo"
+                      search_info:
+                        $ref: "#/components/schemas/SearchInfo"
               examples:
-                default:
-                  summary: Kết quả tìm kiếm phim
+                basic_search:
+                  summary: "Tìm kiếm cơ bản với pagination"
                   value:
                     status: "success"
                     data:
@@ -1822,12 +1916,83 @@ paths:
                           poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
                           movieType: "Phim bộ"
                           producer: "WeTV Thailand"
+                          description: "Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian..."
+                          releaseYear: 2024
+                          price: 0
+                          is_free: true
+                          price_display: "Miễn phí"
+                          view_count: 15420
+                          favorite_count: 892
+                          rating: 4.6
+                          total_ratings: 1250
+                          total_episodes: 12
+                          genres: ["Tình cảm", "Drama"]
                         - movieId: "683fb76c88e880e019875acb"
                           title: "Avatar: The Way of Water 2"
                           poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hanh-dong/avatar-way-of-water-2.jpg"
                           movieType: "Phim lẻ"
                           producer: "20th Century Studios"
-                      total: 2
+                          description: "Phần tiếp theo đầy màu sắc của bom tấn Avatar với những cảnh quay dưới nước..."
+                          releaseYear: 2025
+                          price: 50000
+                          is_free: false
+                          price_display: "50,000 VNĐ"
+                          view_count: 89342
+                          favorite_count: 5234
+                          rating: 4.8
+                          total_ratings: 8934
+                          total_episodes: 1
+                          genres: ["Hành động", "Khoa học viễn tưởng", "Phiêu lưu"]
+                      pagination:
+                        current_page: 1
+                        total_pages: 5
+                        total_items: 89
+                        items_per_page: 20
+                        has_next: true
+                        has_prev: false
+                      search_info:
+                        keyword: "avatar"
+                        filters:
+                          genre: null
+                          movie_type: null
+                          is_free: null
+                          sort: "phobien"
+                advanced_search:
+                  summary: "Tìm kiếm nâng cao với filters"
+                  value:
+                    status: "success"
+                    data:
+                      movies:
+                        - movieId: "683fb76c88e880e019875acc"
+                          title: "Inception"
+                          poster: "https://example.com/inception.jpg"
+                          movieType: "Phim lẻ"
+                          producer: "Warner Bros"
+                          description: "Bộ phim khoa học viễn tưởng về giấc mơ và thực tại đan xen..."
+                          releaseYear: 2010
+                          price: 0
+                          is_free: true
+                          price_display: "Miễn phí"
+                          view_count: 234567
+                          favorite_count: 12345
+                          rating: 4.9
+                          total_ratings: 15678
+                          total_episodes: 1
+                          genres: ["Khoa học viễn tưởng", "Hành động"]
+                      pagination:
+                        current_page: 2
+                        total_pages: 3
+                        total_items: 42
+                        items_per_page: 20
+                        has_next: true
+                        has_prev: true
+                      search_info:
+                        keyword: "dream"
+                        filters:
+                          genre: "6847d080101e640d01a0c37f"
+                          movie_type: "Phim lẻ"
+                          is_free: "true"
+                          sort: "danhgia"
         "500":
           description: Lỗi server
           content:
@@ -2399,4 +2564,142 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    # === SEARCH SCHEMAS ===
+    SearchMovieResult:
+      type: object
+      description: "🔍 Schema phim tối ưu cho Search Results + FlatList"
+      properties:
+        movieId:
+          type: string
+          example: "683fb76c88e880e019875aca"
+          description: "ID của phim"
+        title:
+          type: string
+          example: "1000 Years Old"
+          description: "Tên phim"
+        poster:
+          type: string
+          nullable: true
+          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          description: "URL poster phim"
+        movieType:
+          type: string
+          enum: ["Phim bộ", "Phim lẻ", "Thể thao"]
+          example: "Phim bộ"
+          description: "Loại phim"
+        producer:
+          type: string
+          example: "WeTV Thailand"
+          description: "Nhà sản xuất"
+        description:
+          type: string
+          nullable: true
+          example: "Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian..."
+          description: "Mô tả ngắn phim (100 ký tự)"
+        releaseYear:
+          type: integer
+          nullable: true
+          example: 2024
+          description: "Năm phát hành"
+        price:
+          type: number
+          example: 0
+          description: "Giá phim (VNĐ)"
+        is_free:
+          type: boolean
+          example: true
+          description: "Phim miễn phí hay không"
+        price_display:
+          type: string
+          example: "Miễn phí"
+          description: "Hiển thị giá định dạng"
+        view_count:
+          type: integer
+          example: 15420
+          description: "Số lượt xem"
+        favorite_count:
+          type: integer
+          example: 892
+          description: "Số lượt yêu thích"
+        rating:
+          type: number
+          format: float
+          example: 4.6
+          description: "Đánh giá trung bình (0-5)"
+        total_ratings:
+          type: integer
+          example: 1250
+          description: "Tổng số đánh giá"
+        total_episodes:
+          type: integer
+          example: 12
+          description: "Tổng số tập"
+        genres:
+          type: array
+          items:
+            type: string
+          example: ["Tình cảm", "Drama"]
+          description: "Danh sách thể loại (tối đa 3)"
+
+    PaginationInfo:
+      type: object
+      description: "📄 Thông tin phân trang cho FlatList infinite scroll"
+      properties:
+        current_page:
+          type: integer
+          example: 1
+          description: "Trang hiện tại"
+        total_pages:
+          type: integer
+          example: 5
+          description: "Tổng số trang"
+        total_items:
+          type: integer
+          example: 89
+          description: "Tổng số phim"
+        items_per_page:
+          type: integer
+          example: 20
+          description: "Số phim mỗi trang"
+        has_next:
+          type: boolean
+          example: true
+          description: "Có trang tiếp theo không"
+        has_prev:
+          type: boolean
+          example: false
+          description: "Có trang trước không"
+
+    SearchInfo:
+      type: object
+      description: "🔍 Thông tin tìm kiếm và filter đã áp dụng"
+      properties:
+        keyword:
+          type: string
+          nullable: true
+          example: "avatar"
+          description: "Từ khóa tìm kiếm"
+        filters:
+          type: object
+          properties:
+            genre:
+              type: string
+              nullable: true
+              example: "6847d080101e640d01a0c37f"
+              description: "ID thể loại đã lọc"
+            movie_type:
+              type: string
+              nullable: true
+              example: "Phim lẻ"
+              description: "Loại phim đã lọc"
+            is_free:
+              type: string
+              nullable: true
+              example: "true"
+              description: "Filter miễn phí"
+            sort:
+              type: string
+              example: "phobien"
+              description: "Cách sắp xếp đã áp dụng"
 

@@ -563,99 +563,175 @@ const getMovieDetailWithInteractions = async (req, res) => {
     }
 };
 
-
-
+/**
+ * 🔍 API TÌM KIẾM PHIM NÂNG CAO
+ * 
+ * Mục đích: Tìm kiếm phim với nhiều tiêu chí và hỗ trợ pagination cho FlatList
+ * 
+ * Input Parameters:
+ * - tuKhoa: Từ khóa tìm kiếm (tìm trong title, producer, description, tags)
+ * - theLoai: ID thể loại để lọc
+ * - loaiPhim: Loại phim (Phim lẻ/Phim bộ/Thể thao)
+ * - mienphi: Lọc phim miễn phí (true/false)
+ * - sapXep: Cách sắp xếp (moi-nhat/cu-nhat/phobien/danhgia)
+ * - page: Trang hiện tại (pagination)
+ * - limit: Số phim mỗi trang
+ * 
+ * Output: Array phim + pagination info + search info
+ */
 const searchMovies = async (req, res) => {
   try {
+    // 📥 1. LẤY VÀ VALIDATE INPUT PARAMETERS
     const {
-      tuKhoa,     // Từ khóa tìm kiếm (tên phim, nhà sản xuất)
+      tuKhoa,     // Từ khóa tìm kiếm (tên phim, nhà sản xuất, mô tả)
       theLoai,    // ID thể loại (ObjectId)
-      loaiPhim,   // 'Phim lẻ', 'Phim bộ'
+      loaiPhim,   // 'Phim lẻ', 'Phim bộ', 'Thể thao'
       mienphi,    // true / false (string)
-      sapXep      // 'moi-nhat' / 'cu-nhat'
+      sapXep,     // 'moi-nhat' / 'cu-nhat' / 'phobien' / 'danhgia'
+      page = 1,   // Trang hiện tại (mặc định: 1)
+      limit = 20  // Số phim mỗi trang (mặc định: 20)
     } = req.query;
 
+    // 🔧 2. XÂY DỰNG ĐIỀU KIỆN TÌM KIẾM (MongoDB Query)
     const dieuKien = {};
 
-    // Tìm theo từ khóa
+    // 🔤 Tìm kiếm theo từ khóa - sử dụng $or để tìm trong nhiều field
     if (tuKhoa && tuKhoa.trim()) {
       dieuKien.$or = [
-        { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },
-        { producer: { $regex: tuKhoa.trim(), $options: 'i' } }
+        { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },    // Tìm trong tên phim
+        { producer: { $regex: tuKhoa.trim(), $options: 'i' } },       // Tìm trong nhà sản xuất
+        { description: { $regex: tuKhoa.trim(), $options: 'i' } },    // Tìm trong mô tả
+        { tags: { $regex: tuKhoa.trim(), $options: 'i' } }            // Tìm trong tags
       ];
+      // Regex với option 'i' = case insensitive (không phân biệt hoa thường)
     }
 
-    // Lọc theo thể loại
+    // 🎭 Lọc theo thể loại - kiểm tra ObjectId có tồn tại trong array genres
     if (theLoai) {
       dieuKien.genres = theLoai;
     }
 
-    // Lọc theo loại phim
+    // 🎬 Lọc theo loại phim - exact match
     if (loaiPhim) {
       dieuKien.movie_type = loaiPhim;
     }
 
-    // Lọc theo miễn phí
+    // 💰 Lọc theo miễn phí/trả phí - convert string thành boolean
     if (mienphi !== undefined) {
       dieuKien.is_free = mienphi === 'true';
     }
 
-    // Khởi tạo truy vấn
-    let query = Movie.find(dieuKien)
-      .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres')
-      .populate('genres', 'name');
+    // 📊 3. TÍNH TOÁN PAGINATION
+    const pageNum = parseInt(page) || 1;        // Đảm bảo page là số, mặc định 1
+    const limitNum = parseInt(limit) || 20;     // Đảm bảo limit là số, mặc định 20
+    const skip = (pageNum - 1) * limitNum;      // Tính số record cần bỏ qua
 
-    // Sắp xếp
+    // 🔢 Đếm tổng số phim thỏa mãn điều kiện (cho pagination)
+    const totalMovies = await Movie.countDocuments(dieuKien);
+    const totalPages = Math.ceil(totalMovies / limitNum);
+
+    // 🔍 4. XÂY DỰNG QUERY VỚI PAGINATION
+    let query = Movie.find(dieuKien)
+      .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres view_count favorite_count')
+      .populate('genres', 'genre_name description')  // Join với Genre collection
+      .skip(skip)       // Bỏ qua N record đầu
+      .limit(limitNum); // Lấy tối đa limitNum record
+
+    // ⬆️⬇️ 5. ÁP DỤNG SẮP XẾP THEO YÊU CẦU
     if (sapXep === 'moi-nhat') {
-      query = query.sort({ production_time: -1 });
+      query = query.sort({ production_time: -1 });                    // Ngày sản xuất mới nhất
     } else if (sapXep === 'cu-nhat') {
-      query = query.sort({ production_time: 1 });
+      query = query.sort({ production_time: 1 });                     // Ngày sản xuất cũ nhất
+    } else if (sapXep === 'phobien') {
+      query = query.sort({ view_count: -1 });                         // Lượt xem cao nhất
+    } else if (sapXep === 'danhgia') {
+      query = query.sort({ favorite_count: -1, view_count: -1 });     // Yêu thích + lượt xem
+    } else {
+      query = query.sort({ createdAt: -1 });                          // Mặc định: tạo mới nhất
     }
 
+    // 🚀 6. THỰC THI QUERY VÀ LẤY DỮ LIỆU
     const movies = await query.exec();
 
-    // Xử lý chi tiết tập phim
-    const moviesWithDetails = await Promise.all(
+    // 🎨 7. PROCESSING DATA - Format cho Frontend FlatList
+    const moviesWithStats = await Promise.all(
       movies.map(async (movie) => {
+        // 📺 Lấy thông tin tập phim
         const episodes = await Episode.find({ movie_id: movie._id })
-          .select('episode_title uri episode_number episode_description')
+          .select('episode_title episode_number')
           .sort({ episode_number: 1 });
 
-        const movieObj = movie.toObject();
-
-        if (episodes.length > 1) {
-          movieObj.movie_type = 'Phim bộ';
-          movieObj.episodes = episodes.map((ep) => ({
-            episode_title: ep.episode_title,
-            episode_number: ep.episode_number,
-            uri: movieObj.is_free ? ep.uri : null
-          }));
-          movieObj.total_episodes = episodes.length;
-        } else if (episodes.length === 1) {
-          movieObj.movie_type = 'Phim lẻ';
-          movieObj.uri = movieObj.is_free ? episodes[0].uri : null;
-          movieObj.episode_description = episodes[0].episode_description;
-        }
-
-        // Trả về ảnh poster chính xác (nếu có)
-        movieObj.poster = movie.poster_path || null;
-
-        return movieObj;
+        // ⭐ Tính toán rating từ Rating collection
+        const ratingData = await calculateMovieRating(movie._id);
+        
+        // 📦 Format dữ liệu theo SearchMovieResult schema - tối ưu cho FlatList
+        return {
+          // 🆔 Thông tin cơ bản
+          movieId: movie._id,
+          title: movie.movie_title,
+          poster: movie.poster_path || null,
+          movieType: movie.movie_type,
+          producer: movie.producer,
+          
+          // 📝 Thông tin mô tả (rút gọn cho UI)
+          description: movie.description ? movie.description.substring(0, 100) + '...' : null,
+          releaseYear: movie.production_time ? new Date(movie.production_time).getFullYear() : null,
+          
+          // 💵 Thông tin giá cả
+          price: movie.price,
+          is_free: movie.is_free,
+          price_display: movie.is_free ? 'Miễn phí' : `${movie.price.toLocaleString('vi-VN')} VNĐ`,
+          
+          // 📈 Thống kê engagement
+          view_count: movie.view_count || 0,
+          favorite_count: movie.favorite_count || 0,
+          rating: ratingData.rating || 0,
+          total_ratings: ratingData.totalRatings || 0,
+          
+          // 🎬 Thông tin tập phim
+          total_episodes: episodes.length,
+          
+          // 🏷️ Thể loại (giới hạn 3 để UI không quá dài)
+          genres: movie.genres ? movie.genres.slice(0, 3).map(g => g.genre_name) : []
+        };
       })
     );
 
+    // 📤 8. TRẢ VỀ KẾT QUẢ VỚI ĐẦY ĐỦ THÔNG TIN
     res.json({
       status: 'success',
       data: {
-        movies: moviesWithDetails,
-        total: moviesWithDetails.length
+        // 🎬 Danh sách phim đã format
+        movies: moviesWithStats,
+        
+        // 📄 Thông tin phân trang (cho infinite scroll)
+        pagination: {
+          current_page: pageNum,
+          total_pages: totalPages,
+          total_items: totalMovies,
+          items_per_page: limitNum,
+          has_next: pageNum < totalPages,    // Còn trang tiếp theo không?
+          has_prev: pageNum > 1              // Có trang trước không?
+        },
+        
+        // 🔍 Thông tin tìm kiếm đã áp dụng (để frontend track)
+        search_info: {
+          keyword: tuKhoa || null,
+          filters: {
+            genre: theLoai || null,
+            movie_type: loaiPhim || null,
+            is_free: mienphi || null,
+            sort: sapXep || 'moi-nhat'
+          }
+        }
       }
     });
   } catch (err) {
+    // 🚨 XỬ LÝ LỖI VÀ LOGGING
     console.error('Lỗi khi tìm kiếm phim:', err);
     res.status(500).json({
       status: 'error',
-      message: 'Lỗi server',
+      message: 'Lỗi server khi tìm kiếm',
       error: err.message
     });
   }
