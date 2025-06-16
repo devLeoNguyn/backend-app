@@ -564,16 +564,12 @@ const getMovieDetailWithInteractions = async (req, res) => {
 };
 
 /**
- * 🔍 API TÌM KIẾM PHIM NÂNG CAO
+ * 🔍 API TÌM KIẾM PHIM ĐƠN GIẢN
  * 
- * Mục đích: Tìm kiếm phim với nhiều tiêu chí và hỗ trợ pagination cho FlatList
+ * Mục đích: Tìm kiếm phim theo tên và mô tả với pagination cho FlatList
  * 
  * Input Parameters:
- * - tuKhoa: Từ khóa tìm kiếm (tìm trong title, producer, description, tags)
- * - theLoai: ID thể loại để lọc
- * - loaiPhim: Loại phim (Phim lẻ/Phim bộ/Thể thao)
- * - mienphi: Lọc phim miễn phí (true/false)
- * - sapXep: Cách sắp xếp (moi-nhat/cu-nhat/phobien/danhgia)
+ * - tuKhoa: Từ khóa tìm kiếm (chỉ tìm trong title và description)
  * - page: Trang hiện tại (pagination)
  * - limit: Số phim mỗi trang
  * 
@@ -583,42 +579,21 @@ const searchMovies = async (req, res) => {
   try {
     // 📥 1. LẤY VÀ VALIDATE INPUT PARAMETERS
     const {
-      tuKhoa,     // Từ khóa tìm kiếm (tên phim, nhà sản xuất, mô tả)
-      theLoai,    // ID thể loại (ObjectId)
-      loaiPhim,   // 'Phim lẻ', 'Phim bộ', 'Thể thao'
-      mienphi,    // true / false (string)
-      sapXep,     // 'moi-nhat' / 'cu-nhat' / 'phobien' / 'danhgia'
+      tuKhoa,     // Từ khóa tìm kiếm (chỉ tên phim và mô tả)
       page = 1,   // Trang hiện tại (mặc định: 1)
       limit = 20  // Số phim mỗi trang (mặc định: 20)
     } = req.query;
 
-    // 🔧 2. XÂY DỰNG ĐIỀU KIỆN TÌM KIẾM (MongoDB Query)
+    // 🔧 2. XÂY DỰNG ĐIỀU KIỆN TÌM KIẾM ĐƠN GIẢN (MongoDB Query)
     const dieuKien = {};
 
-    // 🔤 Tìm kiếm theo từ khóa - sử dụng $or để tìm trong nhiều field
+    // 🔤 Tìm kiếm theo từ khóa - CHỈ trong title và description
     if (tuKhoa && tuKhoa.trim()) {
       dieuKien.$or = [
         { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },    // Tìm trong tên phim
-        { producer: { $regex: tuKhoa.trim(), $options: 'i' } },       // Tìm trong nhà sản xuất
-        { description: { $regex: tuKhoa.trim(), $options: 'i' } },    // Tìm trong mô tả
-        { tags: { $regex: tuKhoa.trim(), $options: 'i' } }            // Tìm trong tags
+        { description: { $regex: tuKhoa.trim(), $options: 'i' } }     // Tìm trong mô tả
       ];
       // Regex với option 'i' = case insensitive (không phân biệt hoa thường)
-    }
-
-    // 🎭 Lọc theo thể loại - kiểm tra ObjectId có tồn tại trong array genres
-    if (theLoai) {
-      dieuKien.genres = theLoai;
-    }
-
-    // 🎬 Lọc theo loại phim - exact match
-    if (loaiPhim) {
-      dieuKien.movie_type = loaiPhim;
-    }
-
-    // 💰 Lọc theo miễn phí/trả phí - convert string thành boolean
-    if (mienphi !== undefined) {
-      dieuKien.is_free = mienphi === 'true';
     }
 
     // 📊 3. TÍNH TOÁN PAGINATION
@@ -635,25 +610,13 @@ const searchMovies = async (req, res) => {
       .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres view_count favorite_count')
       .populate('genres', 'genre_name description')  // Join với Genre collection
       .skip(skip)       // Bỏ qua N record đầu
-      .limit(limitNum); // Lấy tối đa limitNum record
+      .limit(limitNum)  // Lấy tối đa limitNum record
+      .sort({ createdAt: -1 }); // Mặc định: sắp xếp theo ngày tạo mới nhất
 
-    // ⬆️⬇️ 5. ÁP DỤNG SẮP XẾP THEO YÊU CẦU
-    if (sapXep === 'moi-nhat') {
-      query = query.sort({ production_time: -1 });                    // Ngày sản xuất mới nhất
-    } else if (sapXep === 'cu-nhat') {
-      query = query.sort({ production_time: 1 });                     // Ngày sản xuất cũ nhất
-    } else if (sapXep === 'phobien') {
-      query = query.sort({ view_count: -1 });                         // Lượt xem cao nhất
-    } else if (sapXep === 'danhgia') {
-      query = query.sort({ favorite_count: -1, view_count: -1 });     // Yêu thích + lượt xem
-    } else {
-      query = query.sort({ createdAt: -1 });                          // Mặc định: tạo mới nhất
-    }
-
-    // 🚀 6. THỰC THI QUERY VÀ LẤY DỮ LIỆU
+    // 🚀 5. THỰC THI QUERY VÀ LẤY DỮ LIỆU
     const movies = await query.exec();
 
-    // 🎨 7. PROCESSING DATA - Format cho Frontend FlatList
+    // 🎨 6. PROCESSING DATA - Format cho Frontend FlatList
     const moviesWithStats = await Promise.all(
       movies.map(async (movie) => {
         // 📺 Lấy thông tin tập phim
@@ -664,7 +627,7 @@ const searchMovies = async (req, res) => {
         // ⭐ Tính toán rating từ Rating collection
         const ratingData = await calculateMovieRating(movie._id);
         
-        // 📦 Format dữ liệu theo SearchMovieResult schema - tối ưu cho FlatList
+        // 📦 Format dữ liệu đơn giản - tối ưu cho FlatList
         return {
           // 🆔 Thông tin cơ bản
           movieId: movie._id,
@@ -697,7 +660,7 @@ const searchMovies = async (req, res) => {
       })
     );
 
-    // 📤 8. TRẢ VỀ KẾT QUẢ VỚI ĐẦY ĐỦ THÔNG TIN
+    // 📤 7. TRẢ VỀ KẾT QUẢ ĐƠN GIẢN
     res.json({
       status: 'success',
       data: {
@@ -717,12 +680,8 @@ const searchMovies = async (req, res) => {
         // 🔍 Thông tin tìm kiếm đã áp dụng (để frontend track)
         search_info: {
           keyword: tuKhoa || null,
-          filters: {
-            genre: theLoai || null,
-            movie_type: loaiPhim || null,
-            is_free: mienphi || null,
-            sort: sapXep || 'moi-nhat'
-          }
+          search_in: ['movie_title', 'description'], // Chỉ tìm trong 2 field này
+          total_found: totalMovies
         }
       }
     });

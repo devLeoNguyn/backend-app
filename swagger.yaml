@@ -63,6 +63,8 @@ tags:
     description: Các API liên quan đến thể loại phim (/api/genres)
   - name: Home
     description: Các API trang chủ (/api/home) - Banner, phim mới, đề xuất
+  - name: Series
+    description: Các API cho phim bộ/series (/api/series) - Banner, trending, phân loại theo quốc gia
 
 paths:
   # === FLOW MỚI: 1 MÀN HÌNH DUY NHẤT ===
@@ -1043,6 +1045,473 @@ paths:
                 status: "error"
                 message: "Lỗi khi lấy phim sắp chiếu"
 
+  # === SERIES/PHIM BỘ APIs ===
+  /api/series/banner-series:
+    get:
+      tags:
+        - Series
+      summary: 🎬 API Banner và phim bộ đề xuất cho màn hình Series
+      description: |
+        **🎯 API CHUYÊN DÀNH CHO MÀN HÌNH PHIM BỘ**
+
+        **📺 Trả về 2 sections:**
+        - ✅ **Banner:** Phim bộ mới ra mắt (slider/banner)
+        - ✅ **Grid:** Phim bộ đề xuất dành cho bạn
+
+        **🔧 Đặc điểm:**
+        - Chỉ lấy phim có `movie_type = "Phim bộ"`
+        - Filter theo `release_status = "released"`
+        - Sắp xếp theo ngày tạo mới nhất
+        - Tự động format cho frontend FlatList/Grid
+
+        **📱 Frontend Usage:**
+        ```javascript
+        // Lấy banner + grid cho màn hình phim bộ
+        fetch('/api/series/banner-series')
+        
+        // Với custom parameters
+        fetch('/api/series/banner-series?bannerLimit=3&limit=8&days=15')
+        ```
+
+        **🔓 Public API** (không cần đăng nhập)
+      parameters:
+        - name: bannerLimit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            minimum: 1
+            maximum: 10
+          description: |
+            **🎬 SỐ PHIM TRONG BANNER (Tùy chọn)**
+            
+            Số lượng phim bộ hiển thị trong banner slider
+            - Mặc định: `5` phim ⭐ **Khuyên dùng**
+            - Tối đa: `10` phim
+          example: 5
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 6
+            minimum: 1
+            maximum: 20
+          description: |
+            **📊 SỐ PHIM TRONG GRID (Tùy chọn)**
+            
+            Số lượng phim bộ trong section "Phim bộ dành cho bạn"
+            - Mặc định: `6` phim ⭐ **Khuyên dùng**
+            - Tối đa: `20` phim
+          example: 6
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+          description: |
+            **📅 LỌOC PHIM BỘ MỚI (Tùy chọn)**
+            
+            Lấy phim bộ mới trong X ngày gần đây
+            - Mặc định: `30` ngày ⭐ **Khuyên dùng**
+            - Tối đa: `365` ngày
+          example: 30
+      responses:
+        "200":
+          description: ✅ Lấy banner và phim bộ đề xuất thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      banner:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            example: "Phim bộ mới ra mắt"
+                          type:
+                            type: string
+                            example: "banner_list"
+                          movies:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/BannerMovie"
+                      recommended:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            example: "Phim bộ dành cho bạn"
+                          type:
+                            type: string
+                            example: "grid"
+                          movies:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GridMovie"
+              example:
+                status: "success"
+                data:
+                  banner:
+                    title: "Phim bộ mới ra mắt"
+                    type: "banner_list"
+                    movies:
+                      - movieId: "683fb76c88e880e019875aca"
+                        title: "1000 Years Old"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        description: "Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian..."
+                        releaseYear: 2024
+                        movieType: "Phim bộ"
+                        producer: "WeTV Thailand"
+                        genres: ["Tình cảm", "Drama"]
+                  recommended:
+                    title: "Phim bộ dành cho bạn"
+                    type: "grid"
+                    movies:
+                      - movieId: "683fb76c88e880e019875aca"
+                        title: "1000 Years Old"
+                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        movieType: "Phim bộ"
+                        producer: "WeTV Thailand"
+        "500":
+          description: ❌ Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Lỗi khi lấy banner phim bộ"
+
+  /api/series/trending:
+    get:
+      tags:
+        - Series
+      summary: 🔥 API Phim bộ đang thịnh hành
+      description: |
+        **🎯 API PHIM BỘ HOT NHẤT**
+
+        **🔥 Đặc điểm:**
+        - Chỉ lấy phim có `movie_type = "Phim bộ"`
+        - Sắp xếp theo lượt xem (view_count) cao nhất
+        - Hỗ trợ xem tất cả với `showAll=true`
+        - Tự động tính toán rating và stats
+
+        **📱 Frontend Usage:**
+        ```javascript
+        // Lấy 8 phim bộ hot nhất
+        fetch('/api/series/trending')
+        
+        // Xem tất cả phim bộ thịnh hành
+        fetch('/api/series/trending?showAll=true')
+        ```
+
+        **🔓 Public API** (không cần đăng nhập)
+      parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: |
+            **👀 XEM TẤT CẢ (Tùy chọn)**
+            
+            - `true`: Xem tất cả phim bộ thịnh hành (pagination)
+            - `false` hoặc không truyền: Chỉ 8 phim top
+            
+            💡 **Tip:** Dùng cho trang "Xem tất cả"
+          example: "false"
+      responses:
+        "200":
+          description: ✅ Lấy phim bộ thịnh hành thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                        example: "Phim bộ đang thịnh hành"
+                      type:
+                        type: string
+                        example: "grid"
+                      showAll:
+                        type: boolean
+                        example: false
+                      total:
+                        type: integer
+                        example: 8
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+              examples:
+                default_view:
+                  summary: "Xem mặc định (8 phim bộ top)"
+                  value:
+                    status: "success"
+                    data:
+                      title: "Phim bộ đang thịnh hành"
+                      type: "grid"
+                      showAll: false
+                      total: 8
+                      movies:
+                        - movieId: "683fb76c88e880e019875aca"
+                          title: "1000 Years Old"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          movieType: "Phim bộ"
+                          producer: "WeTV Thailand"
+                show_all_view:
+                  summary: "Xem tất cả phim bộ thịnh hành"
+                  value:
+                    status: "success"
+                    data:
+                      title: "Tất cả phim bộ thịnh hành"
+                      type: "grid"
+                      showAll: true
+                      total: 45
+                      movies:
+                        - movieId: "683fb76c88e880e019875aca"
+                          title: "1000 Years Old"
+                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          movieType: "Phim bộ"
+                          producer: "WeTV Thailand"
+
+  /api/series/vietnamese:
+    get:
+      tags:
+        - Series
+      summary: 🇻🇳 API Phim bộ Việt Nam
+      description: |
+        **🎯 API PHIM BỘ VIỆT NAM ĐẶC SẮC**
+
+        **🇻🇳 Đặc điểm:**
+        - Chỉ lấy phim có `movie_type = "Phim bộ"`
+        - Filter producer chứa "Việt Nam" hoặc "Vietnam"
+        - Sắp xếp theo đánh giá và lượt xem
+        - Hỗ trợ xem tất cả với `showAll=true`
+
+        **📱 Frontend Usage:**
+        ```javascript
+        // Lấy 8 phim bộ Việt hot nhất
+        fetch('/api/series/vietnamese')
+        
+        // Xem tất cả phim bộ Việt
+        fetch('/api/series/vietnamese?showAll=true')
+        ```
+
+        **🔓 Public API** (không cần đăng nhập)
+      parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: |
+            **👀 XEM TẤT CẢ PHIM BỘ VIỆT (Tùy chọn)**
+            
+            - `true`: Xem tất cả phim bộ Việt Nam
+            - `false` hoặc không truyền: Chỉ 8 phim top
+          example: "false"
+      responses:
+        "200":
+          description: ✅ Lấy phim bộ Việt Nam thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                        example: "Phim bộ Việt đặc sắc"
+                      type:
+                        type: string
+                        example: "grid"
+                      showAll:
+                        type: boolean
+                        example: false
+                      total:
+                        type: integer
+                        example: 8
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+
+  /api/series/anime:
+    get:
+      tags:
+        - Series
+      summary: 🎌 API Phim bộ Anime/Hoạt hình
+      description: |
+        **🎯 API ANIME SERIES HOT**
+
+        **🎌 Đặc điểm:**
+        - Chỉ lấy phim có `movie_type = "Phim bộ"`
+        - Filter theo thể loại "Hoạt hình" hoặc producer anime
+        - Sắp xếp theo popularity và rating
+        - Hỗ trợ xem tất cả với `showAll=true`
+
+        **📱 Frontend Usage:**
+        ```javascript
+        // Lấy 8 anime series hot nhất
+        fetch('/api/series/anime')
+        
+        // Xem tất cả anime series
+        fetch('/api/series/anime?showAll=true')
+        ```
+
+        **🔓 Public API** (không cần đăng nhập)
+      parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: |
+            **👀 XEM TẤT CẢ ANIME SERIES (Tùy chọn)**
+            
+            - `true`: Xem tất cả anime/hoạt hình bộ
+            - `false` hoặc không truyền: Chỉ 8 series top
+          example: "false"
+      responses:
+        "200":
+          description: ✅ Lấy anime series thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                        example: "Anime series hot"
+                      type:
+                        type: string
+                        example: "grid"
+                      showAll:
+                        type: boolean
+                        example: false
+                      total:
+                        type: integer
+                        example: 8
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+
+  /api/series/korean:
+    get:
+      tags:
+        - Series
+      summary: 🇰🇷 API Phim bộ Hàn Quốc (K-Drama)
+      description: |
+        **🎯 API K-DRAMA HOT NHẤT**
+
+        **🇰🇷 Đặc điểm:**
+        - Chỉ lấy phim có `movie_type = "Phim bộ"`
+        - Filter producer chứa "Hàn Quốc", "Korea", "KBS", "SBS", "MBC"
+        - Sắp xếp theo popularity và rating
+        - Hỗ trợ xem tất cả với `showAll=true`
+
+        **📱 Frontend Usage:**
+        ```javascript
+        // Lấy 8 K-drama hot nhất
+        fetch('/api/series/korean')
+        
+        // Xem tất cả K-drama
+        fetch('/api/series/korean?showAll=true')
+        ```
+
+        **🔓 Public API** (không cần đăng nhập)
+      parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: |
+            **👀 XEM TẤT CẢ K-DRAMA (Tùy chọn)**
+            
+            - `true`: Xem tất cả phim bộ Hàn Quốc
+            - `false` hoặc không truyền: Chỉ 8 phim top
+          example: "false"
+      responses:
+        "200":
+          description: ✅ Lấy K-drama thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                        example: "K-Drama hot nhất"
+                      type:
+                        type: string
+                        example: "grid"
+                      showAll:
+                        type: boolean
+                        example: false
+                      total:
+                        type: integer
+                        example: 8
+                      movies:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/GridMovie"
+              example:
+                status: "success"
+                data:
+                  title: "K-Drama hot nhất"
+                  type: "grid"
+                  showAll: false
+                  total: 8
+                  movies:
+                    - movieId: "683fb123456789abcdef1234"
+                      title: "Hometown's Embrace"
+                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/korean/hometown-embrace.jpg"
+                      movieType: "Phim bộ"
+                      producer: "KBS Drama"
+
   # === MOVIE DETAIL API ===
   /api/movies/{id}/detail-with-interactions:
     get:
@@ -1740,45 +2209,43 @@ paths:
     get:
       tags:
         - Movie
-      summary: 🔍 Tìm kiếm phim (đơn giản và nâng cao)
+      summary: 🔍 Tìm kiếm phim đơn giản theo tên và mô tả
       description: |
-        **🎯 API TÌM KIẾM PHIM - ĐƠN GIẢN VÀ HIỆU QUẢ**
+        **🎯 API TÌM KIẾM PHIM ĐƠN GIẢN**
 
         **📚 CÁCH DÙNG ĐỚN GIẢN NHẤT:**
         ```javascript
         // 1. Tìm tất cả phim (không cần tham số)
         GET /api/movies/search
         
-        // 2. Tìm theo từ khóa
+        // 2. Tìm theo từ khóa trong tên và mô tả
         GET /api/movies/search?tuKhoa=avatar
         
         // 3. Lấy thêm phim (pagination)
-        GET /api/movies/search?page=2
+        GET /api/movies/search?page=2&limit=20
         ```
 
-        **🔧 TÍNH NĂNG NÂNG CAO:**
-        - ✅ **Tìm kiếm mở rộng:** tên phim, nhà sản xuất, mô tả, tags
-        - ✅ **Lọc thông minh:** thể loại, loại phim, miễn phí/trả phí  
-        - ✅ **Sắp xếp linh hoạt:** mới nhất, phổ biến, đánh giá cao
+        **🔧 TÍNH NĂNG:**
+        - ✅ **Tìm kiếm đơn giản:** CHỈ trong tên phim và mô tả
         - ✅ **Pagination tự động:** hỗ trợ infinite scroll
         - ✅ **Response tối ưu:** poster, stats, pricing info
+        - ✅ **Sắp xếp mặc định:** theo ngày tạo mới nhất
 
         **📱 FRONTEND EXAMPLES:**
         ```javascript
         // Tìm kiếm cơ bản
         fetch('/api/movies/search?tuKhoa=batman')
         
-        // Tìm kiếm nâng cao với filter
-        fetch('/api/movies/search?tuKhoa=avatar&theLoai=action&sapXep=phobien')
-        
         // Load more cho FlatList
         fetch('/api/movies/search?tuKhoa=batman&page=2&limit=20')
+        
+        // Lấy tất cả phim
+        fetch('/api/movies/search?page=1&limit=20')
         ```
 
         **🎯 PERFECT FOR:**
         - Search screens với FlatList/Grid
-        - Category/Genre pages  
-        - Home page movie lists
+        - Simple movie search
         - Infinite scroll implementation
 
         **🔓 Public API** (không cần đăng nhập)
@@ -1791,66 +2258,12 @@ paths:
           description: |
             **🔤 TỪ KHÓA TÌM KIẾM (Tùy chọn)**
             
-            Tìm kiếm thông minh trong:
+            Tìm kiếm đơn giản chỉ trong:
             - 🎬 Tên phim 
-            - 🏭 Nhà sản xuất
             - 📝 Mô tả phim
-            - 🏷️ Tags phim
             
             💡 **Tips:** Không phân biệt hoa thường, có thể tìm tiếng Việt có dấu
           example: "batman"
-        - name: theLoai
-          in: query
-          required: false
-          schema:
-            type: string
-          description: |
-            **🎭 LỌC THEO THỂ LOẠI (Tùy chọn)**
-            
-            ID thể loại để lọc phim
-            💡 **Lấy từ:** `/api/genres` để có danh sách ID
-          example: "6847d080101e640d01a0c37f"
-        - name: loaiPhim
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: ["Phim lẻ", "Phim bộ", "Thể thao"]
-          description: |
-            **🎬 LỌC THEO LOẠI PHIM (Tùy chọn)**
-            
-            Chọn loại phim muốn xem:
-            - `Phim lẻ`: Phim một tập duy nhất
-            - `Phim bộ`: Phim nhiều tập 
-            - `Thể thao`: Sự kiện thể thao
-          example: "Phim lẻ"
-        - name: mienphi
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: ["true", "false"]
-          description: |
-            **💰 LỌC THEO GIÁ (Tùy chọn)**
-            
-            - `true`: Chỉ phim miễn phí
-            - `false`: Chỉ phim trả phí
-            - Không truyền: Tất cả phim
-          example: "true"
-        - name: sapXep
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: ["moi-nhat", "cu-nhat", "phobien", "danhgia"]
-          description: |
-            **⬆️⬇️ CÁCH SẮP XẾP (Tùy chọn)**
-            
-            - `moi-nhat`: Phim mới phát hành trước ⭐ **Khuyên dùng**
-            - `phobien`: Phim được xem nhiều nhất 🔥 **Hot**
-            - `danhgia`: Phim đánh giá cao nhất ⭐
-            - `cu-nhat`: Phim cũ nhất
-          example: "phobien"
         - name: page
           in: query
           required: false
@@ -1952,13 +2365,10 @@ paths:
                         has_prev: false
                       search_info:
                         keyword: "avatar"
-                        filters:
-                          genre: null
-                          movie_type: null
-                          is_free: null
-                          sort: "phobien"
-                advanced_search:
-                  summary: "Tìm kiếm nâng cao với filters"
+                        search_in: ["movie_title", "description"]
+                        total_found: 89
+                simple_search:
+                  summary: "Tìm kiếm đơn giản"
                   value:
                     status: "success"
                     data:
@@ -1988,11 +2398,8 @@ paths:
                         has_prev: true
                       search_info:
                         keyword: "dream"
-                        filters:
-                          genre: "6847d080101e640d01a0c37f"
-                          movie_type: "Phim lẻ"
-                          is_free: "true"
-                          sort: "danhgia"
+                        search_in: ["movie_title", "description"]
+                        total_found: 42
         "500":
           description: Lỗi server
           content:
