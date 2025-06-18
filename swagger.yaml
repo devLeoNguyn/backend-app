@@ -22,9 +22,10 @@ info:
     3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`
     4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ
 
-    **📁 AWS S3 CONFIGURATION:**
-    - **Bucket:** locdev-bucket (ap-southeast-1)
-    - **Avatar path:** assets/avatar-users/{uuid}.{extension}
+    **📁 CLOUDFLARE IMAGES CONFIGURATION:**
+          - **Account ID:** 8396e0173865666f8dae8dd32565efca
+      - **Avatar variant:** 150x150px optimized
+      - **Image delivery:** Global CDN with auto WebP conversion
     - **Supported formats:** JPEG, PNG, GIF
     - **Max file size:** 2MB
     - **Auto cleanup:** Old avatars deleted when uploading new ones
@@ -330,11 +331,11 @@ paths:
         - User
       summary: 🔄 Cập nhật profile (với upload avatar)
       description: |
-        **🔄 API ĐÃ CẬP NHẬT:** Hỗ trợ upload avatar trực tiếp lên AWS S3 + cập nhật thông tin profile.
+        **🔄 API ĐÃ CẬP NHẬT:** Hỗ trợ upload avatar trực tiếp lên Cloudflare Images + cập nhật thông tin profile.
 
         **📋 TÍNH NĂNG:**
         - ✅ Cập nhật họ tên, giới tính
-        - ✅ Upload avatar lên AWS S3 (auto delete avatar cũ)
+                  - ✅ Upload avatar lên Cloudflare Images (auto delete avatar cũ)
         - ✅ Validation file ảnh (JPEG, PNG, GIF, max 2MB)
         - ✅ Unified API: có thể update chỉ text hoặc chỉ avatar hoặc cả hai
 
@@ -416,7 +417,7 @@ paths:
                         email: "datthien@gmail.com"
                         phone: "0288348192"
                         gender: "male"
-                        avatar: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/avatar-users/old-avatar.jpg"
+                        avatar: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/old-avatar/avatar"
                         is_phone_verified: true
                 avatar_upload_success:
                   summary: "Upload avatar + cập nhật text thành công"
@@ -431,7 +432,7 @@ paths:
                         email: "datthien@gmail.com"
                         phone: "0288348192"
                         gender: "male"
-                        avatar: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/avatar-users/32c5a14e-3fa0-497a-b036-32de0cdc842a.jpg"
+                        avatar: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/32c5a14e-3fa0-497a-b036-32de0cdc842a/avatar"
                         is_phone_verified: true
         "400":
           description: ❌ Lỗi validation hoặc file
@@ -939,17 +940,17 @@ paths:
                   movies:
                     - movieId: "683fb55d88e880e019875aa7"
                       title: "Mình Yêu Nhau, Bình Yên Thôi"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/minh-yeu-nhau-binh-yen-thoi.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/minh-yeu-nhau-binh-yen-thoi/medium"
                       movieType: "Phim bộ"
                       producer: "SK Pictures, VTV3"
                     - movieId: "683e6774602b36157f1c7b18"
                       title: "Gặp Lại Chị Bầu"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hai/gap-lai-chi-bau-500_1707203931098.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/gap-lai-chi-bau-500/medium"
                       movieType: "Phim lẻ"
                       producer: "CJ Entertainment Vietnam"
                     - movieId: "683fb6e188e880e019875ac3"
                       title: "Ngày Xưa Có Một Chuyện Tình"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/ngay-xua-co-cau-chuyen-tinh.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/ngay-xua-co-cau-chuyen-tinh/medium"
                       movieType: "Phim lẻ"
                       producer: "HK Film, Hãng phim Anh Tễu"
         "500":
@@ -1027,12 +1028,12 @@ paths:
                   movies:
                     - movieId: "683fb76c88e880e019875acb"
                       title: "Avatar: The Way of Water 2"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hanh-dong/avatar-way-of-water-2.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/avatar-way-of-water-2/medium"
                       movieType: "Phim lẻ"
                       producer: "20th Century Studios"
                     - movieId: "683e922d88e880e019875a1f"
                       title: "World Cup 2026 Final"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/sports/world-cup-2026.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/world-cup-2026/medium"
                       movieType: "Thể thao"
                       producer: "FIFA"
         "500":
@@ -1169,7 +1170,7 @@ paths:
                     movies:
                       - movieId: "683fb76c88e880e019875aca"
                         title: "1000 Years Old"
-                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
                         description: "Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian..."
                         releaseYear: 2024
                         movieType: "Phim bộ"
@@ -1181,7 +1182,7 @@ paths:
                     movies:
                       - movieId: "683fb76c88e880e019875aca"
                         title: "1000 Years Old"
-                        poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                        poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
                         movieType: "Phim bộ"
                         producer: "WeTV Thailand"
         "500":
@@ -1276,7 +1277,7 @@ paths:
                       movies:
                         - movieId: "683fb76c88e880e019875aca"
                           title: "1000 Years Old"
-                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
                           movieType: "Phim bộ"
                           producer: "WeTV Thailand"
                 show_all_view:
@@ -1291,7 +1292,7 @@ paths:
                       movies:
                         - movieId: "683fb76c88e880e019875aca"
                           title: "1000 Years Old"
-                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
                           movieType: "Phim bộ"
                           producer: "WeTV Thailand"
 
@@ -1508,7 +1509,7 @@ paths:
                   movies:
                     - movieId: "683fb123456789abcdef1234"
                       title: "Hometown's Embrace"
-                      poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/korean/hometown-embrace.jpg"
+                      poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/hometown-embrace/medium"
                       movieType: "Phim bộ"
                       producer: "KBS Drama"
 
@@ -2326,7 +2327,7 @@ paths:
                       movies:
                         - movieId: "683fb76c88e880e019875aca"
                           title: "1000 Years Old"
-                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+                          poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
                           movieType: "Phim bộ"
                           producer: "WeTV Thailand"
                           description: "Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian..."
@@ -2342,7 +2343,7 @@ paths:
                           genres: ["Tình cảm", "Drama"]
                         - movieId: "683fb76c88e880e019875acb"
                           title: "Avatar: The Way of Water 2"
-                          poster: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/hanh-dong/avatar-way-of-water-2.jpg"
+                          poster: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/avatar-way-of-water-2/medium"
                           movieType: "Phim lẻ"
                           producer: "20th Century Studios"
                           description: "Phần tiếp theo đầy màu sắc của bom tấn Avatar với những cảnh quay dưới nước..."
@@ -2599,7 +2600,7 @@ components:
           description: Tên phim
         poster:
           type: string
-          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          example: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
           description: URL poster phim
         description:
           type: string
@@ -2720,7 +2721,7 @@ components:
           description: Tên phim
         poster:
           type: string
-          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          example: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
           description: URL poster phim
         movieType:
           type: string
@@ -2988,7 +2989,7 @@ components:
         poster:
           type: string
           nullable: true
-          example: "https://locdev-bucket.s3.ap-southeast-1.amazonaws.com/assets/tinh-cam/phimbo-1000-years-old.jpg"
+          example: "https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium"
           description: "URL poster phim"
         movieType:
           type: string
@@ -3109,4 +3110,1146 @@ components:
               type: string
               example: "phobien"
               description: "Cách sắp xếp đã áp dụng"
+
+  # === VIDEO STREAMING PATHS ===
+  /api/video-url/{videoId}:
+    get:
+      tags:
+        - Video Streaming
+      summary: 🎬 Get Cloudflare Stream URL
+      description: |
+        **🎬 CLOUDFLARE STREAM:** Lấy URL phát video từ Cloudflare Stream
+
+        **✨ TÍNH NĂNG:**
+        - ✅ Hỗ trợ cả Episode ID và Movie ID
+        - ✅ Multiple video formats (HLS, DASH, MP4)
+        - ✅ Adaptive quality streaming
+        - ✅ Kiểm tra quyền truy cập (free/paid)
+        - ✅ Real-time processing status
+
+        **📱 VIDEO FORMATS:**
+        - **HLS:** Tối ưu cho mobile và iOS
+        - **DASH:** Tối ưu cho web browsers
+        - **MP4:** Compatibility fallback
+
+        **🔒 ACCESS CONTROL:**
+        - Phim miễn phí: Truy cập ngay lập tức
+        - Phim có phí: Yêu cầu thanh toán
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "Episode ID hoặc Movie ID"
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [auto, episode, movie]
+            default: auto
+          description: "Loại video (auto=tự phát hiện)"
+        - name: quality
+          in: query
+          schema:
+            type: string
+            enum: [auto, 360p, 480p, 720p, 1080p]
+            default: auto
+          description: "Chất lượng video"
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [auto, hls, dash, mp4]
+            default: auto
+          description: "Format video"
+      responses:
+        "200":
+          description: ✅ Video sẵn sàng phát
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      streamUid:
+                        type: string
+                        example: "a1b2c3d4e5f6789012345678"
+                      type:
+                        type: string
+                        example: "cloudflare-stream"
+                      movie:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                          type:
+                            type: string
+                      episode:
+                        type: object
+                        nullable: true
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                          number:
+                            type: integer
+                      stream:
+                        type: object
+                        properties:
+                          urls:
+                            type: object
+                            properties:
+                              hls:
+                                type: string
+                                example: "https://customer-account.cloudflarestream.com/uid/manifest/video.m3u8"
+                              dash:
+                                type: string
+                                example: "https://customer-account.cloudflarestream.com/uid/manifest/video.mpd"
+                              mp4:
+                                type: object
+                                properties:
+                                  auto:
+                                    type: string
+                                  360p:
+                                    type: string
+                                  480p:
+                                    type: string
+                                  720p:
+                                    type: string
+                              thumbnail:
+                                type: string
+                              preview:
+                                type: string
+                          recommended:
+                            type: object
+                            description: "URLs được đề xuất theo platform"
+                          duration:
+                            type: number
+                          size:
+                            type: number
+        "202":
+          description: ⏳ Video đang xử lý
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "processing"
+                  message:
+                    type: string
+                    example: "Video đang được xử lý, vui lòng thử lại sau"
+                  code:
+                    type: string
+                    example: "VIDEO_PROCESSING"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                      status:
+                        type: string
+                        example: "inprogress"
+                      progress:
+                        type: string
+                        example: "Processing..."
+        "403":
+          description: 🔒 Video yêu cầu thanh toán
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Video này yêu cầu thanh toán"
+                  code:
+                    type: string
+                    example: "PAYMENT_REQUIRED"
+                  data:
+                    type: object
+                    properties:
+                      movieTitle:
+                        type: string
+                      price:
+                        type: number
+                      priceDisplay:
+                        type: string
+        "404":
+          description: ❌ Video không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/video-url/{videoId}/refresh:
+    post:
+      tags:
+        - Video Streaming
+      summary: 🔄 Refresh Stream URL
+      description: |
+        **🔄 REFRESH:** Làm mới Stream URL với thời gian hết hạn mới
+
+        Sử dụng khi:
+        - URL cũ đã hết hạn
+        - Cần tạo session mới
+        - Cập nhật quality settings
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ URL đã được làm mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStreamResponse"
+
+  /api/video-url/{videoId}/status:
+    get:
+      tags:
+        - Video Streaming
+      summary: 📊 Check Video Status
+      description: |
+        **📊 STATUS CHECK:** Kiểm tra trạng thái video và khả năng truy cập
+
+        **Thông tin trả về:**
+        - ✅ Video có sẵn không
+        - 🔒 Cần thanh toán không
+        - ⏳ Trạng thái xử lý
+        - 📝 Metadata video
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Thông tin trạng thái video
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                        nullable: true
+                      available:
+                        type: boolean
+                        description: "Video có Stream UID không"
+                      accessible:
+                        type: boolean
+                        description: "User có thể xem không (free/paid)"
+                      movie:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                          type:
+                            type: string
+                          is_free:
+                            type: boolean
+                          price:
+                            type: number
+                      episode:
+                        type: object
+                        nullable: true
+                      stream:
+                        type: object
+                        nullable: true
+                        properties:
+                          status:
+                            type: string
+                            example: "ready"
+                          duration:
+                            type: number
+                          size:
+                            type: number
+                          ready:
+                            type: boolean
+                      message:
+                        type: string
+                        example: "Video sẵn sàng để phát"
+
+  /api/video-url/{videoId}/embed:
+    get:
+      tags:
+        - Video Streaming
+      summary: 📺 Get Video Embed HTML
+      description: |
+        **📺 EMBED:** Tạo HTML embed cho video player
+
+        **Sử dụng cho:**
+        - Admin preview
+        - Testing playback
+        - Iframe embedding
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: width
+          in: query
+          schema:
+            type: string
+            default: "100%"
+          description: "Chiều rộng player"
+        - name: height
+          in: query
+          schema:
+            type: string
+            default: "auto"
+          description: "Chiều cao player"
+        - name: autoplay
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: "Tự động phát video"
+      responses:
+        "200":
+          description: ✅ HTML embed được tạo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                      embedHTML:
+                        type: string
+                        description: "HTML embed code"
+                      previewUrl:
+                        type: string
+                        description: "Direct preview URL"
+
+  # === UPLOAD PATHS ===
+  /api/upload/image:
+    post:
+      tags:
+        - Upload
+      summary: 🖼️ Upload Image to Cloudflare Images
+      description: |
+        **🖼️ CLOUDFLARE IMAGES:** Upload ảnh lên Cloudflare Images với auto-optimization
+
+        **✨ TÍNH NĂNG:**
+        - ✅ Auto resize & optimization
+        - ✅ Multiple variants (avatar, thumbnail, medium)
+        - ✅ Global CDN delivery
+        - ✅ Automatic WebP conversion
+        - ✅ Free 100,000 images/month
+
+        **📁 SUPPORTED FORMATS:**
+        - JPEG, PNG, GIF, WebP
+        - Max size: 5MB
+        - Output: Optimized cho web & mobile
+
+        **🔗 VARIANTS:**
+        - **avatar:** 150x150px (profile pictures)
+        - **thumbnail:** 300x300px (grid thumbnails)
+        - **medium:** 800x600px (detail views)
+        - **original:** Full size (public variant)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Image file (JPEG/PNG/GIF/WebP, max 5MB)"
+                folder:
+                  type: string
+                  default: "general"
+                  description: "Folder name for organization"
+                variant:
+                  type: string
+                  enum: [avatar, thumbnail, medium, public]
+                  default: "public"
+                  description: "Image variant for optimization"
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/gif, image/webp
+      responses:
+        "200":
+          description: ✅ Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Ảnh đã được upload thành công lên Cloudflare Images"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "2cdc28f0-017a-49c4-9ed7-87056c83901f"
+                      filename:
+                        type: string
+                        example: "avatar.jpg"
+                      uploaded:
+                        type: string
+                        format: date-time
+                      urls:
+                        type: object
+                        properties:
+                          original:
+                            type: string
+                            example: "https://imagedelivery.net/account/id/public"
+                          avatar:
+                            type: string
+                            example: "https://imagedelivery.net/account/id/avatar"
+                          thumbnail:
+                            type: string
+                            example: "https://imagedelivery.net/account/id/thumb"
+                          medium:
+                            type: string
+                            example: "https://imagedelivery.net/account/id/medium"
+                      recommendedUrl:
+                        type: string
+                        description: "URL được đề xuất dựa trên variant"
+        "400":
+          description: ❌ File không hợp lệ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "File ảnh quá lớn. Vui lòng chọn file nhỏ hơn 5MB"
+
+  /api/upload/video:
+    post:
+      tags:
+        - Upload
+      summary: 🎬 Upload Video to Cloudflare Stream
+      description: |
+        **🎬 CLOUDFLARE STREAM:** Upload video lên Cloudflare Stream với auto-processing
+
+        **✨ TÍNH NĂNG:**
+        - ✅ Auto transcoding to multiple qualities
+        - ✅ Adaptive bitrate streaming (HLS/DASH)
+        - ✅ Global edge delivery
+        - ✅ Real-time processing status
+        - ✅ Automatic thumbnail generation
+
+        **📁 SUPPORTED FORMATS:**
+        - MP4, AVI, MOV, WebM, MKV, FLV
+        - Max size: 500MB per file
+        - Auto convert to streaming formats
+
+        **⚙️ PROCESSING:**
+        - Upload → Processing → Ready
+        - Real-time status updates
+        - Multiple quality outputs
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - episodeId
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Video file (MP4/AVI/MOV/WebM/MKV/FLV, max 500MB)"
+                episodeId:
+                  type: string
+                  description: "Episode ID để liên kết video"
+                movieTitle:
+                  type: string
+                  description: "Tên phim (optional)"
+                episodeTitle:
+                  type: string
+                  description: "Tên tập phim (optional)"
+                metadata:
+                  type: string
+                  description: "Additional metadata JSON (optional)"
+            encoding:
+              file:
+                contentType: video/mp4, video/avi, video/mov, video/webm, video/mkv, video/flv
+      responses:
+        "200":
+          description: ✅ Video uploaded và đang xử lý
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Video đã được upload thành công lên Cloudflare Stream"
+                  data:
+                    type: object
+                    properties:
+                      episodeId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      streamUid:
+                        type: string
+                        example: "a1b2c3d4e5f6789012345678"
+                        description: "Cloudflare Stream UID"
+                      uploadStatus:
+                        type: string
+                        enum: [ready, inprogress, error]
+                        example: "inprogress"
+                      playback:
+                        type: object
+                        nullable: true
+                        description: "Playback URLs (available when ready)"
+                      thumbnail:
+                        type: string
+                        nullable: true
+                        description: "Auto-generated thumbnail URL"
+                      processingStatus:
+                        type: string
+                        example: "processing"
+                      duration:
+                        type: number
+                        nullable: true
+                      size:
+                        type: number
+                        description: "File size in bytes"
+        "400":
+          description: ❌ File hoặc parameters không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/upload/video-from-url:
+    post:
+      tags:
+        - Upload
+      summary: 🔗 Upload Video from URL
+      description: |
+        **🔗 URL UPLOAD:** Upload video từ URL trực tiếp lên Cloudflare Stream
+
+        **✨ TÍNH NĂNG:**
+        - ✅ Upload từ public URLs
+        - ✅ Không cần download về máy chủ
+        - ✅ Tự động xử lý như file upload
+        - ✅ Hỗ trợ large files
+
+        **📋 REQUIREMENTS:**
+        - URL phải public accessible
+        - Support HTTP/HTTPS
+        - File format: MP4, AVI, MOV, WebM, MKV, FLV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - episodeId
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  example: "https://example.com/video.mp4"
+                  description: "Public URL of video file"
+                episodeId:
+                  type: string
+                  example: "675a1234567890abcdef1234"
+                  description: "Episode ID để liên kết video"
+                movieTitle:
+                  type: string
+                  description: "Tên phim (optional)"
+                episodeTitle:
+                  type: string
+                  description: "Tên tập phim (optional)"
+                metadata:
+                  type: object
+                  description: "Additional metadata (optional)"
+      responses:
+        "200":
+          description: ✅ URL upload started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Video upload from URL started"
+                  data:
+                    type: object
+                    properties:
+                      episodeId:
+                        type: string
+                      streamUid:
+                        type: string
+                      status:
+                        type: string
+                        example: "inprogress"
+                      sourceUrl:
+                        type: string
+                        description: "Original URL"
+
+  /api/upload/video/{episodeId}:
+    delete:
+      tags:
+        - Upload
+      summary: 🗑️ Delete Video from Stream
+      description: |
+        **🗑️ DELETE:** Xóa video từ Cloudflare Stream và cập nhật database
+
+        **⚠️ LƯU Ý:**
+        - Thao tác không thể hoàn tác
+        - Xóa tất cả variants và thumbnails
+        - Cập nhật Episode URI thành null
+      parameters:
+        - name: episodeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "Episode ID chứa video cần xóa"
+      responses:
+        "200":
+          description: ✅ Video deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Video đã được xóa thành công"
+                  data:
+                    type: object
+                    properties:
+                      episodeId:
+                        type: string
+                      streamUid:
+                        type: string
+                        description: "UID của video đã xóa"
+        "404":
+          description: ❌ Episode hoặc video không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/upload/usage:
+    get:
+      tags:
+        - Upload
+      summary: 📊 Get Cloudflare Usage Stats
+      description: |
+        **📊 USAGE MONITORING:** Theo dõi usage của Cloudflare Images và Stream
+
+        **📈 METRICS:**
+        - **Stream:** Playback minutes, cost estimates
+        - **Images:** Storage usage, delivery stats  
+        - **Billing:** Monthly usage, plan limits
+        - **Recommendations:** Optimization tips
+
+        **💡 OPTIMIZATION TIPS:**
+        - Sử dụng quality 720p thay vì 1080p
+        - HLS format cho mobile
+        - Image compression settings
+      responses:
+        "200":
+          description: ✅ Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      stream:
+                        type: object
+                        properties:
+                          totalPlaybackMinutes:
+                            type: number
+                            example: 1250
+                          estimatedCost:
+                            type: number
+                            example: 5.25
+                          freeMinutesRemaining:
+                            type: number
+                            example: 3750
+                          planLimit:
+                            type: string
+                            example: "5000 minutes/month ($5 plan)"
+                      images:
+                        type: object
+                        properties:
+                          totalImages:
+                            type: number
+                            example: 15420
+                          storageUsedGB:
+                            type: number
+                            example: 2.3
+                          estimatedCost:
+                            type: number
+                            example: 0
+                          freeImagesRemaining:
+                            type: number
+                            example: 84580
+                      totalEstimatedCost:
+                        type: number
+                        example: 5.25
+                      recommendations:
+                        type: array
+                        items:
+                          type: string
+                        example:
+                          - "✅ Usage trong giới hạn"
+                          - "💡 Sử dụng quality 720p thay vì 1080p để tiết kiệm bandwidth"
+                          - "📱 HLS format tối ưu cho mobile streaming"
+
+  # === BULK UPLOAD PATHS ===
+  /api/upload/images-bulk:
+    post:
+      tags:
+        - Upload
+      summary: 📋 Bulk Upload Images
+      description: |
+        **📋 BULK UPLOAD:** Upload nhiều ảnh cùng lúc
+
+        **⚡ PERFORMANCE:**
+        - Upload parallel để tăng tốc
+        - Max 10 files per request
+        - Individual success/failure tracking
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+                  description: "Array of image files (max 10)"
+                folder:
+                  type: string
+                  default: "bulk"
+                  description: "Folder for all images"
+                variant:
+                  type: string
+                  enum: [avatar, thumbnail, medium, public]
+                  default: "public"
+                  description: "Variant for all images"
+      responses:
+        "200":
+          description: ✅ Bulk upload completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Upload hoàn thành: 8 thành công, 2 thất bại"
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 10
+                      successful:
+                        type: integer
+                        example: 8
+                      failed:
+                        type: integer
+                        example: 2
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            index:
+                              type: integer
+                            success:
+                              type: boolean
+                            data:
+                              type: object
+                              nullable: true
+                            error:
+                              type: string
+                              nullable: true
+                            filename:
+                              type: string
+                              nullable: true
+
+components:
+  schemas:
+    # === CLOUDFLARE SCHEMAS ===
+    VideoStreamResponse:
+      type: object
+      description: "🎬 Schema for Cloudflare Stream video response"
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            videoId:
+              type: string
+              example: "675a1234567890abcdef1234"
+              description: "Episode ID hoặc Movie ID"
+            streamUid:
+              type: string
+              example: "a1b2c3d4e5f6789012345678"
+              description: "Cloudflare Stream UID"
+            type:
+              type: string
+              example: "cloudflare-stream"
+              description: "Loại streaming service"
+            movie:
+              type: object
+              properties:
+                _id:
+                  type: string
+                title:
+                  type: string
+                  example: "The Batman 2024"
+                type:
+                  type: string
+                  example: "Phim bộ"
+            episode:
+              type: object
+              nullable: true
+              properties:
+                _id:
+                  type: string
+                title:
+                  type: string
+                  example: "Tập 1: Khởi đầu"
+                number:
+                  type: integer
+                  example: 1
+            stream:
+              type: object
+              properties:
+                urls:
+                  type: object
+                  properties:
+                    hls:
+                      type: string
+                      example: "https://customer-account.cloudflarestream.com/uid/manifest/video.m3u8"
+                      description: "HLS streaming URL cho mobile/iOS"
+                    dash:
+                      type: string
+                      example: "https://customer-account.cloudflarestream.com/uid/manifest/video.mpd"
+                      description: "DASH streaming URL cho web"
+                    mp4:
+                      type: object
+                      properties:
+                        auto:
+                          type: string
+                          example: "https://customer-account.cloudflarestream.com/uid/manifest/video.mp4"
+                        360p:
+                          type: string
+                        480p:
+                          type: string
+                        720p:
+                          type: string
+                        1080p:
+                          type: string
+                    thumbnail:
+                      type: string
+                      example: "https://customer-account.cloudflarestream.com/uid/thumbnails/thumbnail.jpg"
+                    preview:
+                      type: string
+                      example: "https://customer-account.cloudflarestream.com/uid/thumbnails/thumbnail.jpg?time=1s"
+                recommended:
+                  type: object
+                  description: "URLs được đề xuất dựa trên device/platform"
+                  properties:
+                    mobile:
+                      type: string
+                      description: "HLS URL cho mobile"
+                    web:
+                      type: string
+                      description: "DASH URL cho web browsers"
+                    fallback:
+                      type: string
+                      description: "MP4 URL cho compatibility"
+                duration:
+                  type: number
+                  example: 3600
+                  description: "Video duration in seconds"
+                size:
+                  type: number
+                  example: 524288000
+                  description: "File size in bytes"
+                created:
+                  type: string
+                  format: date-time
+                  description: "Upload timestamp"
+
+    CloudflareImageResponse:
+      type: object
+      description: "🖼️ Schema for Cloudflare Images upload response"
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Ảnh đã được upload thành công lên Cloudflare Images"
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "2cdc28f0-017a-49c4-9ed7-87056c83901f"
+              description: "Cloudflare Images ID"
+            filename:
+              type: string
+              example: "avatar.jpg"
+              description: "Original filename"
+            uploaded:
+              type: string
+              format: date-time
+              description: "Upload timestamp"
+            urls:
+              type: object
+              properties:
+                original:
+                  type: string
+                  example: "https://imagedelivery.net/account/id/public"
+                  description: "Original size image"
+                avatar:
+                  type: string
+                  example: "https://imagedelivery.net/account/id/avatar"
+                  description: "150x150px optimized for avatars"
+                thumbnail:
+                  type: string
+                  example: "https://imagedelivery.net/account/id/thumb"
+                  description: "300x300px thumbnail"
+                medium:
+                  type: string
+                  example: "https://imagedelivery.net/account/id/medium"
+                  description: "800x600px medium size"
+            recommendedUrl:
+              type: string
+              description: "URL được đề xuất dựa trên variant requested"
+
+    CloudflareVideoUploadResponse:
+      type: object
+      description: "🎬 Schema for Cloudflare Stream video upload response"
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Video đã được upload thành công lên Cloudflare Stream"
+        data:
+          type: object
+          properties:
+            episodeId:
+              type: string
+              example: "675a1234567890abcdef1234"
+              description: "Episode ID liên kết với video"
+            streamUid:
+              type: string
+              example: "a1b2c3d4e5f6789012345678"
+              description: "Cloudflare Stream UID"
+            uploadStatus:
+              type: string
+              enum: [ready, inprogress, error]
+              example: "inprogress"
+              description: "Trạng thái upload/processing"
+            playback:
+              type: object
+              nullable: true
+              description: "Playback URLs (available when status=ready)"
+              properties:
+                hls:
+                  type: string
+                dash:
+                  type: string
+                mp4:
+                  type: object
+            thumbnail:
+              type: string
+              nullable: true
+              example: "https://customer-account.cloudflarestream.com/uid/thumbnails/thumbnail.jpg"
+              description: "Auto-generated thumbnail"
+            processingStatus:
+              type: string
+              example: "processing"
+              description: "Chi tiết trạng thái xử lý"
+            duration:
+              type: number
+              nullable: true
+              example: 3600
+              description: "Video duration (available after processing)"
+            size:
+              type: number
+              example: 524288000
+              description: "File size in bytes"
+            created:
+              type: string
+              format: date-time
+              description: "Upload timestamp"
+
+    CloudflareUsageResponse:
+      type: object
+      description: "📊 Schema for Cloudflare usage statistics"
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            stream:
+              type: object
+              properties:
+                totalPlaybackMinutes:
+                  type: number
+                  example: 1250
+                  description: "Tổng phút phát video trong tháng"
+                estimatedCost:
+                  type: number
+                  example: 5.25
+                  description: "Chi phí ước tính cho Stream (USD)"
+                freeMinutesRemaining:
+                  type: number
+                  example: 3750
+                  description: "Phút miễn phí còn lại"
+                planLimit:
+                  type: string
+                  example: "5000 minutes/month ($5 plan)"
+                  description: "Giới hạn gói hiện tại"
+            images:
+              type: object
+              properties:
+                totalImages:
+                  type: number
+                  example: 15420
+                  description: "Tổng số ảnh đã upload"
+                storageUsedGB:
+                  type: number
+                  example: 2.3
+                  description: "Dung lượng storage đã sử dụng (GB)"
+                estimatedCost:
+                  type: number
+                  example: 0
+                  description: "Chi phí ước tính cho Images (USD)"
+                freeImagesRemaining:
+                  type: number
+                  example: 84580
+                  description: "Số ảnh miễn phí còn lại"
+                note:
+                  type: string
+                  example: "Sử dụng Cloudflare Dashboard để xem chính xác usage"
+            totalEstimatedCost:
+              type: number
+              example: 5.25
+              description: "Tổng chi phí ước tính (USD)"
+            recommendations:
+              type: array
+              items:
+                type: string
+              example:
+                - "✅ Usage trong giới hạn"
+                - "💡 Sử dụng quality 720p thay vì 1080p để tiết kiệm bandwidth"
+                - "📱 HLS format tối ưu cho mobile streaming"
+                - "🖼️ Cloudflare Images free 100,000 images/month"
+
+    # === EXISTING SCHEMAS (already defined) ===
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "Error message"
+        code:
+          type: string
+          example: "ERROR_CODE"
 

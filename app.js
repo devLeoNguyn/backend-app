@@ -15,8 +15,9 @@ var app = express();
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-// Test S3 connection
-const { testS3Connection } = require('./utils/s3Config');
+// Test Cloudflare connection
+const { testCloudflareConnection } = require('./utils/cloudflare.config');
+const cloudflareStreamService = require('./services/cloudflare-stream.service');
 
 // Enable CORS
 app.use(cors());
@@ -45,6 +46,7 @@ const watchingRoutes = require('./routes/watching.routes');
 const homeRoutes = require('./routes/home.routes');
 const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
+const uploadRoutes = require('./routes/upload.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -60,6 +62,7 @@ app.use('/api/watching', watchingRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/video-url', videoRoutes);
 app.use('/api/series', seriesRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Swagger Documentation
 const swaggerPath = path.join(__dirname, 'swagger.yaml');
@@ -90,9 +93,12 @@ mongoose.connect(process.env.MONGO_URI)
     const db = mongoose.connection;
     console.log("MongoDB connected to:", db.name);
     
-    // Test S3 connection sau khi MongoDB connected
-    console.log('Testing S3 connection...');
-    await testS3Connection();
+    // Test Cloudflare connection sau khi MongoDB connected
+    console.log('Testing Cloudflare Images connection...');
+    await testCloudflareConnection();
+    
+    console.log('Testing Cloudflare Stream connection...');
+    await cloudflareStreamService.testConnection();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 

@@ -4,7 +4,7 @@ const {
     getProfile,
     updateProfile
 } = require('../controllers/user.controller');
-const { upload } = require('../utils/s3Config');
+const { upload } = require('../utils/cloudflare.config');
 
 // Get current user profile (userId từ query params)
 router.get('/profile', getProfile);

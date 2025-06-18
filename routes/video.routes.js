@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getVideoStreamUrl, 
-    refreshVideoStreamUrl, 
-    getVideoStatus 
+const {
+    getVideoStreamUrl,
+    refreshVideoStreamUrl,
+    getVideoStatus,
+    getVideoEmbed
 } = require('../controllers/video.controller');
 
 // === PUBLIC ROUTES ===
@@ -80,6 +81,28 @@ router.post('/:videoId/refresh', refreshVideoStreamUrl);
  * }
  */
 router.get('/:videoId/status', getVideoStatus);
+
+/**
+ * 📺 GET /api/video-url/:videoId/embed
+ * Lấy embed HTML cho video player (tùy chọn cho admin/preview)
+ * 
+ * Query params:
+ * - width: Player width (default: '100%')
+ * - height: Player height (default: 'auto')  
+ * - autoplay: Auto play video (default: false)
+ * 
+ * Response:
+ * {
+ *   "status": "success",
+ *   "data": {
+ *     "videoId": "episode_id",
+ *     "streamUid": "cloudflare-stream-uid",
+ *     "embedHTML": "<stream src='...' controls></stream>...",
+ *     "previewUrl": "https://customer-account.cloudflarestream.com/uid"
+ *   }
+ * }
+ */
+router.get('/:videoId/embed', getVideoEmbed);
 
 // === PROTECTED ROUTES (nếu cần thêm authentication) ===
 
