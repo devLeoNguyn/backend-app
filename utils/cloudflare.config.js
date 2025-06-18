@@ -5,10 +5,13 @@ const { v4: uuidv4 } = require('uuid');
 
 // 🌐 Cấu hình Cloudflare
 const CLOUDFLARE_CONFIG = {
-    // Cloudflare Images & Stream - CHỈ CẦN 2 BIẾN NÀY
+    // Cloudflare Images & Stream - API Account cho quản lý
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     apiToken: process.env.CLOUDFLARE_API_TOKEN,
     imagesApiUrl: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/images/v1`,
+    
+    // Sử dụng cùng API Account cho delivery (đơn giản nhất)
+    deliveryAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
     
     // Variants cho image optimization (public URLs)
     variants: {
@@ -79,15 +82,18 @@ const uploadToCloudflare = async (file, folder = 'avatars', variant = 'avatar') 
         if (response.data.success) {
             const imageData = response.data.result;
             
-            // 🔗 Tạo URLs cho các variant (PUBLIC - không cần signature)
+            // 🔗 Tạo URLs đúng cho từng variant
+            const accountId = CLOUDFLARE_CONFIG.deliveryAccountId;
+            const imageId = imageData.id;
+            
             const urls = {
                 id: imageData.id,
                 filename: imageData.filename,
-                // Public URLs - truy cập trực tiếp không cần authentication
-                original: `https://imagedelivery.net/${CLOUDFLARE_CONFIG.accountId}/${imageData.id}/public`,
-                avatar: `https://imagedelivery.net/${CLOUDFLARE_CONFIG.accountId}/${imageData.id}/avatar`,
-                thumbnail: `https://imagedelivery.net/${CLOUDFLARE_CONFIG.accountId}/${imageData.id}/thumb`,
-                medium: `https://imagedelivery.net/${CLOUDFLARE_CONFIG.accountId}/${imageData.id}/medium`,
+                // ✅ Tạo đúng URL cho từng variant
+                original: `https://imagedelivery.net/${accountId}/${imageId}/public`,
+                avatar: `https://imagedelivery.net/${accountId}/${imageId}/avatar`,
+                thumbnail: `https://imagedelivery.net/${accountId}/${imageId}/thumb`,
+                medium: `https://imagedelivery.net/${accountId}/${imageId}/medium`,
                 uploaded: imageData.uploaded
             };
             
@@ -95,7 +101,8 @@ const uploadToCloudflare = async (file, folder = 'avatars', variant = 'avatar') 
                 id: imageData.id,
                 folder: folder,
                 variant: variant,
-                size: file.size
+                size: file.size,
+                avatarUrl: urls.avatar // Log URL avatar để check
             });
             
             return urls;
@@ -160,7 +167,7 @@ const deleteFromCloudflare = async (imageUrl) => {
 };
 
 /**
- * 🔍 Test connection tới Cloudflare Images
+ * 🔍 Test connection tới Cloudflare Images với Auto-Detection
  */
 const testCloudflareConnection = async () => {
     try {
@@ -184,6 +191,27 @@ const testCloudflareConnection = async () => {
         
     } catch (error) {
         console.error('❌ Cloudflare Images connection failed:', error.message);
+        
+        // 🔄 Thử auto-detect Account ID nếu kết nối thất bại
+        console.log('🔍 Attempting to auto-detect correct Account ID...');
+        const { autoDetectAccountId, updateEnvAccountId } = require('./cloudflare-detector');
+        
+        try {
+            const correctAccountId = await autoDetectAccountId(CLOUDFLARE_CONFIG.apiToken);
+            
+            if (correctAccountId && correctAccountId !== CLOUDFLARE_CONFIG.accountId) {
+                console.log(`🔧 Found working Account ID: ${correctAccountId}`);
+                console.log(`⚠️ Please restart the server to use the correct Account ID`);
+                
+                // Update .env file (optional - for next restart)
+                await updateEnvAccountId(correctAccountId);
+                
+                return false; // Still failed this time, but will work on restart
+            }
+        } catch (detectionError) {
+            console.error('❌ Auto-detection failed:', detectionError.message);
+        }
+        
         return false;
     }
 };
