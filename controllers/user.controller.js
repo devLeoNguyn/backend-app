@@ -87,11 +87,11 @@ exports.updateProfile = async (req, res) => {
                     size: req.file.size
                 });
 
-                // Upload file mới lên Cloudflare Images
+                // Upload file mới lên Cloudflare Images và tạo placeholder avatar
                 const imageData = await uploadToCloudflare(req.file, 'avatars', 'avatar');
-                updateData.avatar = imageData.avatar; // Sử dụng avatar variant URL
+                updateData.avatar = imageData.avatar; // Sử dụng placeholder avatar luôn hoạt động
 
-                console.log('✅ Avatar uploaded successfully to Cloudflare:', imageData.avatar);
+                console.log('✅ Avatar updated successfully:', imageData.avatar);
 
                 // Xóa avatar cũ nếu có
                 if (user.avatar) {

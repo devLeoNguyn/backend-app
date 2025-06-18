@@ -242,7 +242,7 @@ router.post('/migrate-video', async (req, res) => {
 
         res.json({
             status: 'success',
-            message: 'Video đã được migrate thành công từ AWS sang Cloudflare Stream',
+            message: 'Video đã được      thành công từ AWS sang Cloudflare Stream',
             data: {
                 episodeId,
                 streamUid: uploadResult.uid,
