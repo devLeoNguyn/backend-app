@@ -44,6 +44,7 @@ const genreRoutes = require('./routes/genre.routes');
 const watchingRoutes = require('./routes/watching.routes');
 const homeRoutes = require('./routes/home.routes');
 const seriesRoutes = require('./routes/seriesRoutes');
+const animeRoutes = require('./routes/anime.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -58,6 +59,7 @@ app.use('/api/genres', genreRoutes);
 app.use('/api/watching', watchingRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/series', seriesRoutes);
+app.use('/api/anime', animeRoutes);
 
 // Swagger Documentation
 const swaggerPath = path.join(__dirname, 'swagger.yaml');
