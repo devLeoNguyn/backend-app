@@ -27,9 +27,9 @@ const getNewWeekMovies = async (req, res) => {
 
         // Xử lý từng phim và kiểm tra số tập
         const moviesWithDetails = await Promise.all(recentMovies.map(async (movie) => {
-            const episodes = await Episode.find({ movie_id: movie._id })
-                .select('episode_title uri episode_number episode_description')
-                .sort({ episode_number: 1 });
+                    const episodes = await Episode.find({ movie_id: movie._id })
+            .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
+            .sort({ episode_number: 1 });
 
             return movie.formatMovieResponse(episodes);
         }));
@@ -280,7 +280,7 @@ const getMovieById = async (req, res) => {
         // 📺 2. LẤY TẤT CẢ EPISODES CỦA PHIM
         // Sắp xếp theo episode_number để đảm bảo thứ tự đúng cho phim bộ
         const episodes = await Episode.find({ movie_id: movie._id })
-            .select('episode_title uri episode_number episode_description duration')  // 📋 Field cần thiết
+            .select('episode_title uri episode_number episode_description duration createdAt updatedAt')  // 📋 Field cần thiết (subtitle lấy từ Cloudflare API)
             .sort({ episode_number: 1 });                                           // 📊 Tập 1, 2, 3...
 
         // 🎨 3. FORMAT RESPONSE SỬ DỤNG SCHEMA METHOD
@@ -366,7 +366,7 @@ const updateMovie = async (req, res) => {
         } else {
             // Get existing episodes if no new episodes provided
             const episodes = await Episode.find({ movie_id: id })
-                .select('episode_title uri episode_number episode_description')
+                .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
                 .sort({ episode_number: 1 });
 
             const responseData = updatedMovie.formatMovieResponse(episodes);
@@ -631,10 +631,10 @@ const getMovieDetailWithInteractions = async (req, res) => {
 /**
  * 🔍 API TÌM KIẾM PHIM ĐƠN GIẢN
  * 
- * Mục đích: Tìm kiếm phim theo tên và mô tả với pagination cho FlatList
+ * Mục đích: Tìm kiếm phim theo tên phim với pagination cho FlatList
  * 
  * Input Parameters:
- * - tuKhoa: Từ khóa tìm kiếm (chỉ tìm trong title và description)
+ * - tuKhoa: Từ khóa tìm kiếm (chỉ tìm trong title của phim)
  * - page: Trang hiện tại (pagination)
  * - limit: Số phim mỗi trang
  * 
@@ -652,12 +652,9 @@ const searchMovies = async (req, res) => {
     // 🔧 2. XÂY DỰNG ĐIỀU KIỆN TÌM KIẾM ĐƠN GIẢN (MongoDB Query)
     const dieuKien = {};
 
-    // 🔤 Tìm kiếm theo từ khóa - CHỈ trong title và description
+    // 🔤 Tìm kiếm theo từ khóa - CHỈ trong title của phim
     if (tuKhoa && tuKhoa.trim()) {
-      dieuKien.$or = [
-        { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },    // Tìm trong tên phim
-        { description: { $regex: tuKhoa.trim(), $options: 'i' } }     // Tìm trong mô tả
-      ];
+      dieuKien.movie_title = { $regex: tuKhoa.trim(), $options: 'i' };
       // Regex với option 'i' = case insensitive (không phân biệt hoa thường)
     }
 
@@ -687,7 +684,7 @@ const searchMovies = async (req, res) => {
         // 📺 LẤY THÔNG TIN TẬP PHIM (QUAN TRỌNG CHO PHIM BỘ)
         // Chỉ lấy thông tin cơ bản để tính total_episodes
         const episodes = await Episode.find({ movie_id: movie._id })
-          .select('episode_title episode_number')   // 📋 Chỉ cần title và number
+          .select('episode_title episode_number duration')   // 📋 Bao gồm duration (subtitle từ Cloudflare API)
           .sort({ episode_number: 1 });            // 📊 Sắp xếp theo thứ tự tập
 
         // ⭐ TÍNH TOÁN RATING TỪ RATING COLLECTION
@@ -749,7 +746,7 @@ const searchMovies = async (req, res) => {
         // 🔍 Thông tin tìm kiếm đã áp dụng (để frontend track)
         search_info: {
           keyword: tuKhoa || null,
-          search_in: ['movie_title', 'description'], // Chỉ tìm trong 2 field này
+          search_in: ['movie_title'], // Chỉ tìm trong title của phim
           total_found: totalMovies
         }
       }

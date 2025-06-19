@@ -75,8 +75,9 @@ async function getSeriesBaseQuery(filter = {}) {
 const getBannerSeries = async (req, res) => {
     try {
         // 📊 1. PARSE CÁC THAM SỐ VÀ THIẾT LẬP MẶC ĐỊNH
-        const bannerLimit = parseInt(req.query.bannerLimit) || 5;    // 🎬 Số phim banner
-        const gridLimit = parseInt(req.query.limit) || 6;            // 📱 Số phim grid
+        const showAll = req.query.showAll === 'true';
+        const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5);    // 🎬 Số phim banner
+        const gridLimit = parseInt(req.query.limit) || (showAll ? 80 : 6);            // 📱 Số phim grid
         const days = parseInt(req.query.days) || 30;                 // 📅 Ngày gần đây
 
         // ⏰ 2. TÍNH TOÁN THỜI GIAN BẮT ĐẦU (N ngày trước)
@@ -179,7 +180,7 @@ const getTrendingSeries = async (req, res) => {
             release_status: 'released'           // ✅ Đã phát hành
         })
             .select('_id movie_title poster_path movie_type producer')  // 📋 Chỉ lấy field cần thiết
-            .limit(showAll ? 200 : 50);         // 🔢 Giới hạn query để performance
+            .limit(showAll ? 400 : 50);         // 🔢 Tăng giới hạn khi showAll
 
         // 📊 3. TÍNH TOÁN STATS CHO TỪNG PHIM BỘ
         // Chạy song song để tối ưu performance

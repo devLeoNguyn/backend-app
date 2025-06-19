@@ -109,38 +109,56 @@ const getVideoStreamUrl = async (req, res) => {
             });
         }
 
-        // 🎬 Trả về stream URLs
+        // �� Trả về stream URLs tối ưu cho EXPO APP
         return res.json({
             status: 'success',
             data: {
                 videoId,
                 streamUid,
-                type: 'cloudflare-stream',
+                
+                // 📱 EXPO-OPTIMIZED RESPONSE
+                video: {
+                    // Primary streaming URL (HLS adaptive)
+                    uri: streamData.expo.uri,
+                    // Fallback URL (MP4)
+                    fallbackUri: streamData.expo.fallbackUri,
+                    
+                    // Quality options cho user settings
+                    qualities: streamData.expo.qualities,
+                    
+                    // Images
+                    poster: streamData.expo.poster,
+                    thumbnail: streamData.expo.thumbnail,
+                    
+                    // 📋 Subtitles for Expo Video
+                    subtitles: streamData.expo.subtitles || {},
+                    
+                    // Video info
+                    duration: streamData.duration,
+                    size: streamData.size
+                },
+                
+                // Movie/Episode info (minimal for app)
                 movie: {
                     _id: movieInfo._id,
                     title: movieInfo.movie_title,
-                    type: movieInfo.movie_type
+                    type: movieInfo.movie_type,
+                    is_free: movieInfo.is_free,
+                    price: movieInfo.price
                 },
-                episode: videoData._id !== movieInfo._id ? {
-                    _id: videoData._id,
-                    title: videoData.episode_title,
-                    number: videoData.episode_number
-                } : null,
-                stream: {
-                    // 📱 URLs cho các platform khác nhau
-                    urls: streamData.urls,
-                    
-                    // 🎯 Recommended URLs dựa trên platform
-                    recommended: streamData.recommended,
-                    
-                    // 🖼️ Thumbnails và preview
-                    thumbnail: streamData.urls.thumbnail,
-                    preview: streamData.urls.preview,
-                    
-                    // 📊 Metadata
-                    duration: streamData.duration,
-                    size: streamData.size,
-                    created: streamData.created
+                
+                // Episode info (chỉ khi là phim bộ)
+                ...(videoData._id !== movieInfo._id && {
+                    episode: {
+                        _id: videoData._id,
+                        title: videoData.episode_title,
+                        number: videoData.episode_number
+                    }
+                }),
+                
+                // Full URLs (optional - for advanced usage)
+                _debug: {
+                    streamUrls: streamData.urls
                 }
             }
         });
@@ -375,9 +393,229 @@ const getVideoEmbed = async (req, res) => {
     }
 };
 
+/**
+ * 📋 API lấy subtitle WebVTT content
+ * GET /api/video-url/:videoId/subtitle/:language
+ */
+const getVideoSubtitle = async (req, res) => {
+    try {
+        const { videoId, language } = req.params;
+        
+        // 🔍 Lấy video data để extract stream UID
+        let videoData = null;
+        let streamUid = null;
+
+        // Thử tìm episode trước
+        const episode = await Episode.findById(videoId);
+        if (episode && episode.uri) {
+            videoData = episode;
+            streamUid = extractStreamUid(episode.uri);
+        } else {
+            // Thử tìm movie
+            const movie = await Movie.findById(videoId);
+            if (movie) {
+                const ep = await Episode.findOne({ movie_id: videoId });
+                if (ep && ep.uri) {
+                    videoData = ep;
+                    streamUid = extractStreamUid(ep.uri);
+                }
+            }
+        }
+
+        if (!streamUid) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Video không tồn tại hoặc Stream UID không hợp lệ',
+                code: 'INVALID_STREAM_UID'
+            });
+        }
+
+        // 🎬 Lấy subtitle content từ Cloudflare Stream
+        const subtitleContent = await cloudflareStreamService.getCaptionContent(streamUid, language);
+
+        // 📋 Trả về WebVTT content
+        res.set({
+            'Content-Type': 'text/vtt',
+            'Content-Disposition': `inline; filename="${videoId}_${language}.vtt"`
+        });
+        res.send(subtitleContent);
+
+    } catch (error) {
+        console.error('❌ Get subtitle error:', error);
+        
+        if (error.message.includes('Không thể lấy subtitle')) {
+            return res.status(404).json({
+                status: 'error',
+                message: `Subtitle ${req.params.language} không tồn tại cho video này`,
+                code: 'SUBTITLE_NOT_FOUND'
+            });
+        }
+
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy subtitle',
+            code: 'SUBTITLE_ERROR',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * 📱 API lấy video URL với quality cụ thể cho Expo app
+ * GET /api/video-url/:videoId/quality/:qualityLevel
+ */
+const getVideoQualityUrl = async (req, res) => {
+    try {
+        const { videoId, qualityLevel } = req.params;
+        
+        // ✅ Validate quality level
+        const allowedQualities = ['360p', '480p', '720p', 'auto'];
+        if (!allowedQualities.includes(qualityLevel)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Quality không hợp lệ. Chỉ chấp nhận: 360p, 480p, 720p, auto',
+                code: 'INVALID_QUALITY',
+                allowedQualities
+            });
+        }
+
+        // 🔍 Lấy video data
+        let videoData = null;
+        let streamUid = null;
+        let movieInfo = null;
+
+        // Thử tìm episode trước
+        const episode = await Episode.findById(videoId)
+            .populate('movie_id', 'movie_title is_free price movie_type');
+        
+        if (episode) {
+            videoData = episode;
+            movieInfo = episode.movie_id;
+            streamUid = extractStreamUid(episode.uri);
+        } else {
+            // Thử tìm movie
+            const movie = await Movie.findById(videoId);
+            if (movie) {
+                movieInfo = movie;
+                const ep = await Episode.findOne({ movie_id: videoId });
+                if (ep && ep.uri) {
+                    videoData = ep;
+                    streamUid = extractStreamUid(ep.uri);
+                }
+            }
+        }
+
+        if (!streamUid) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Video không tồn tại hoặc Stream UID không hợp lệ',
+                code: 'INVALID_STREAM_UID'
+            });
+        }
+
+        // 🔒 Kiểm tra quyền truy cập (phim có phí)
+        if (!movieInfo.is_free && movieInfo.price > 0) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Video này yêu cầu thanh toán',
+                code: 'PAYMENT_REQUIRED'
+            });
+        }
+
+        // 🎥 Lấy Stream URLs từ Cloudflare Stream
+        const streamData = await cloudflareStreamService.getStreamUrl(streamUid, {
+            quality: qualityLevel,
+            format: 'auto'
+        });
+
+        if (streamData.status !== 'ready') {
+            return res.status(202).json({
+                status: 'processing',
+                message: streamData.message,
+                code: 'VIDEO_PROCESSING'
+            });
+        }
+
+        // 🎯 Trả về URL theo quality được request
+        let selectedVideoUrl = streamData.expo.uri; // Default HLS adaptive
+        let selectedQuality = 'adaptive';
+
+        if (qualityLevel !== 'auto') {
+            // Map quality level to specific URL
+            const qualityMap = {
+                '360p': { url: streamData.expo.qualities.low, label: '360p (Low)' },
+                '480p': { url: streamData.expo.qualities.medium, label: '480p (Medium)' },
+                '720p': { url: streamData.expo.qualities.high, label: '720p (High)' }
+            };
+
+            const selectedQualityData = qualityMap[qualityLevel];
+            if (selectedQualityData) {
+                selectedVideoUrl = selectedQualityData.url;
+                selectedQuality = selectedQualityData.label;
+            }
+        }
+
+        // 📱 Response tối ưu cho quality switching
+        return res.json({
+            status: 'success',
+            data: {
+                videoId,
+                requestedQuality: qualityLevel,
+                selectedQuality,
+                
+                // 🎬 Video URL cho quality đã chọn
+                video: {
+                    uri: selectedVideoUrl,
+                    fallbackUri: streamData.expo.fallbackUri,
+                    poster: streamData.expo.poster,
+                    thumbnail: streamData.expo.thumbnail,
+                    subtitles: streamData.expo.subtitles || {},
+                    duration: streamData.duration,
+                    size: streamData.size
+                },
+
+                // 📊 Available qualities cho client switch
+                availableQualities: {
+                    auto: { url: streamData.expo.uri, label: 'Auto (Adaptive)' },
+                    '360p': { url: streamData.expo.qualities.low, label: '360p (Low)' },
+                    '480p': { url: streamData.expo.qualities.medium, label: '480p (Medium)' },
+                    '720p': { url: streamData.expo.qualities.high, label: '720p (High)' }
+                },
+
+                // Movie info (minimal)
+                movie: {
+                    _id: movieInfo._id,
+                    title: movieInfo.movie_title,
+                    type: movieInfo.movie_type
+                },
+
+                // Episode info (nếu có)
+                ...(videoData._id !== movieInfo._id && {
+                    episode: {
+                        _id: videoData._id,
+                        title: videoData.episode_title,
+                        number: videoData.episode_number
+                    }
+                })
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Get video quality URL error:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy video URL với quality cụ thể',
+            code: 'QUALITY_URL_ERROR',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 module.exports = {
     getVideoStreamUrl,
     refreshVideoStreamUrl,
     getVideoStatus,
-    getVideoEmbed
+    getVideoEmbed,
+    getVideoSubtitle,
+    getVideoQualityUrl
 }; 

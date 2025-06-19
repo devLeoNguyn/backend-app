@@ -134,18 +134,21 @@ class CloudflareStreamService {
                 startTime = 0
             } = options;
 
-            // 📊 Lấy thông tin video
-            const response = await axios.get(`${this.streamApiUrl}/${videoUid}`, {
-                headers: {
-                    'Authorization': `Bearer ${this.apiToken}`
-                }
-            });
+            // 📊 Lấy thông tin video và captions
+            const [videoResponse, captionsData] = await Promise.all([
+                axios.get(`${this.streamApiUrl}/${videoUid}`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiToken}`
+                    }
+                }),
+                this.getVideoCaptions(videoUid)
+            ]);
 
-            if (!response.data.success) {
+            if (!videoResponse.data.success) {
                 throw new Error(`Video not found: ${videoUid}`);
             }
 
-            const videoData = response.data.result;
+            const videoData = videoResponse.data.result;
 
             // ⚠️ Kiểm tra status
             if (videoData.status !== 'ready') {
@@ -156,27 +159,24 @@ class CloudflareStreamService {
                 };
             }
 
-            // 🔗 Tạo stream URLs (PUBLIC - không cần signature)
+            // 🔗 Tạo stream URLs tối ưu cho EXPO APP (mobile-first)
             const streamUrls = {
-                // HLS cho mobile và adaptive streaming
+                // 📱 HLS - PRIMARY cho Expo/React Native
                 hls: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.m3u8`,
                 
-                // DASH cho web players
-                dash: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mpd`,
+                // 🎬 MP4 fallback cho Expo Video component
+                mp4: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4`,
                 
-                // Direct MP4 URLs cho compatibility
-                mp4: {
-                    auto: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4`,
+                // 📱 Mobile-optimized MP4 qualities
+                mp4_mobile: {
                     '360p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=360p`,
                     '480p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=480p`,
                     '720p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=720p`
                 },
                 
-                // Thumbnail (public)
+                // 🖼️ Thumbnails for mobile
                 thumbnail: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg`,
-                
-                // Preview/poster (public)
-                preview: videoData.preview || `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg?time=1s`
+                poster: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg?time=5s`
             };
 
             return {
@@ -186,15 +186,36 @@ class CloudflareStreamService {
                 size: videoData.size,
                 created: videoData.created,
                 meta: videoData.meta,
-                urls: streamUrls,
                 
-                // 📱 Recommended URLs for different platforms
-                recommended: {
-                    ios: streamUrls.hls,
-                    android: streamUrls.hls,
-                    web: streamUrls.dash,
-                    fallback: streamUrls.mp4.auto
-                }
+                // 📱 SIMPLIFIED RESPONSE cho Expo app
+                expo: {
+                    // Primary URL cho Expo AV component
+                    uri: streamUrls.hls, // HLS adaptive streaming
+                    fallbackUri: streamUrls.mp4, // MP4 fallback
+                    
+                    // Mobile qualities
+                    qualities: {
+                        low: streamUrls.mp4_mobile['360p'],
+                        medium: streamUrls.mp4_mobile['480p'], 
+                        high: streamUrls.mp4_mobile['720p']
+                    },
+                    
+                    // Images cho app
+                    poster: streamUrls.poster,
+                    thumbnail: streamUrls.thumbnail,
+                    
+                    // 📋 Subtitles cho Expo Video
+                    subtitles: captionsData.subtitles
+                },
+                
+                // 📋 Subtitle info  
+                captions: {
+                    available: captionsData.available,
+                    subtitles: captionsData.subtitles
+                },
+                
+                // Full URLs (nếu cần customize)
+                urls: streamUrls
             };
 
         } catch (error) {
@@ -422,6 +443,81 @@ class CloudflareStreamService {
 </stream>
 <script data-cfasync="false" defer type="text/javascript" src="https://embed.cloudflarestream.com/embed/r4xu.fla9.latest.js"></script>
         `.trim();
+    }
+
+    /**
+     * 📋 Lấy danh sách captions từ Cloudflare Stream
+     * @param {string} videoUid - UID của video
+     * @returns {Object} - Captions data
+     */
+    async getVideoCaptions(videoUid) {
+        try {
+            const response = await axios.get(`${this.streamApiUrl}/${videoUid}/captions`, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiToken}`
+                }
+            });
+
+            if (response.data.success) {
+                const captions = response.data.result;
+                
+                // 🎬 Tạo subtitle URLs cho Expo app
+                const subtitles = {};
+                
+                captions.forEach(caption => {
+                    if (caption.status === 'ready') {
+                        subtitles[caption.language] = {
+                            label: caption.label,
+                            language: caption.language,
+                            // WebVTT URL cho subtitle
+                            uri: `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${videoUid}/captions/${caption.language}/vtt`,
+                            generated: caption.generated || false
+                        };
+                    }
+                });
+
+                return {
+                    available: captions.length > 0,
+                    subtitles,
+                    // Raw captions data (for debugging)
+                    _raw: captions
+                };
+            } else {
+                throw new Error(`Captions API error: ${JSON.stringify(response.data.errors)}`);
+            }
+
+        } catch (error) {
+            console.error('❌ Get captions error:', error);
+            
+            // Return empty subtitles if captions not available
+            return {
+                available: false,
+                subtitles: {},
+                _raw: []
+            };
+        }
+    }
+
+    /**
+     * 📋 Lấy file WebVTT subtitle cho language cụ thể 
+     * @param {string} videoUid - UID của video
+     * @param {string} language - Language code (vi, en, etc.)
+     * @returns {string} - WebVTT content
+     */
+    async getCaptionContent(videoUid, language) {
+        try {
+            const response = await axios.get(`${this.streamApiUrl}/${videoUid}/captions/${language}/vtt`, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiToken}`
+                }
+            });
+
+            return response.data; // WebVTT content as string
+
+        } catch (error) {
+            console.error(`❌ Get caption content error for ${language}:`, error);
+            throw new Error(`Không thể lấy subtitle ${language}: ${error.message}`);
+        }
     }
 }
 

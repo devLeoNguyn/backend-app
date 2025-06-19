@@ -7,7 +7,11 @@
     "dev": "nodemon ./bin/www",
     "seed": "node scripts/seedTestData.js",
     "clean": "node scripts/cleanTestData.js",
-    "reseed": "npm run clean && npm run seed"
+    "reseed": "npm run clean && npm run seed",
+    "generate-test": "node scripts/generate-test-data.js",
+    "clean-test": "node scripts/clean-test-data.js",
+    "regenerate-test": "npm run clean-test && npm run generate-test",
+    "test-interactions": "node scripts/test-user-interactions.js"
   },
   "dependencies": {
     "@payos/node": "^1.0.10",
