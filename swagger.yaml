@@ -3279,8 +3279,6 @@ components:
               type: string
               example: "phobien"
               description: "Cách sắp xếp đã áp dụng"
-
-components:
   schemas:
     PhoneRequest:
       type: object
@@ -3339,18 +3337,6 @@ components:
               type: string
               example: "a1b2c3d4e5f6789012345678"
               description: "Cloudflare Stream UID"
-        - ✅ Adaptive quality streaming
-        - ✅ Kiểm tra quyền truy cập (free/paid)
-        - ✅ Real-time processing status
-
-        **📱 VIDEO FORMATS:**
-        - **HLS:** Tối ưu cho mobile và iOS
-        - **DASH:** Tối ưu cho web browsers
-        - **MP4:** Compatibility fallback
-
-        **🔒 ACCESS CONTROL:**
-        - Phim miễn phí: Truy cập ngay lập tức
-        - Phim có phí: Yêu cầu thanh toán
       parameters:
         - name: videoId
           in: path
@@ -4173,8 +4159,6 @@ components:
                             filename:
                               type: string
                               nullable: true
-
-components:
   schemas:
     # === CLOUDFLARE SCHEMAS ===
     VideoStreamResponse:

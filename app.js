@@ -48,6 +48,7 @@ const homeRoutes = require('./routes/home.routes');
 const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
+const animeRoutes = require('./routes/anime.routes');
 
 
 // Đăng ký routes
