@@ -4,10 +4,34 @@ info:
   description: |
     API documentation cho ứng dụng Movie Backend
 
+    **🎯 NÚT "XEM TẤT CẢ" - HƯỚNG DẪN FRONTEND:**
+    
+    **📱 Cách triển khai nút "Xem tất cả" cho các section:**
+    ```javascript
+    // 1. Hiển thị section ban đầu (8-10 phim)
+    fetch('/api/home/trending')
+    
+    // 2. Khi user click "Xem tất cả" → hiển thị tối đa 20 phim  
+    fetch('/api/home/trending?showAll=true')
+    
+    // 3. Áp dụng cho tất cả sections:
+    // - /api/home/trending?showAll=true
+    // - /api/home/top-rated?showAll=true  
+    // - /api/home/anime?showAll=true
+    // - /api/home/vietnamese?showAll=true
+    // - /api/home/sports?showAll=true
+    // - /api/home/coming-soon?showAll=true
+    // - /api/series/trending?showAll=true
+    // - /api/series/vietnamese?showAll=true
+    // - /api/series/anime?showAll=true
+    // - /api/series/korean?showAll=true
+    ```
+
     **🔄 PHIÊN BẢN ĐÃ CẬP NHẬT:**
     - ❌ Đã bỏ JWT tokens  
     - ❌ Đã bỏ authentication middleware
     - ✅ Sử dụng userId đơn giản
+    - ✅ Default limit 20 cho tất cả sections
 
     **📋 FLOW AUTH MỚI (1 màn hình duy nhất):**
     1. **Màn hình nhập SĐT:** User nhập số điện thoại
@@ -66,6 +90,10 @@ tags:
     description: Các API trang chủ (/api/home) - Banner, phim mới, đề xuất
   - name: Series
     description: Các API cho phim bộ/series (/api/series) - Banner, trending, phân loại theo quốc gia
+  - name: Video Player
+    description: Các API cho màn hình phát video (/api/video-url, /api/watching, /api/episodes) - Stream URLs, progress tracking, interactions
+  - name: Episode
+    description: Các API cho tập phim (/api/episodes) - Chi tiết tập phim
 
 paths:
   # === FLOW MỚI: 1 MÀN HÌNH DUY NHẤT ===
@@ -3252,18 +3280,65 @@ components:
               example: "phobien"
               description: "Cách sắp xếp đã áp dụng"
 
-  # === VIDEO STREAMING PATHS ===
-  /api/video-url/{videoId}:
-    get:
-      tags:
-        - Video Streaming
-      summary: 🎬 Get Cloudflare Stream URL
-      description: |
-        **🎬 CLOUDFLARE STREAM:** Lấy URL phát video từ Cloudflare Stream
+components:
+  schemas:
+    PhoneRequest:
+      type: object
+      required:
+        - phone
+      properties:
+        phone:
+          type: string
+          example: "0912345678"
+          description: |
+            Số điện thoại của người dùng
+            - Format: 0xxxxxxxxx hoặc +84xxxxxxxxx
+            - Phải là số điện thoại Việt Nam hợp lệ
+            - Không được chứa ký tự đặc biệt hoặc khoảng trắng
 
-        **✨ TÍNH NĂNG:**
-        - ✅ Hỗ trợ cả Episode ID và Movie ID
-        - ✅ Multiple video formats (HLS, DASH, MP4)
+    VerifyOTPRequest:
+      type: object
+      required:
+        - phone
+        - otp
+      properties:
+        phone:
+          type: string
+          example: "0912345678"
+          description: Số điện thoại đã dùng để nhận OTP
+        otp:
+          type: string
+          example: "123456"
+          description: Mã OTP 6 số nhận được qua SMS
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+
+    # === CLOUDFLARE SCHEMAS ===
+    VideoStreamResponse:
+      type: object
+      description: "🎬 Schema for Cloudflare Stream video response"
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            videoId:
+              type: string
+              example: "675a1234567890abcdef1234"
+              description: "Episode ID hoặc Movie ID"
+            streamUid:
+              type: string
+              example: "a1b2c3d4e5f6789012345678"
+              description: "Cloudflare Stream UID"
         - ✅ Adaptive quality streaming
         - ✅ Kiểm tra quyền truy cập (free/paid)
         - ✅ Real-time processing status
@@ -4379,6 +4454,1407 @@ components:
                 - "💡 Sử dụng quality 720p thay vì 1080p để tiết kiệm bandwidth"
                 - "📱 HLS format tối ưu cho mobile streaming"
                 - "🖼️ Cloudflare Images free 100,000 images/month"
+
+  # === VIDEO PLAYER APIs ===
+  /api/video-url/{videoId}:
+    get:
+      tags:
+        - Video Player
+      summary: 🎬 API chính lấy Stream URL cho Expo Video Player
+      description: |
+        **🎯 API QUAN TRỌNG NHẤT CHO VIDEO PLAYER**
+        
+        Lấy Cloudflare Stream URLs để phát video trong Expo app.
+        
+        **📱 EXPO VIDEO INTEGRATION:**
+        ```javascript
+        import { Video } from 'expo-av';
+        
+        // 1. Lấy stream URLs
+        const response = await fetch('/api/video-url/episode_id');
+        const { data } = await response.json();
+        
+        // 2. Sử dụng trong Expo Video component
+        <Video
+          source={{ uri: data.video.uri }}           // HLS primary
+          posterSource={{ uri: data.video.poster }}  // Poster image
+          resizeMode="contain"
+          shouldPlay={true}
+          isLooping={false}
+          onPlaybackStatusUpdate={handleProgress}
+        />
+        
+        // 3. Fallback cho lỗi HLS
+        if (error) {
+          setVideoSource({ uri: data.video.fallbackUri }); // MP4 fallback
+        }
+        ```
+        
+        **🎯 RESPONSE STRUCTURE:**
+        - `video.uri`: HLS adaptive stream (chính)
+        - `video.fallbackUri`: MP4 fallback
+        - `video.qualities`: Options cho user settings
+        - `video.poster`: Poster image
+        - `video.subtitles`: WebVTT subtitles
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: |
+            **🎬 VIDEO ID**
+            
+            Có thể là:
+            - `episode_id` (cho phim bộ)
+            - `movie_id` (cho phim lẻ)
+          example: "675a1234567890abcdef1234"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [auto, episode, movie]
+            default: auto
+          description: |
+            **🔍 LOẠI TÌMKIEM (Tùy chọn)**
+            
+            - `auto`: Tự động detect (khuyên dùng)
+            - `episode`: Force tìm episode
+            - `movie`: Force tìm movie
+          example: "auto"
+        - name: quality
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [auto, 360p, 480p, 720p]
+            default: auto
+          description: |
+            **📺 CHẤT LƯỢNG VIDEO (Tùy chọn)**
+            
+            - `auto`: Adaptive quality (khuyên dùng)
+            - `360p`, `480p`, `720p`: Fixed quality
+          example: "auto"
+      responses:
+        "200":
+          description: ✅ Lấy stream URLs thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      streamUid:
+                        type: string
+                        example: "a1b2c3d4e5f6789012345678"
+                      video:
+                        type: object
+                        description: "📱 EXPO-OPTIMIZED VIDEO DATA"
+                        properties:
+                          uri:
+                            type: string
+                            example: "https://customer-xxx.cloudflarestream.com/uid/manifest/video.m3u8"
+                            description: "🎬 Primary HLS stream URL (dành cho Expo Video)"
+                          fallbackUri:
+                            type: string
+                            example: "https://customer-xxx.cloudflarestream.com/uid/manifest/video.mp4"
+                            description: "📱 MP4 fallback URL"
+                          qualities:
+                            type: object
+                            description: "🎚️ Quality options cho user settings"
+                            properties:
+                              low:
+                                type: string
+                                example: "...360p.mp4"
+                              medium:
+                                type: string
+                                example: "...480p.mp4"
+                              high:
+                                type: string
+                                example: "...720p.mp4"
+                          poster:
+                            type: string
+                            example: "https://customer-xxx.cloudflarestream.com/uid/thumbnails/thumbnail.jpg?time=5s"
+                            description: "🖼️ Poster image cho Video component"
+                          thumbnail:
+                            type: string
+                            example: "https://customer-xxx.cloudflarestream.com/uid/thumbnails/thumbnail.jpg"
+                            description: "🖼️ Thumbnail cho preview"
+                          subtitles:
+                            type: object
+                            description: "📋 WebVTT subtitles cho Expo Video"
+                            properties:
+                              vi:
+                                type: object
+                                properties:
+                                  label:
+                                    type: string
+                                    example: "Tiếng Việt"
+                                  language:
+                                    type: string
+                                    example: "vi"
+                                  uri:
+                                    type: string
+                                    example: "/api/video-url/episode_id/subtitle/vi"
+                          duration:
+                            type: number
+                            example: 1800
+                            description: "⏱️ Video duration (seconds)"
+                          size:
+                            type: number
+                            example: 2048576
+                            description: "💾 File size (bytes)"
+                      movie:
+                        type: object
+                        description: "🎬 Movie/Series info"
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                            example: "Avatar: The Way of Water"
+                          type:
+                            type: string
+                            example: "Phim lẻ"
+                          is_free:
+                            type: boolean
+                            example: true
+                          price:
+                            type: number
+                            example: 0
+                      episode:
+                        type: object
+                        nullable: true
+                        description: "📺 Episode info (chỉ cho phim bộ)"
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                            example: "Tập 1: Hành trình bắt đầu"
+                          number:
+                            type: integer
+                            example: 1
+        "202":
+          description: ⏳ Video đang được xử lý
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "processing"
+                  message:
+                    type: string
+                    example: "Video đang được xử lý, vui lòng thử lại sau"
+                  code:
+                    type: string
+                    example: "VIDEO_PROCESSING"
+                  data:
+                    type: object
+                    properties:
+                      progress:
+                        type: number
+                        example: 75
+                        description: "% Progress processing"
+        "403":
+          description: 🔒 Video yêu cầu thanh toán
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Video này yêu cầu thanh toán"
+                  code:
+                    type: string
+                    example: "PAYMENT_REQUIRED"
+                  data:
+                    type: object
+                    properties:
+                      movieTitle:
+                        type: string
+                        example: "Avatar: The Way of Water"
+                      price:
+                        type: number
+                        example: 50000
+                      priceDisplay:
+                        type: string
+                        example: "50,000 VNĐ"
+        "404":
+          description: ❌ Video không tồn tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Video không tồn tại"
+                  code:
+                    type: string
+                    example: "VIDEO_NOT_FOUND"
+
+  /api/video-url/{videoId}/quality/{qualityLevel}:
+    get:
+      tags:
+        - Video Player
+      summary: 📱 API lấy video URL với quality cụ thể
+      description: |
+        **🎚️ QUALITY SWITCHING API**
+        
+        Lấy video URL với chất lượng cụ thể cho Expo app.
+        Thích hợp cho feature cho user chọn quality trong settings.
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // User chọn quality trong settings
+        const handleQualityChange = async (quality) => {
+          const response = await fetch(`/api/video-url/${episodeId}/quality/${quality}`);
+          const { data } = await response.json();
+          
+          // Update video source
+          setVideoSource({ uri: data.video.uri });
+        };
+        ```
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: qualityLevel
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [360p, 480p, 720p, auto]
+          description: |
+            **🎚️ CHẤT LƯỢNG VIDEO**
+            
+            - `360p`: Low quality (tiết kiệm data)
+            - `480p`: Medium quality
+            - `720p`: High quality  
+            - `auto`: Adaptive quality
+          example: "720p"
+      responses:
+        "200":
+          description: ✅ Lấy quality-specific URL thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      requestedQuality:
+                        type: string
+                        example: "720p"
+                      selectedQuality:
+                        type: string
+                        example: "720p (High)"
+                      video:
+                        type: object
+                        properties:
+                          uri:
+                            type: string
+                            description: "🎬 URL cho quality đã chọn"
+                          fallbackUri:
+                            type: string
+                          poster:
+                            type: string
+                          thumbnail:
+                            type: string
+                          subtitles:
+                            type: object
+                          duration:
+                            type: number
+                          size:
+                            type: number
+                      availableQualities:
+                        type: object
+                        description: "🎚️ All available qualities cho switching"
+                        properties:
+                          auto:
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              label:
+                                type: string
+                                example: "Auto (Adaptive)"
+                          "360p":
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              label:
+                                type: string
+                                example: "360p (Low)"
+
+  /api/video-url/{videoId}/subtitle/{language}:
+    get:
+      tags:
+        - Video Player
+      summary: 📋 API lấy subtitle WebVTT content
+      description: |
+        **📋 SUBTITLE API CHO EXPO VIDEO**
+        
+        Lấy nội dung subtitle WebVTT cho ngôn ngữ cụ thể.
+        
+        **📱 EXPO VIDEO SUBTITLE INTEGRATION:**
+        ```javascript
+        import { Video } from 'expo-av';
+        
+        const subtitleTracks = [
+          {
+            title: 'Tiếng Việt',
+            language: 'vi',
+            type: 'text/vtt',
+            uri: '/api/video-url/episode_id/subtitle/vi'
+          },
+          {
+            title: 'English',
+            language: 'en', 
+            type: 'text/vtt',
+            uri: '/api/video-url/episode_id/subtitle/en'
+          }
+        ];
+        
+        <Video
+          source={{ uri: videoUri }}
+          textTracks={subtitleTracks}
+          selectedTextTrack={{ 
+            type: 'language',
+            value: 'vi' 
+          }}
+        />
+        ```
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: language
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [vi, en, ko, ja, zh]
+          description: |
+            **🌍 NGÔN NGỮ SUBTITLE**
+            
+            - `vi`: Tiếng Việt
+            - `en`: English
+            - `ko`: Korean
+            - `ja`: Japanese
+            - `zh`: Chinese
+          example: "vi"
+      responses:
+        "200":
+          description: ✅ Trả về WebVTT content
+          content:
+            text/vtt:
+              schema:
+                type: string
+                example: |
+                  WEBVTT
+                  
+                  1
+                  00:00:01.000 --> 00:00:03.000
+                  Xin chào! Chào mừng bạn đến với video này.
+                  
+                  2  
+                  00:00:03.000 --> 00:00:06.000
+                  Hôm nay chúng ta sẽ cùng khám phá...
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: "text/vtt"
+            Content-Disposition:
+              schema:
+                type: string
+                example: "inline; filename=\"episode_id_vi.vtt\""
+        "404":
+          description: ❌ Subtitle không tồn tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "Subtitle vi không tồn tại cho video này"
+                  code:
+                    type: string
+                    example: "SUBTITLE_NOT_FOUND"
+
+  /api/video-url/{videoId}/status:
+    get:
+      tags:
+        - Video Player  
+      summary: 📊 API kiểm tra trạng thái video
+      description: |
+        **📊 VIDEO STATUS CHECK API**
+        
+        Kiểm tra trạng thái video trước khi phát để show UI phù hợp.
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // Check trước khi load video player
+        const checkVideoStatus = async (videoId) => {
+          const response = await fetch(`/api/video-url/${videoId}/status`);
+          const { data } = await response.json();
+          
+          if (!data.available) {
+            showErrorMessage('Video chưa được upload');
+          } else if (!data.accessible) {
+            showPaymentDialog(data.movie);
+          } else if (!data.stream?.ready) {
+            showProcessingMessage();
+          } else {
+            loadVideoPlayer();
+          }
+        };
+        ```
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Trạng thái video
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                        nullable: true
+                      available:
+                        type: boolean
+                        example: true
+                        description: "📹 Video có sẵn để phát không"
+                      accessible:
+                        type: boolean
+                        example: true
+                        description: "🔓 User có quyền xem không (free hoặc đã trả phí)"
+                      movie:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          title:
+                            type: string
+                          type:
+                            type: string
+                          is_free:
+                            type: boolean
+                          price:
+                            type: number
+                      episode:
+                        type: object
+                        nullable: true
+                      stream:
+                        type: object
+                        nullable: true
+                        description: "📊 Cloudflare Stream details"
+                        properties:
+                          status:
+                            type: string
+                            enum: [ready, inprogress, error]
+                            example: "ready"
+                          duration:
+                            type: number
+                            example: 1800
+                          size:
+                            type: number
+                          ready:
+                            type: boolean
+                            example: true
+                      message:
+                        type: string
+                        example: "Video sẵn sàng để phát"
+
+  /api/watching/episodes/{episode_id}/progress:
+    put:
+      tags:
+        - Video Player
+      summary: 📊 API cập nhật tiến độ xem video
+      description: |
+        **📊 WATCHING PROGRESS TRACKING**
+        
+        Cập nhật tiến độ xem video khi user đang xem.
+        Call API này mỗi 10-30 giây để save progress.
+        
+        **📱 EXPO VIDEO INTEGRATION:**
+        ```javascript
+        import { Video } from 'expo-av';
+        
+        const [videoRef, setVideoRef] = useState(null);
+        
+        const handlePlaybackStatusUpdate = async (status) => {
+          if (status.isLoaded && status.positionMillis) {
+            // Save progress every 10 seconds
+            if (status.positionMillis % 10000 < 1000) {
+              await updateWatchProgress(status.positionMillis / 1000);
+            }
+          }
+        };
+        
+        const updateWatchProgress = async (currentTime) => {
+          await fetch(`/api/watching/episodes/${episodeId}/progress`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              current_time: currentTime,
+              userId: userId
+            })
+          });
+        };
+        
+        <Video
+          ref={setVideoRef}
+          source={{ uri: videoUri }}
+          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        />
+        ```
+      parameters:
+        - name: episode_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "📺 Episode ID đang xem"
+          example: "675a1234567890abcdef1234"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, current_time]
+              properties:
+                userId:
+                  type: string
+                  description: "👤 User ID"
+                  example: "675a1234567890abcdef1234"
+                current_time:
+                  type: number
+                  description: |
+                    **⏱️ THỜI GIAN HIỆN TẠI (giây)**
+                    
+                    - `0`: Bắt đầu xem video
+                    - `> 0`: Cập nhật progress
+                  example: 1250
+                  minimum: 0
+      responses:
+        "200":
+          description: ✅ Cập nhật progress thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã cập nhật tiến trình xem thành công"
+                  data:
+                    type: object
+                    properties:
+                      watching:
+                        type: object
+                        properties:
+                          episode_id:
+                            type: string
+                          current_time:
+                            type: number
+                            example: 1250
+                          duration:
+                            type: number
+                            example: 1800
+                          completed:
+                            type: boolean
+                            example: false
+                          watch_percentage:
+                            type: number
+                            example: 69.4
+                            description: "📊 % video đã xem"
+                          last_watched:
+                            type: string
+                            format: date-time
+        "201":
+          description: ✅ Bắt đầu xem video (current_time = 0)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã bắt đầu xem phim"
+
+  /api/watching/progress/{episodeId}:
+    get:
+      tags:
+        - Video Player
+      summary: 📊 API lấy tiến độ xem đã lưu
+      description: |
+        **📊 GET SAVED PROGRESS**
+        
+        Lấy tiến độ xem đã lưu để resume video từ vị trí đã xem.
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // Load saved progress khi khởi tạo video
+        const loadSavedProgress = async () => {
+          const response = await fetch(
+            `/api/watching/progress/${episodeId}?userId=${userId}`
+          );
+          const savedProgress = await response.json();
+          
+          if (savedProgress.current_time > 0) {
+            // Resume from saved position
+            videoRef.current?.setPositionAsync(savedProgress.current_time * 1000);
+          }
+        };
+        ```
+      parameters:
+        - name: episodeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "👤 User ID để lấy progress cá nhân"
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Tiến độ xem đã lưu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  episode_id:
+                    type: string
+                  current_time:
+                    type: number
+                    example: 1250
+                    description: "⏱️ Vị trí đã xem (giây)"
+                  duration:
+                    type: number
+                    example: 1800
+                  completed:
+                    type: boolean
+                    example: false
+                  watch_percentage:
+                    type: number
+                    example: 69.4
+                  last_watched:
+                    type: string
+                    format: date-time
+
+  /api/movies/{id}/detail-with-interactions:
+    get:
+      tags:
+        - Video Player
+      summary: 🎬 API lấy chi tiết phim cho màn hình player
+      description: |
+        **🎬 MOVIE DETAIL FOR VIDEO PLAYER**
+        
+        Lấy thông tin đầy đủ về phim để hiển thị trong video player screen:
+        - Thông tin phim/episode
+        - Danh sách episodes (cho phim bộ)
+        - Comments, ratings
+        - User interactions (đã like, favorite, progress)
+        - Phim liên quan
+        
+        **📱 EXPO VIDEO PLAYER USAGE:**
+        ```javascript
+        // Load khi vào màn hình video player
+        const loadMovieDetail = async (movieId) => {
+          const url = userId ? 
+            `/api/movies/${movieId}/detail-with-interactions?userId=${userId}` :
+            `/api/movies/${movieId}/detail-with-interactions`;
+            
+          const response = await fetch(url);
+          const { data } = await response.json();
+          
+          // Setup video player info
+          setMovieInfo(data.movie);
+          setEpisodesList(data.movie.episodes);
+          setUserInteractions(data.userInteractions);
+          setRelatedMovies(data.relatedMovies);
+        };
+        ```
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "🎬 Movie ID"
+          example: "675a1234567890abcdef1234"
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            **👤 USER ID (Tùy chọn)**
+            
+            Nếu có userId → trả về user interactions
+            Nếu không có → chỉ trả về thông tin phim
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Chi tiết phim với interactions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      movie:
+                        type: object
+                        description: "🎬 Movie/Series information"
+                        properties:
+                          _id:
+                            type: string
+                          movie_title:
+                            type: string
+                            example: "Avatar: The Way of Water"
+                          description:
+                            type: string
+                          production_time:
+                            type: string
+                            format: date
+                          producer:
+                            type: string
+                          poster_path:
+                            type: string
+                          genres:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                _id:
+                                  type: string
+                                genre_name:
+                                  type: string
+                          movie_type:
+                            type: string
+                            enum: [Phim lẻ, Phim bộ, Thể thao]
+                            example: "Phim bộ"
+                          price:
+                            type: number
+                          is_free:
+                            type: boolean
+                          episodes:
+                            type: array
+                            description: "📺 Danh sách episodes (chỉ cho phim bộ)"
+                            items:
+                              type: object
+                              properties:
+                                _id:
+                                  type: string
+                                episode_title:
+                                  type: string
+                                episode_number:
+                                  type: integer
+                                uri:
+                                  type: string
+                                  description: "🎬 Video URI (nếu free)"
+                                duration:
+                                  type: number
+                      stats:
+                        type: object
+                        description: "📊 Movie statistics"
+                        properties:
+                          views:
+                            type: number
+                            example: 15420
+                          viewsFormatted:
+                            type: string
+                            example: "15.4K"
+                          likes:
+                            type: number
+                            example: 892
+                          rating:
+                            type: number
+                            example: 4.6
+                          totalRatings:
+                            type: number
+                            example: 1250
+                          comments:
+                            type: number
+                            example: 234
+                      userInteractions:
+                        type: object
+                        nullable: true
+                        description: "👤 User interaction status (nếu có userId)"
+                        properties:
+                          hasLiked:
+                            type: boolean
+                            example: true
+                          hasRated:
+                            type: boolean
+                            example: true
+                          userComment:
+                            type: string
+                            nullable: true
+                          isFavorite:
+                            type: boolean
+                            example: false
+                          isFollowing:
+                            type: boolean
+                            example: false
+                          watchingProgress:
+                            type: object
+                            nullable: true
+                            description: "📊 Tiến độ xem hiện tại"
+                            properties:
+                              episodeNumber:
+                                type: integer
+                                example: 3
+                              watchPercentage:
+                                type: number
+                                example: 69.4
+                              currentTime:
+                                type: number
+                                example: 1250
+                              lastWatched:
+                                type: string
+                                format: date-time
+                      recentComments:
+                        type: array
+                        description: "💬 5 comments mới nhất"
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                            user:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                email:
+                                  type: string
+                            comment:
+                              type: string
+                            isLike:
+                              type: boolean
+                            createdAt:
+                              type: string
+                              format: date-time
+                      relatedMovies:
+                        type: array
+                        description: "🔗 Phim liên quan (cùng thể loại)"
+                        items:
+                          type: object
+                          properties:
+                            movieId:
+                              type: string
+                            title:
+                              type: string
+                            poster:
+                              type: string
+                            movieType:
+                              type: string
+                            producer:
+                              type: string
+                      tabs:
+                        type: object
+                        description: "🎛️ UI config cho video player tabs"
+                        properties:
+                          showEpisodesList:
+                            type: boolean
+                            example: true
+                            description: "📺 Show episodes tab (chỉ cho phim bộ)"
+                          showRelated:
+                            type: boolean
+                            example: true
+                            description: "🔗 Show related movies tab"
+
+  /api/episodes/{id}:
+    get:
+      tags:
+        - Episode
+      summary: 📺 API lấy chi tiết một episode
+      description: |
+        **📺 EPISODE DETAIL API**
+        
+        Lấy thông tin chi tiết của một episode cụ thể.
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // Khi user chọn episode trong danh sách
+        const selectEpisode = async (episodeId) => {
+          const response = await fetch(`/api/episodes/${episodeId}`);
+          const { data } = await response.json();
+          
+          setCurrentEpisode(data.episode);
+          // Load video cho episode này
+          loadVideoForEpisode(episodeId);
+        };
+        ```
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "📺 Episode ID"
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Chi tiết episode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      episode:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          episode_title:
+                            type: string
+                            example: "Tập 1: Hành trình bắt đầu"
+                          uri:
+                            type: string
+                            description: "🎬 Video URI (có thể là Cloudflare Stream UID)"
+                          episode_number:
+                            type: integer
+                            example: 1
+                          episode_description:
+                            type: string
+                            example: "Trong tập đầu tiên..."
+                          duration:
+                            type: number
+                            example: 1800
+                            description: "⏱️ Duration in seconds"
+        "404":
+          description: ❌ Episode không tồn tại
+
+  /api/watching/history:
+    get:
+      tags:
+        - Video Player
+      summary: 📚 API lấy lịch sử xem phim của user
+      description: |
+        **📚 WATCHING HISTORY API**
+        
+        Lấy lịch sử xem phim của user với pagination.
+        Support cả "history" và "continue watching".
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // Lấy lịch sử xem hoàn chỉnh
+        const getWatchingHistory = async () => {
+          const response = await fetch(
+            `/api/watching/history?userId=${userId}&page=1&limit=20`
+          );
+          const { data } = await response.json();
+          setWatchingHistory(data.watching_history);
+        };
+        
+        // Lấy phim đang xem dở (continue watching)
+        const getContinueWatching = async () => {
+          const response = await fetch(
+            `/api/watching/history?userId=${userId}&type=continue&limit=10`
+          );
+          const { data } = await response.json();
+          setContinueWatching(data.continue_watching);
+        };
+        ```
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "👤 User ID"
+          example: "675a1234567890abcdef1234"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, continue]
+            default: all
+          description: |
+            **🎯 LOẠI LỊCH SỬ**
+            
+            - `all`: Toàn bộ lịch sử xem (default)
+            - `continue`: Chỉ phim chưa xem hết (continue watching)
+          example: "continue"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: "📄 Trang hiện tại"
+          example: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: "📊 Số items mỗi trang"
+          example: 20
+      responses:
+        "200":
+          description: ✅ Lịch sử xem phim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      watching_history:
+                        type: array
+                        description: "📚 Danh sách lịch sử xem (hoặc continue_watching nếu type=continue)"
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                            episode_id:
+                              type: object
+                              properties:
+                                _id:
+                                  type: string
+                                episode_title:
+                                  type: string
+                                episode_number:
+                                  type: integer
+                                movie_id:
+                                  type: object
+                                  properties:
+                                    _id:
+                                      type: string
+                                    movie_title:
+                                      type: string
+                                    poster_path:
+                                      type: string
+                                    movie_type:
+                                      type: string
+                            current_time:
+                              type: number
+                              example: 1250
+                            duration:
+                              type: number
+                              example: 1800
+                            completed:
+                              type: boolean
+                              example: false
+                            watch_percentage:
+                              type: number
+                              example: 69.4
+                            last_watched:
+                              type: string
+                              format: date-time
+                      pagination:
+                        type: object
+                        properties:
+                          current_page:
+                            type: integer
+                            example: 1
+                          total_pages:
+                            type: integer
+                            example: 5
+                          total_items:
+                            type: integer
+                            example: 97
+
+  /api/video-url/{videoId}/refresh:
+    post:
+      tags:
+        - Video Player
+      summary: 🔄 API làm mới Stream URL
+      description: |
+        **🔄 REFRESH STREAM URL**
+        
+        Làm mới Signed URL khi stream URL hết hạn hoặc lỗi.
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        // Khi video player báo lỗi stream URL hết hạn
+        const refreshStreamUrl = async (videoId) => {
+          const response = await fetch(`/api/video-url/${videoId}/refresh`, {
+            method: 'POST'
+          });
+          const { data } = await response.json();
+          
+          // Update video source với URL mới
+          setVideoSource({ uri: data.video.uri });
+        };
+        ```
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "🎬 Video ID (episode hoặc movie)"
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ Stream URL đã được làm mới
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    description: "🎬 Cùng structure như /api/video-url/{videoId}"
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                      video:
+                        type: object
+                        properties:
+                          uri:
+                            type: string
+                            description: "🔄 URL mới đã được refresh"
+                          fallbackUri:
+                            type: string
+                          poster:
+                            type: string
+                          thumbnail:
+                            type: string
+                          subtitles:
+                            type: object
+                          duration:
+                            type: number
+                          size:
+                            type: number
+
+  # === ADDITIONAL USEFUL APIs FOR VIDEO PLAYER ===
+  /api/watching/movies/{movie_id}/view:
+    post:
+      tags:
+        - Video Player
+      summary: 👁️ API đánh dấu đã xem phim (tăng view count)
+      description: |
+        **👁️ ADD VIEW COUNT**
+        
+        Gọi API này khi user xem video hoàn thành (>80% hoặc đến cuối).
+        
+        **📱 EXPO USAGE:**
+        ```javascript
+        const handleVideoComplete = async (movieId, userId) => {
+          // Call khi video xem xong hoặc >80%
+          await fetch(`/api/watching/movies/${movieId}/view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+          });
+        };
+        ```
+      parameters:
+        - name: movie_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "🎬 Movie ID"
+          example: "675a1234567890abcdef1234"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                  description: "👤 User ID"
+                  example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: ✅ View count đã được cập nhật
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "View count updated successfully"
+
+  /api/video-url/{videoId}/embed:
+    get:
+      tags:
+        - Video Player
+      summary: 📺 API lấy embed HTML cho video player
+      description: |
+        **📺 VIDEO EMBED API**
+        
+        Lấy embed HTML code cho video player (dành cho web view hoặc admin).
+        
+        **📱 EXPO WEBVIEW USAGE:**
+        ```javascript
+        import { WebView } from 'react-native-webview';
+        
+        const loadEmbedVideo = async (videoId) => {
+          const response = await fetch(`/api/video-url/${videoId}/embed`);
+          const { data } = await response.json();
+          
+          // Sử dụng trong WebView
+          setEmbedHTML(data.embedHTML);
+        };
+        
+        <WebView
+          source={{ html: embedHTML }}
+          style={{ height: 200 }}
+        />
+        ```
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: width
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "100%"
+          description: "📏 Width của embed player"
+          example: "800px"
+        - name: height
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "auto"
+          description: "📏 Height của embed player"
+          example: "450px"
+        - name: autoplay
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "▶️ Auto play video"
+          example: true
+      responses:
+        "200":
+          description: ✅ Embed HTML code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                      embedHTML:
+                        type: string
+                        example: '<iframe src="https://customer-xxx.cloudflarestream.com/uid/iframe" width="100%" height="450px" frameborder="0"></iframe>'
+                        description: "📺 HTML embed code"
+                      previewUrl:
+                        type: string
+                        example: "https://customer-xxx.cloudflarestream.com/uid"
+                        description: "🔗 Direct preview URL"
 
     # === EXISTING SCHEMAS (already defined) ===
     ErrorResponse:
