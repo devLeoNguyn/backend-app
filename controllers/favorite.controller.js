@@ -67,7 +67,7 @@ exports.getFavorites = async (req, res) => {
         
         // Pagination cho mobile (default 10 items/page)
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
         // Query với pagination

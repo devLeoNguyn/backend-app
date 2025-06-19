@@ -73,7 +73,7 @@ const getGenres = async (req, res) => {
 const getGenreMovies = async (req, res) => {
     try {
         const { genreId } = req.params;
-        const { include_children = 'false', page = 1, limit = 10 } = req.query;
+        const { include_children = 'false', page = 1, limit = 20 } = req.query;
 
         // Kiểm tra thể loại tồn tại
         const genre = await Genre.findById(genreId);

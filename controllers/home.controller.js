@@ -21,7 +21,7 @@ const getNewReleases = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true'; // Option để hiển thị tất cả
         const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5); // List phim cho banner
-        const gridLimit = parseInt(req.query.limit) || (showAll ? 80 : 6); // Phim cho grid "Phim dành cho bạn"
+        const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6); // Phim cho grid "Phim dành cho bạn"
         const days = parseInt(req.query.days) || 30;
 
         // Lấy phim mới nhất cho banner và grid - chỉ dùng field có sẵn trong schema
@@ -88,7 +88,7 @@ const getContinueWatching = async (req, res) => {
     try {
         const { userId } = req.query;
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         if (!userId) {
             return res.status(400).json({
@@ -265,7 +265,7 @@ const getGenreSections = async (req, res) => {
 const getTrendingMovies = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 10);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 10);
 
         // Lấy movies để tính view count
         const allMovies = await Movie.find({ release_status: 'released' })
@@ -325,7 +325,7 @@ const getTrendingMovies = async (req, res) => {
 const getTopRatedMovies = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         const allMovies = await Movie.find({ release_status: 'released' })
             .select('_id movie_title poster_path movie_type producer')
@@ -385,7 +385,7 @@ const getTopRatedMovies = async (req, res) => {
 const getSportsEvents = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
         const status = req.query.status; // upcoming, released, ended
 
         // Logic đặc trưng: Query theo movie_type và status
@@ -454,7 +454,7 @@ const getSportsEvents = async (req, res) => {
 const getAnimeHot = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // Logic đặc trưng: Tìm genre anime
         const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
@@ -523,7 +523,7 @@ const getAnimeHot = async (req, res) => {
 const getVietnameseSeries = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // Logic đặc trưng: Complex query tìm phim Việt Nam
         const vietnamSeries = await Movie.find({
@@ -596,7 +596,7 @@ const getVietnameseSeries = async (req, res) => {
 const getComingSoon = async (req, res) => {
     try {
         const showAll = req.query.showAll === 'true';
-        const limit = parseInt(req.query.limit) || (showAll ? 80 : 8);
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         const comingSoon = await Movie.find({
             release_status: 'upcoming',

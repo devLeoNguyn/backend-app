@@ -77,7 +77,7 @@ const getBannerSeries = async (req, res) => {
         // 📊 1. PARSE CÁC THAM SỐ VÀ THIẾT LẬP MẶC ĐỊNH
         const showAll = req.query.showAll === 'true';
         const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5);    // 🎬 Số phim banner
-        const gridLimit = parseInt(req.query.limit) || (showAll ? 80 : 6);            // 📱 Số phim grid
+        const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6);            // 📱 Số phim grid
         const days = parseInt(req.query.days) || 30;                 // 📅 Ngày gần đây
 
         // ⏰ 2. TÍNH TOÁN THỜI GIAN BẮT ĐẦU (N ngày trước)
@@ -171,7 +171,7 @@ const getTrendingSeries = async (req, res) => {
     try {
         // 📊 1. PARSE THAM SỐ VÀ THIẾT LẬP LIMIT
         const showAll = req.query.showAll === 'true';
-        const limit = showAll ? 1000 : 8; // 🔢 Nếu showAll thì lấy nhiều, không thì chỉ 8
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8); // 🔢 Nếu showAll thì limit 20, không thì chỉ 8
 
         // 🔍 2. QUERY PHIM BỘ CƠ BẢN
         // Lấy phim bộ để tính view count - giới hạn query để tối ưu performance
@@ -257,7 +257,7 @@ const getVietnameseSeries = async (req, res) => {
     try {
         // 📊 1. PARSE THAM SỐ VÀ THIẾT LẬP LIMIT
         const showAll = req.query.showAll === 'true';
-        const limit = showAll ? 1000 : 8;
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // 🔍 2. TÌM PHIM BỘ VIỆT NAM
         // Sử dụng $or để tìm kiếm linh hoạt trong nhiều field
@@ -359,7 +359,7 @@ const getAnimeSeries = async (req, res) => {
     try {
         // 📊 1. PARSE THAM SỐ VÀ THIẾT LẬP LIMIT
         const showAll = req.query.showAll === 'true';
-        const limit = showAll ? 1000 : 8;
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // 🔍 2. TÌM GENRE ANIME/HOẠT HÌNH
         const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
@@ -453,7 +453,7 @@ const getKoreanSeries = async (req, res) => {
     try {
         // 📊 1. PARSE THAM SỐ VÀ THIẾT LẬP LIMIT
         const showAll = req.query.showAll === 'true';
-        const limit = showAll ? 1000 : 8;
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // 🔍 2. TÌM PHIM BỘ HÀN QUỐC  
         // Sử dụng $or để tìm kiếm linh hoạt trong nhiều field
