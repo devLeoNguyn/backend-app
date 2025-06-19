@@ -593,8 +593,8 @@ paths:
           required: false
           schema:
             type: integer
-            default: 8
-          example: 8
+            default: 20
+          example: 20
       responses:
         "200":
           description: Lấy dữ liệu thành công
@@ -658,17 +658,38 @@ paths:
         - Public API (không cần đăng nhập)
         - Sắp xếp theo view count
         - Format giống GridMovie
+        
+        **🔥 FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (10 phim)
+        GET /api/home/trending
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 phim
+        GET /api/home/trending?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (10 phim) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 phim ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 7
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng phim trending (mặc định 7)
-          example: 7
+          description: Số lượng phim trending (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
       responses:
         "200":
           description: Lấy dữ liệu thành công
@@ -712,17 +733,38 @@ paths:
         - Public API (không cần đăng nhập)
         - Sắp xếp theo rating
         - Chỉ lấy phim có rating > 0
+        
+        **⭐ FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (8 phim)
+        GET /api/home/top-rated
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 phim
+        GET /api/home/top-rated?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (8 phim) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 phim ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 8
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng phim top-rated (mặc định 8)
-          example: 8
+          description: Số lượng phim top-rated (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
       responses:
         "200":
           description: Lấy dữ liệu thành công
@@ -766,17 +808,38 @@ paths:
         - Public API (không cần đăng nhập)
         - Chỉ lấy movie_type = "Thể thao"
         - Filter theo status (upcoming, released, ended)
+        
+        **⚽ FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (8 sự kiện)
+        GET /api/home/sports
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 sự kiện
+        GET /api/home/sports?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (8 sự kiện) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 sự kiện ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 8
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng sự kiện thể thao (mặc định 8)
-          example: 8
+          description: Số lượng sự kiện thể thao (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
         - name: status
           in: query
           required: false
@@ -827,21 +890,43 @@ paths:
       summary: API Anime/Hoạt hình hot
       description: |
         Lấy danh sách anime/hoạt hình nổi bật với logic đặc trưng.
+        
         **Fontend sử dụng cho:**
         - Section "Anime hot"
         - Grid layout hoạt hình
         - Hiển thị poster anime với tỉ lệ đặc biệt
+        
+        **🌸 FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (8 anime)
+        GET /api/home/anime
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 anime
+        GET /api/home/anime?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (8 anime) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 anime ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 8
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng anime hot (mặc định 8)
-          example: 8
+          description: Số lượng anime hot (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
       responses:
         "200":
           description: Lấy dữ liệu thành công
@@ -893,21 +978,43 @@ paths:
         **Logic đặc trưng:**
         - Sắp xếp theo rating (phim có rating cao nhất)
         - Tính toán rating/viewCount        
+        
         **Fontend sử dụng cho:**
         - Section "Phim Việt đặc sắc"
         - Grid layout phim Việt
         - Hiển thị poster phim Việt Nam
+        
+        **🇻🇳 FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (8 phim Việt)
+        GET /api/home/vietnamese
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 phim Việt
+        GET /api/home/vietnamese?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (8 phim Việt) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 phim Việt ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 8
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng phim Việt (mặc định 8)
-          example: 8
+          description: Số lượng phim Việt (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
       responses:
         "200":
           description: Lấy dữ liệu thành công
@@ -970,22 +1077,44 @@ paths:
       summary: API Phim sắp chiếu (đặt lịch sẽ phát triển trong tương lai)
       description: |
         Lấy danh sách phim sắp chiếu với logic đặc trưng.
+        
         **Fontend sử dụng cho:**
         - Section "Sắp chiếu"
         - Grid layout phim sắp chiếu
         - Hiển thị poster + thông tin cơ bản
         - Có thể thêm countdown timer đến ngày chiếu
+        
+        **🔜 FRONTEND "XEM TẤT CẢ" BUTTON:**
+        ```javascript
+        // Hiển thị section ban đầu (8 phim sắp chiếu)
+        GET /api/home/coming-soon
+        
+        // Khi user nhấn "Xem tất cả" → hiển thị tối đa 20 phim sắp chiếu
+        GET /api/home/coming-soon?showAll=true
+        ```
       parameters:
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (8 phim) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 phim ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
           schema:
             type: integer
-            default: 8
+            default: 20
             minimum: 1
             maximum: 20
-          description: Số lượng phim sắp chiếu (mặc định 8)
-          example: 8
+          description: Số lượng phim sắp chiếu (chỉ áp dụng khi showAll=true, mặc định 20)
+          example: 20
         - name: days
           in: query
           required: false
@@ -1091,6 +1220,18 @@ paths:
             - Mặc định: `5` phim ⭐ **Khuyên dùng**
             - Tối đa: `10` phim
           example: 5
+        - name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            **🎯 NÚT "XEM TẤT CẢ"**
+            
+            - `false`: Hiển thị section mặc định (6 phim bộ) ⭐ **Dành cho trang chủ**
+            - `true`: Hiển thị tối đa 20 phim bộ ⭐ **Dành cho nút "Xem tất cả"**
+          example: true
         - name: limit
           in: query
           required: false
@@ -1104,7 +1245,7 @@ paths:
             
             Số lượng phim bộ trong section "Phim bộ dành cho bạn"
             - Mặc định: `6` phim ⭐ **Khuyên dùng**
-            - Tối đa: `20` phim
+            - Tối đa: `20` phim (khi showAll=true)
           example: 6
         - name: days
           in: query
@@ -4252,4 +4393,3 @@ components:
         code:
           type: string
           example: "ERROR_CODE"
-
