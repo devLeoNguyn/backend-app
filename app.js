@@ -44,9 +44,11 @@ const ratingRoutes = require('./routes/rating.routes');
 const genreRoutes = require('./routes/genre.routes');
 const watchingRoutes = require('./routes/watching.routes');
 const homeRoutes = require('./routes/home.routes');
+
 const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
+
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -62,6 +64,8 @@ app.use('/api/watching', watchingRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/video-url', videoRoutes);
 app.use('/api/series', seriesRoutes);
+
+app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Swagger Documentation
