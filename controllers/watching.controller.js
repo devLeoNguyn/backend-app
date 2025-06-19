@@ -138,7 +138,7 @@ exports.getWatchingHistory = async (req, res) => {
     try {
         const { userId, type } = req.query;
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 20;
         
         if (!userId) {
             return res.status(400).json({

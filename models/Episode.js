@@ -19,10 +19,6 @@ const episodeSchema = new mongoose.Schema({
         ref: 'Movie',
         required: true
     },
-    subtitle: {
-        vi: String, // URL phụ đề tiếng Việt cho tập phim
-        en: String  // URL phụ đề tiếng Anh cho tập phim
-    },
     duration: {
         type: Number, // Thời lượng tập phim (phút)
         required: true

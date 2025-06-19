@@ -7,11 +7,14 @@
     "dev": "nodemon ./bin/www",
     "seed": "node scripts/seedTestData.js",
     "clean": "node scripts/cleanTestData.js",
-    "reseed": "npm run clean && npm run seed"
+    "reseed": "npm run clean && npm run seed",
+    "generate-test": "node scripts/generate-test-data.js",
+    "clean-test": "node scripts/clean-test-data.js",
+    "regenerate-test": "npm run clean-test && npm run generate-test",
+    "test-interactions": "node scripts/test-user-interactions.js"
   },
   "dependencies": {
     "@payos/node": "^1.0.10",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "~1.4.4",
@@ -20,12 +23,14 @@
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
+    "form-data": "^4.0.3",
     "hbs": "^4.2.0",
     "http-errors": "~1.6.3",
     "mongoose": "^8.15.0",
     "morgan": "~1.9.1",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.10",
+    "sharp": "^0.34.2",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "yamljs": "^0.3.0"

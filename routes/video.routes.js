@@ -1,54 +1,82 @@
 const express = require('express');
 const router = express.Router();
-const { 
-    getVideoStreamUrl, 
-    refreshVideoStreamUrl, 
-    getVideoStatus 
+const {
+    getVideoStreamUrl,
+    refreshVideoStreamUrl,
+    getVideoStatus,
+    getVideoEmbed,
+    getVideoSubtitle,
+    getVideoQualityUrl
 } = require('../controllers/video.controller');
 
 // === PUBLIC ROUTES ===
 
 /**
  * 🎬 GET /api/video-url/:videoId
- * Lấy CloudFront Signed URL cho video streaming
+ * Lấy Cloudflare Stream URL cho EXPO APP
  * 
  * @param {string} videoId - Episode ID hoặc Movie ID
  * @query {string} type - 'auto' | 'episode' | 'movie' (default: 'auto')
+ * @query {string} quality - 'auto' | '360p' | '480p' | '720p' (default: 'auto')
  * 
- * Response for HLS (.m3u8):
+ * EXPO APP Response:
  * {
  *   "status": "success",
  *   "data": {
  *     "videoId": "episode_id",
- *     "type": "hls",
- *     "movie": { "_id": "...", "title": "...", "type": "Phim bộ" },
- *     "episode": { "_id": "...", "title": "Tập 1", "number": 1 },
- *     "stream": {
- *       "url": "https://d123.cloudfront.net/hls-output/video.m3u8?...",
- *       "cookies": { ... },
- *       "expiration": "2023-12-01T11:00:00Z",
- *       "expiresIn": "10 minutes"
- *     }
+ *     "streamUid": "cloudflare-stream-uid",
+ *     "video": {
+ *       "uri": "https://customer-xxx.cloudflarestream.com/uid/manifest/video.m3u8", // HLS primary
+ *       "fallbackUri": "https://customer-xxx.cloudflarestream.com/uid/manifest/video.mp4", // MP4 fallback
+ *       "qualities": {
+ *         "low": "...360p.mp4",
+ *         "medium": "...480p.mp4", 
+ *         "high": "...720p.mp4"
+ *       },
+ *       "poster": "https://customer-xxx.cloudflarestream.com/uid/thumbnails/thumbnail.jpg?time=5s",
+ *       "thumbnail": "https://customer-xxx.cloudflarestream.com/uid/thumbnails/thumbnail.jpg",
+ *       "subtitles": {
+ *         "vi": { "label": "Tiếng Việt", "language": "vi", "uri": "https://api.cloudflare.com/.../vtt" },
+ *         "en": { "label": "English", "language": "en", "uri": "https://api.cloudflare.com/.../vtt" }
+ *       },
+ *       "duration": 1800,
+ *       "size": 2048576
+ *     },
+ *     "movie": { "_id": "...", "title": "...", "type": "Phim bộ", "is_free": true, "price": 0 },
+ *     "episode": { "_id": "...", "title": "Tập 1", "number": 1 }
  *   }
  * }
  * 
- * Response for MP4:
- * {
- *   "status": "success", 
- *   "data": {
- *     "videoId": "movie_id",
- *     "type": "single",
- *     "movie": { "_id": "...", "title": "...", "type": "Phim lẻ" },
- *     "episode": null,
- *     "stream": {
- *       "url": "https://d123.cloudfront.net/videos/movie.mp4?...",
- *       "expiration": "2023-12-01T11:00:00Z",
- *       "expiresIn": "10 minutes"
- *     }
- *   }
- * }
+ * EXPO Usage Example:
+ * ```javascript
+ * import { Video } from 'expo-av';
+ * 
+ * const response = await fetch('/api/video-url/episode_id');
+ * const { data } = await response.json();
+ * 
+ * // Use in Expo Video component
+ * <Video
+ *   source={{ uri: data.video.uri }}
+ *   posterSource={{ uri: data.video.poster }}
+ *   resizeMode="contain"
+ *   shouldPlay
+ *   isLooping={false}
+ * />
+ * ```
  */
-router.get('/:videoId', getVideoStreamUrl);
+// ===== SPECIFIC ROUTES (phải đặt trước generic routes) =====
+
+/**
+ * 📱 GET /api/video-url/:videoId/quality/:qualityLevel
+ * Lấy video URL với quality cụ thể cho Expo app
+ */
+router.get('/:videoId/quality/:qualityLevel', getVideoQualityUrl);
+
+/**
+ * 📋 GET /api/video-url/:videoId/subtitle/:language
+ * Lấy subtitle WebVTT content cho language cụ thể
+ */
+router.get('/:videoId/subtitle/:language', getVideoSubtitle);
 
 /**
  * 🔄 POST /api/video-url/:videoId/refresh
@@ -59,27 +87,18 @@ router.post('/:videoId/refresh', refreshVideoStreamUrl);
 /**
  * 📊 GET /api/video-url/:videoId/status
  * Kiểm tra trạng thái video (có sẵn, cần thanh toán, format, v.v.)
- * 
- * Response:
- * {
- *   "status": "success",
- *   "data": {
- *     "videoId": "episode_id",
- *     "available": true,
- *     "accessible": true,
- *     "requiresPayment": false,
- *     "format": "hls",
- *     "movie": {
- *       "_id": "...",
- *       "title": "...",
- *       "type": "Phim bộ",
- *       "price": 0,
- *       "isFree": true
- *     }
- *   }
- * }
  */
 router.get('/:videoId/status', getVideoStatus);
+
+/**
+ * 📺 GET /api/video-url/:videoId/embed
+ * Lấy embed HTML cho video player (tùy chọn cho admin/preview)
+ */
+router.get('/:videoId/embed', getVideoEmbed);
+
+// ===== GENERIC ROUTE (phải đặt cuối cùng) =====
+
+router.get('/:videoId', getVideoStreamUrl);
 
 // === PROTECTED ROUTES (nếu cần thêm authentication) ===
 

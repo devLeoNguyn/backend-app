@@ -27,9 +27,9 @@ const getNewWeekMovies = async (req, res) => {
 
         // Xử lý từng phim và kiểm tra số tập
         const moviesWithDetails = await Promise.all(recentMovies.map(async (movie) => {
-            const episodes = await Episode.find({ movie_id: movie._id })
-                .select('episode_title uri episode_number episode_description')
-                .sort({ episode_number: 1 });
+                    const episodes = await Episode.find({ movie_id: movie._id })
+            .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
+            .sort({ episode_number: 1 });
 
             return movie.formatMovieResponse(episodes);
         }));
@@ -51,27 +51,38 @@ const getNewWeekMovies = async (req, res) => {
     }
 };
 
-// Thêm phim mới (bao gồm sự kiện thể thao)
+// 🎬 API TẠO PHIM MỚI (HỖ TRỢ TẤT CẢ LOẠI PHIM)
+// @route POST /api/movies
+// @description Tạo phim mới bao gồm: Phim lẻ, Phim bộ, Sự kiện thể thao
+// Mục đích: API tổng quát để tạo mọi loại phim với episodes tương ứng
+// Logic hoạt động:
+// 1. 🔍 Validate dữ liệu đầu vào theo từng loại phim
+// 2. ✅ Kiểm tra tính hợp lệ của genres
+// 3. 🎬 Tạo Movie record trong database
+// 4. 📺 Tạo Episodes tương ứng (1 tập cho phim lẻ, nhiều tập cho phim bộ)
+// 5. 🎨 Format response theo chuẩn frontend
+// 6. ⚙️ Xử lý đặc biệt cho sự kiện thể thao
 const createMovieController = async (req, res) => {
     try {
-        // Comprehensive validation cho tất cả movie types
+        // 🔍 1. VALIDATION TOÀN DIỆN CHO TẤT CẢ LOẠI PHIM
         const validatedData = validateMovieData(req.body);
 
-        // Extract validated fields
+        // 📊 2. EXTRACT CÁC TRƯỜNG DỮ LIỆU ĐÃ VALIDATE
         const {
-            movie_title,
-            description,
-            production_time,
-            producer,
-            price,
-            movie_type,
-            poster_path,
-            genres = [],
-            event_start_time,
-            event_status,
-            maxEpisodeNumber
+            movie_title,           // 🎬 Tên phim
+            description,           // 📝 Mô tả phim  
+            production_time,       // 📅 Thời gian sản xuất
+            producer,             // 🏭 Nhà sản xuất
+            price,                // 💰 Giá phim
+            movie_type,           // 🎭 Loại phim: 'Phim lẻ', 'Phim bộ', 'Thể thao'
+            poster_path,          // 🖼️ Đường dẫn poster
+            genres = [],          // 🏷️ Danh sách thể loại
+            event_start_time,     // ⏰ Thời gian bắt đầu (chỉ cho thể thao)
+            event_status,         // 📊 Trạng thái sự kiện (chỉ cho thể thao)
+            maxEpisodeNumber      // 📺 Tổng số tập (quan trọng cho phim bộ)
         } = validatedData;
 
+        // ✅ 3. KIỂM TRA TÍNH HỢP LỆ CỦA GENRES
         const validGenres = await Genre.find({ _id: { $in: genres } });
         if (validGenres.length !== genres.length) {
             return res.status(400).json({
@@ -79,53 +90,61 @@ const createMovieController = async (req, res) => {
                 message: 'Một hoặc nhiều thể loại không tồn tại'
             });
         }
-        // Tạo movie object với các trường cần thiết
+        
+        // 🎬 4. TẠO MOVIE OBJECT VỚI CÁC TRƯỜNG CẦN THIẾT
         const movieData = {
             movie_title,
             description,
             production_time,
             producer,
             price,
-            movie_type,
+            movie_type,           // 🔑 Trường quan trọng để phân biệt loại phim
             genres,
-            total_episodes: maxEpisodeNumber,
+            total_episodes: maxEpisodeNumber,  // 📺 Số tập: 1 cho phim lẻ, >1 cho phim bộ
             poster_path: poster_path || '',
             genres: genres || []
         };
 
-        // Thêm trường đặc biệt cho sports events
+        // ⚙️ 5. XỬ LÝ ĐặC BIỆT CHO SỰ KIỆN THỂ THAO
         if (movie_type === 'Thể thao') {
-            movieData.event_start_time = event_start_time;
-            movieData.event_status = event_status;
+            movieData.event_start_time = event_start_time;  // ⏰ Thời gian bắt đầu
+            movieData.event_status = event_status;          // 📊 Trạng thái sự kiện
         }
 
-        // Tạo movie
+        // 🎬 6. TẠO MOVIE RECORD TRONG DATABASE
         const newMovie = await Movie.create(movieData);
 
-        // Tạo episodes
+        // 📺 7. TẠO EPISODES TƯƠNG ỨNG
+        // Logic khác nhau cho từng loại phim:
+        // - Phim lẻ: 1 episode duy nhất 
+        // - Phim bộ: Nhiều episodes theo maxEpisodeNumber
+        // - Thể thao: 1 episode với episode_number = 1
         const episodes = await Promise.all(req.body.episodes.map(async (ep, index) => {
             return await Episode.create({
                 episode_title: ep.episode_title,
                 uri: ep.uri,
+                // 🔢 Logic số tập: Thể thao luôn là 1, các loại khác theo input
                 episode_number: movie_type === 'Thể thao' ? 1 : ep.episode_number,
                 episode_description: ep.episode_description || '',
-                duration: ep.duration || 0,
-                movie_id: newMovie._id
+                duration: ep.duration || 0,                    // ⏱️ Thời lượng tập
+                movie_id: newMovie._id                         // 🔗 Liên kết với movie
             });
         }));
 
-        // Populate genres information
+        // 🏷️ 8. POPULATE THÔNG TIN GENRES
         await newMovie.populate('genres', 'genre_name description');
 
-        // Format response using schema method
+        // 🎨 9. FORMAT RESPONSE SỬ DỤNG SCHEMA METHOD
+        // Schema method sẽ format khác nhau cho phim lẻ vs phim bộ
         const formattedMovie = newMovie.formatMovieResponse(episodes);
 
-        // Thêm thông tin sports event vào response nếu cần
+        // ⚙️ 10. THÊM THÔNG TIN ĐặC BIỆT CHO SỰ KIỆN THỂ THAO
         if (movie_type === 'Thể thao') {
             formattedMovie.event_start_time = newMovie.event_start_time;
             formattedMovie.event_status = newMovie.event_status;
         }
 
+        // 📤 11. TRẢ VỀ KẾT QUẢ THÀNH CÔNG
         res.status(201).json({
             status: 'success',
             data: {
@@ -133,6 +152,7 @@ const createMovieController = async (req, res) => {
             }
         });
     } catch (err) {
+        // 🚨 XỬ LÝ LỖI VÀ LOGGING
         console.error('Error in createMovie:', err);
         res.status(400).json({
             status: 'error',
@@ -142,19 +162,32 @@ const createMovieController = async (req, res) => {
     }
 };
 
-// Tạo sự kiện thể thao mới (dedicated function)
+/**
+ * ⚽ API TẠO SỰ KIỆN THỂ THAO CHUYÊN DỤNG
+ * 
+ * @route POST /api/movies/sports
+ * @description Tạo sự kiện thể thao với cấu hình đặc biệt
+ * 
+ * Mục đích: API chuyên dụng cho sự kiện thể thao, đảm bảo movie_type = 'Thể thao'
+ * 
+ * Logic hoạt động:
+ * 1. 🔒 Force movie_type = 'Thể thao'
+ * 2. 📺 Tạo chỉ 1 episode duy nhất (episode_number = 1)
+ * 3. ⏰ Bắt buộc có event_start_time và event_status
+ * 4. 🎨 Format response với thông tin sự kiện
+ */
 const createSportsEvent = async (req, res) => {
     try {
-        // Đảm bảo movie_type là 'Thể thao'
+        // 🔒 1. ĐẢM BẢO MOVIE_TYPE LÀ 'THỂ THAO'
         const sportsData = {
             ...req.body,
-            movie_type: 'Thể thao'
+            movie_type: 'Thể thao'  // 🔑 Force movie type
         };
 
-        // Validate sports event data
+        // 🔍 2. VALIDATE DỮ LIỆU SỰ KIỆN THỂ THAO
         const validatedData = validateMovieData(sportsData);
 
-        // Extract fields
+        // 📊 3. EXTRACT CÁC TRƯỜNG DỮ LIỆU
         const {
             movie_title,
             description,
@@ -163,51 +196,53 @@ const createSportsEvent = async (req, res) => {
             price,
             poster_path,
             genres,
-            event_start_time,
-            event_status
+            event_start_time,     // ⏰ Bắt buộc cho sự kiện thể thao
+            event_status          // 📊 Trạng thái sự kiện
         } = validatedData;
 
-        // Tạo sports event
+        // ⚽ 4. TẠO SỰ KIỆN THỂ THAO
         const newSportsEvent = await Movie.create({
             movie_title,
             description,
             production_time,
             producer,
             price,
-            movie_type: 'Thể thao',
-            total_episodes: 1,
+            movie_type: 'Thể thao',     // 🔑 Loại phim cố định
+            total_episodes: 1,          // 📺 Luôn là 1 tập
             poster_path: poster_path || '',
             genres: genres || [],
-            event_start_time,
-            event_status
+            event_start_time,           // ⏰ Thời gian bắt đầu
+            event_status               // 📊 Trạng thái
         });
 
-        // Tạo episode duy nhất cho sự kiện thể thao
+        // 📺 5. TẠO EPISODE DUY NHẤT CHO SỰ KIỆN THỂ THAO
         const episode = await Episode.create({
-            episode_title: req.body.episodes[0].episode_title || movie_title,
-            uri: req.body.episodes[0].uri,
-            episode_number: 1,
+            episode_title: req.body.episodes[0].episode_title || movie_title,  // 🎬 Tên tập = tên sự kiện
+            uri: req.body.episodes[0].uri,                                    // 🔗 Link video
+            episode_number: 1,                                                // 📺 Luôn là tập 1
             episode_description: req.body.episodes[0].episode_description || description,
-            duration: req.body.episodes[0].duration || 0,
-            movie_id: newSportsEvent._id
+            duration: req.body.episodes[0].duration || 0,                    // ⏱️ Thời lượng
+            movie_id: newSportsEvent._id                                      // 🔗 Liên kết
         });
 
-        // Populate genres
+        // 🏷️ 6. POPULATE GENRES
         await newSportsEvent.populate('genres', 'genre_name description');
 
-        // Format response
+        // 🎨 7. FORMAT RESPONSE CHO SỰ KIỆN THỂ THAO
         const formattedEvent = newSportsEvent.formatMovieResponse([episode]);
-        formattedEvent.event_start_time = newSportsEvent.event_start_time;
-        formattedEvent.event_status = newSportsEvent.event_status;
+        formattedEvent.event_start_time = newSportsEvent.event_start_time;    // ⏰ Thêm info đặc biệt
+        formattedEvent.event_status = newSportsEvent.event_status;            // 📊 Thêm trạng thái
 
+        // 📤 8. TRẢ VỀ KẾT QUẢ
         res.status(201).json({
             status: 'success',
             message: 'Sports event created successfully',
             data: {
-                sports_event: formattedEvent
+                sports_event: formattedEvent  // 🏷️ Key đặc biệt cho sự kiện thể thao
             }
         });
     } catch (err) {
+        // 🚨 XỬ LÝ LỖI
         console.error('Error creating sports event:', err);
         res.status(400).json({
             status: 'error',
@@ -217,9 +252,21 @@ const createSportsEvent = async (req, res) => {
     }
 };
 
-// Lấy chi tiết phim
+/**
+ * 📽️ API LẤY CHI TIẾT PHIM THEO ID
+ * 
+ * @route GET /api/movies/:id
+ * @description Lấy thông tin đầy đủ của phim bao gồm episodes
+ * 
+ * Logic hoạt động:
+ * 1. 🔍 Tìm movie theo ID và populate genres
+ * 2. 📺 Lấy tất cả episodes của phim
+ * 3. 🎨 Format response sử dụng schema method
+ * 4. 📊 Trả về thông tin phù hợp với từng loại phim
+ */
 const getMovieById = async (req, res) => {
     try {
+        // 🔍 1. TÌM PHIM THEO ID VÀ POPULATE GENRES
         const movie = await Movie.findById(req.params.id)
             .populate('genres', 'genre_name description');
 
@@ -230,13 +277,20 @@ const getMovieById = async (req, res) => {
             });
         }
 
-        // Lấy thông tin episodes
+        // 📺 2. LẤY TẤT CẢ EPISODES CỦA PHIM
+        // Sắp xếp theo episode_number để đảm bảo thứ tự đúng cho phim bộ
         const episodes = await Episode.find({ movie_id: movie._id })
-            .select('episode_title uri episode_number episode_description duration')
-            .sort({ episode_number: 1 });
+            .select('episode_title uri episode_number episode_description duration createdAt updatedAt')  // 📋 Field cần thiết (subtitle lấy từ Cloudflare API)
+            .sort({ episode_number: 1 });                                           // 📊 Tập 1, 2, 3...
 
+        // 🎨 3. FORMAT RESPONSE SỬ DỤNG SCHEMA METHOD
+        // Schema method sẽ xử lý khác nhau cho:
+        // - Phim lẻ: Trả về thông tin cơ bản + URI tập duy nhất
+        // - Phim bộ: Trả về danh sách đầy đủ episodes
+        // - Thể thao: Trả về thông tin sự kiện + episode stream
         const responseData = movie.formatMovieResponse(episodes);
 
+        // 📤 4. TRẢ VỀ KẾT QUẢ
         res.json({
             status: 'success',
             data: {
@@ -244,6 +298,7 @@ const getMovieById = async (req, res) => {
             }
         });
     } catch (err) {
+        // 🚨 XỬ LÝ LỖI
         res.status(500).json({
             status: 'error',
             message: 'Error fetching movie',
@@ -311,7 +366,7 @@ const updateMovie = async (req, res) => {
         } else {
             // Get existing episodes if no new episodes provided
             const episodes = await Episode.find({ movie_id: id })
-                .select('episode_title uri episode_number episode_description')
+                .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
                 .sort({ episode_number: 1 });
 
             const responseData = updatedMovie.formatMovieResponse(episodes);
@@ -471,11 +526,12 @@ const getMovieDetailWithInteractions = async (req, res) => {
         .limit(10)
         .sort({ createdAt: -1 });
 
-        // Format response khác nhau cho phim lẻ và phim bộ
+        // 🎬 FORMAT RESPONSE KHÁC NHAU CHO TỪNG LOẠI PHIM
         let movieData = {};
         
         if (movie.movie_type === 'Phim lẻ') {
-            // Phim lẻ: Chỉ thông tin cơ bản + URI của tập duy nhất
+            // 🎭 LOGIC CHO PHIM LẺ: Chỉ có 1 tập duy nhất
+            // Trả về thông tin cơ bản + URI để có thể play ngay
             const singleEpisode = episodes[0];
             movieData = {
                 _id: movie._id,
@@ -485,18 +541,26 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 producer: movie.producer,
                 poster_path: movie.poster_path,
                 genres: movie.genres,
-                movie_type: movie.movie_type,
+                movie_type: movie.movie_type,                    // 🔑 'Phim lẻ'
                 price: movie.price,
                 is_free: movie.is_free,
                 price_display: movie.getPriceDisplay(),
-                // Thông tin video cho phim lẻ
-                uri: movie.is_free && singleEpisode ? singleEpisode.uri : null,
-                duration: singleEpisode ? singleEpisode.duration : null,
-                is_locked: !movie.is_free
+                
+                // 🎥 THÔNG TIN VIDEO CHO PHIM LẺ (QUAN TRỌNG)
+                uri: movie.is_free && singleEpisode ? singleEpisode.uri : null,  // 🔗 Link video nếu free
+                duration: singleEpisode ? singleEpisode.duration : null,         // ⏱️ Thời lượng phim
+                is_locked: !movie.is_free                                        // 🔒 Có bị khóa không?
             };
         } else {
-            // Phim bộ: Sử dụng method có sẵn
+            // 📺 LOGIC CHO PHIM BỘ: Có nhiều tập
+            // Sử dụng schema method để format đầy đủ danh sách episodes
             movieData = movie.formatMovieResponse(episodes);
+            
+            // Schema method sẽ trả về:
+            // - Thông tin cơ bản của phim
+            // - Danh sách đầy đủ episodes với episode_number, title, uri
+            // - total_episodes
+            // - current_episode (nếu có)
         }
         
         const responseData = {
@@ -541,10 +605,11 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 producer: relMovie.producer
             })),
 
-            // UI Config cho tabs
+            // 🎛️ UI CONFIG CHO TABS (QUAN TRỌNG CHO FRONTEND)
             tabs: {
-                showEpisodesList: movie.movie_type === 'Phim bộ', // Chỉ show tab "Danh sách" cho phim bộ
-                showRelated: true // Luôn show tab "Liên quan"
+                showEpisodesList: movie.movie_type === 'Phim bộ',  // 📺 Chỉ show tab "Danh sách" cho phim bộ
+                                                                   //     Phim lẻ không cần tab này vì chỉ có 1 tập
+                showRelated: true                                  // 🔗 Luôn show tab "Liên quan" cho mọi loại phim
             }
         };
 
@@ -563,99 +628,135 @@ const getMovieDetailWithInteractions = async (req, res) => {
     }
 };
 
-
-
+/**
+ * 🔍 API TÌM KIẾM PHIM ĐƠN GIẢN
+ * 
+ * Mục đích: Tìm kiếm phim theo tên phim với pagination cho FlatList
+ * 
+ * Input Parameters:
+ * - tuKhoa: Từ khóa tìm kiếm (chỉ tìm trong title của phim)
+ * - page: Trang hiện tại (pagination)
+ * - limit: Số phim mỗi trang
+ * 
+ * Output: Array phim + pagination info + search info
+ */
 const searchMovies = async (req, res) => {
   try {
+    // 📥 1. LẤY VÀ VALIDATE INPUT PARAMETERS
     const {
-      tuKhoa,     // Từ khóa tìm kiếm (tên phim, nhà sản xuất)
-      theLoai,    // ID thể loại (ObjectId)
-      loaiPhim,   // 'Phim lẻ', 'Phim bộ'
-      mienphi,    // true / false (string)
-      sapXep      // 'moi-nhat' / 'cu-nhat'
+      tuKhoa,     // Từ khóa tìm kiếm (chỉ tên phim và mô tả)
+      page = 1,   // Trang hiện tại (mặc định: 1)
+      limit = 20  // Số phim mỗi trang (mặc định: 20)
     } = req.query;
 
+    // 🔧 2. XÂY DỰNG ĐIỀU KIỆN TÌM KIẾM ĐƠN GIẢN (MongoDB Query)
     const dieuKien = {};
 
-    // Tìm theo từ khóa
+    // 🔤 Tìm kiếm theo từ khóa - CHỈ trong title của phim
     if (tuKhoa && tuKhoa.trim()) {
-      dieuKien.$or = [
-        { movie_title: { $regex: tuKhoa.trim(), $options: 'i' } },
-        { producer: { $regex: tuKhoa.trim(), $options: 'i' } }
-      ];
+      dieuKien.movie_title = { $regex: tuKhoa.trim(), $options: 'i' };
+      // Regex với option 'i' = case insensitive (không phân biệt hoa thường)
     }
 
-    // Lọc theo thể loại
-    if (theLoai) {
-      dieuKien.genres = theLoai;
-    }
+    // 📊 3. TÍNH TOÁN PAGINATION
+    const pageNum = parseInt(page) || 1;        // Đảm bảo page là số, mặc định 1
+    const limitNum = parseInt(limit) || 20;     // Đảm bảo limit là số, mặc định 20
+    const skip = (pageNum - 1) * limitNum;      // Tính số record cần bỏ qua
 
-    // Lọc theo loại phim
-    if (loaiPhim) {
-      dieuKien.movie_type = loaiPhim;
-    }
+    // 🔢 Đếm tổng số phim thỏa mãn điều kiện (cho pagination)
+    const totalMovies = await Movie.countDocuments(dieuKien);
+    const totalPages = Math.ceil(totalMovies / limitNum);
 
-    // Lọc theo miễn phí
-    if (mienphi !== undefined) {
-      dieuKien.is_free = mienphi === 'true';
-    }
-
-    // Khởi tạo truy vấn
+    // 🔍 4. XÂY DỰNG QUERY VỚI PAGINATION
     let query = Movie.find(dieuKien)
-      .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres')
-      .populate('genres', 'name');
+      .select('movie_title description production_time producer movie_type price is_free price_display poster_path genres view_count favorite_count')
+      .populate('genres', 'genre_name description')  // Join với Genre collection
+      .skip(skip)       // Bỏ qua N record đầu
+      .limit(limitNum)  // Lấy tối đa limitNum record
+      .sort({ createdAt: -1 }); // Mặc định: sắp xếp theo ngày tạo mới nhất
 
-    // Sắp xếp
-    if (sapXep === 'moi-nhat') {
-      query = query.sort({ production_time: -1 });
-    } else if (sapXep === 'cu-nhat') {
-      query = query.sort({ production_time: 1 });
-    }
-
+    // 🚀 5. THỰC THI QUERY VÀ LẤY DỮ LIỆU
     const movies = await query.exec();
 
-    // Xử lý chi tiết tập phim
-    const moviesWithDetails = await Promise.all(
+    // 🎨 6. PROCESSING DATA - Format cho Frontend FlatList
+    const moviesWithStats = await Promise.all(
       movies.map(async (movie) => {
+        // 📺 LẤY THÔNG TIN TẬP PHIM (QUAN TRỌNG CHO PHIM BỘ)
+        // Chỉ lấy thông tin cơ bản để tính total_episodes
         const episodes = await Episode.find({ movie_id: movie._id })
-          .select('episode_title uri episode_number episode_description')
-          .sort({ episode_number: 1 });
+          .select('episode_title episode_number duration')   // 📋 Bao gồm duration (subtitle từ Cloudflare API)
+          .sort({ episode_number: 1 });            // 📊 Sắp xếp theo thứ tự tập
 
-        const movieObj = movie.toObject();
-
-        if (episodes.length > 1) {
-          movieObj.movie_type = 'Phim bộ';
-          movieObj.episodes = episodes.map((ep) => ({
-            episode_title: ep.episode_title,
-            episode_number: ep.episode_number,
-            uri: movieObj.is_free ? ep.uri : null
-          }));
-          movieObj.total_episodes = episodes.length;
-        } else if (episodes.length === 1) {
-          movieObj.movie_type = 'Phim lẻ';
-          movieObj.uri = movieObj.is_free ? episodes[0].uri : null;
-          movieObj.episode_description = episodes[0].episode_description;
-        }
-
-        // Trả về ảnh poster chính xác (nếu có)
-        movieObj.poster = movie.poster_path || null;
-
-        return movieObj;
+        // ⭐ TÍNH TOÁN RATING TỪ RATING COLLECTION
+        const ratingData = await calculateMovieRating(movie._id);
+        
+        // 📦 FORMAT DỮ LIỆU ĐƠN GIẢN - TỐI ƯU CHO FLATLIST
+        return {
+          // 🆔 THÔNG TIN CƠ BẢN
+          movieId: movie._id,
+          title: movie.movie_title,
+          poster: movie.poster_path || null,
+          movieType: movie.movie_type,              // 🔑 'Phim lẻ', 'Phim bộ', 'Thể thao'
+          producer: movie.producer,
+          
+          // 📝 THÔNG TIN MÔ TẢ (RÚT GỌN CHO UI)
+          description: movie.description ? movie.description.substring(0, 100) + '...' : null,
+          releaseYear: movie.production_time ? new Date(movie.production_time).getFullYear() : null,
+          
+          // 💵 THÔNG TIN GIÁ CẢ
+          price: movie.price,
+          is_free: movie.is_free,
+          price_display: movie.is_free ? 'Miễn phí' : `${movie.price.toLocaleString('vi-VN')} VNĐ`,
+          
+          // 📈 THỐNG KÊ ENGAGEMENT
+          view_count: movie.view_count || 0,
+          favorite_count: movie.favorite_count || 0,
+          rating: ratingData.rating || 0,
+          total_ratings: ratingData.totalRatings || 0,
+          
+          // 🎬 THÔNG TIN TẬP PHIM (QUAN TRỌNG)
+          // - Phim lẻ: episodes.length = 1
+          // - Phim bộ: episodes.length = số tập thực tế
+          // - Thể thao: episodes.length = 1
+          total_episodes: episodes.length,
+          
+          // 🏷️ THỂ LOẠI (GIỚI HẠN 3 ĐỂ UI KHÔNG QUÁ DÀI)
+          genres: movie.genres ? movie.genres.slice(0, 3).map(g => g.genre_name) : []
+        };
       })
     );
 
+    // 📤 7. TRẢ VỀ KẾT QUẢ ĐƠN GIẢN
     res.json({
       status: 'success',
       data: {
-        movies: moviesWithDetails,
-        total: moviesWithDetails.length
+        // 🎬 Danh sách phim đã format
+        movies: moviesWithStats,
+        
+        // 📄 Thông tin phân trang (cho infinite scroll)
+        pagination: {
+          current_page: pageNum,
+          total_pages: totalPages,
+          total_items: totalMovies,
+          items_per_page: limitNum,
+          has_next: pageNum < totalPages,    // Còn trang tiếp theo không?
+          has_prev: pageNum > 1              // Có trang trước không?
+        },
+        
+        // 🔍 Thông tin tìm kiếm đã áp dụng (để frontend track)
+        search_info: {
+          keyword: tuKhoa || null,
+          search_in: ['movie_title'], // Chỉ tìm trong title của phim
+          total_found: totalMovies
+        }
       }
     });
   } catch (err) {
+    // 🚨 XỬ LÝ LỖI VÀ LOGGING
     console.error('Lỗi khi tìm kiếm phim:', err);
     res.status(500).json({
       status: 'error',
-      message: 'Lỗi server',
+      message: 'Lỗi server khi tìm kiếm',
       error: err.message
     });
   }

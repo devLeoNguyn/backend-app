@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   },
   avatar: {
     type: String,
-    default: null // URL của avatar
+    default: null // URL của avatar (fallback placeholder luôn hoạt động)
   },
   role: {
     type: String,

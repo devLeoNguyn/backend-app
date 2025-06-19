@@ -19,8 +19,9 @@ const {
 // 1. 🆕 New Releases - Banner List + Phim dành cho bạn
 const getNewReleases = async (req, res) => {
     try {
-        const bannerLimit = parseInt(req.query.bannerLimit) || 5; // List phim cho banner
-        const gridLimit = parseInt(req.query.limit) || 6; // 6 phim cho grid "Phim dành cho bạn"
+        const showAll = req.query.showAll === 'true'; // Option để hiển thị tất cả
+        const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5); // List phim cho banner
+        const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6); // Phim cho grid "Phim dành cho bạn"
         const days = parseInt(req.query.days) || 30;
 
         // Lấy phim mới nhất cho banner và grid - chỉ dùng field có sẵn trong schema
@@ -86,7 +87,8 @@ const getNewReleases = async (req, res) => {
 const getContinueWatching = async (req, res) => {
     try {
         const { userId } = req.query;
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         if (!userId) {
             return res.status(400).json({
@@ -142,8 +144,9 @@ const getContinueWatching = async (req, res) => {
 // 3. 🎭 Genre Sections - Theo thể loại (có rating & viewCount)
 const getGenreSections = async (req, res) => {
     try {
-        const genreLimit = parseInt(req.query.genreLimit) || 4;
-        const movieLimit = 4; // Fixed to 4 movies per genre for 2x2 grid
+        const showAll = req.query.showAll === 'true';
+        const genreLimit = parseInt(req.query.genreLimit) || (showAll ? 10 : 4);
+        const movieLimit = showAll ? 20 : 4; // Tăng số phim mỗi genre khi showAll
         const { use_hierarchy = 'false' } = req.query; // Option để chọn hierarchical hay simple
 
         let topGenres;
@@ -261,12 +264,13 @@ const getGenreSections = async (req, res) => {
 // 4. 🔥 Trending Movies - Phim thịnh hành (tính toán nhưng trả về đơn giản)
 const getTrendingMovies = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 10);
 
         // Lấy movies để tính view count
         const allMovies = await Movie.find({ release_status: 'released' })
             .select('_id movie_title poster_path movie_type producer')
-            .limit(50); // Giới hạn để performance tốt hơn
+            .limit(showAll ? 200 : 50); // Tăng giới hạn khi showAll
 
         // Tính rating và view count cho từng movie (để sort)
         const moviesWithStats = await Promise.all(
@@ -320,11 +324,12 @@ const getTrendingMovies = async (req, res) => {
 // 5. ⭐ Top Rated Movies - Phim được đánh giá cao (tính toán nhưng trả về đơn giản)
 const getTopRatedMovies = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         const allMovies = await Movie.find({ release_status: 'released' })
             .select('_id movie_title poster_path movie_type producer')
-            .limit(50); // Giới hạn để performance tốt hơn
+            .limit(showAll ? 200 : 50); // Tăng giới hạn khi showAll
 
         // Tính rating và view count cho từng movie (để sort)
         const moviesWithStats = await Promise.all(
@@ -379,7 +384,8 @@ const getTopRatedMovies = async (req, res) => {
 // 6. ⚽ Sports Events - Sự kiện thể thao (giữ logic đặc trưng nhưng trả về đơn giản)
 const getSportsEvents = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
         const status = req.query.status; // upcoming, released, ended
 
         // Logic đặc trưng: Query theo movie_type và status
@@ -447,7 +453,8 @@ const getSportsEvents = async (req, res) => {
 // 7. 🌸 Anime Hot - Anime nổi bật (giữ logic đặc trưng nhưng trả về đơn giản)
 const getAnimeHot = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // Logic đặc trưng: Tìm genre anime
         const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
@@ -515,7 +522,8 @@ const getAnimeHot = async (req, res) => {
 // 8. 🇻🇳 Vietnamese Series - Phim Việt đặc sắc (giữ logic đặc trưng nhưng trả về đơn giản)
 const getVietnameseSeries = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         // Logic đặc trưng: Complex query tìm phim Việt Nam
         const vietnamSeries = await Movie.find({
@@ -587,7 +595,8 @@ const getVietnameseSeries = async (req, res) => {
 // 9. 🔜 Coming Soon - Sắp công chiếu (không cần rating/view)
 const getComingSoon = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 8;
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
         const comingSoon = await Movie.find({
             release_status: 'upcoming',

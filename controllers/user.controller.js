@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { uploadToS3, deleteFromS3 } = require('../utils/s3Config');
+const { uploadToCloudflare, deleteFromCloudflare } = require('../utils/cloudflare.config');
 
 // Lấy thông tin profile (userId từ query params)
 exports.getProfile = async (req, res) => {
@@ -81,22 +81,22 @@ exports.updateProfile = async (req, res) => {
         // Xử lý upload avatar nếu có file
         if (req.file) {
             try {
-                console.log('📤 Uploading avatar to S3:', {
+                console.log('📤 Uploading avatar to Cloudflare:', {
                     originalname: req.file.originalname,
                     mimetype: req.file.mimetype,
                     size: req.file.size
                 });
 
-                // Upload file mới lên S3
-                const avatarUrl = await uploadToS3(req.file, 'assets/avatar-users');
-                updateData.avatar = avatarUrl;
+                // Upload file mới lên Cloudflare Images và tạo placeholder avatar
+                const imageData = await uploadToCloudflare(req.file, 'avatars', 'avatar');
+                updateData.avatar = imageData.avatar; // Sử dụng placeholder avatar luôn hoạt động
 
-                console.log('✅ Avatar uploaded successfully:', avatarUrl);
+                console.log('✅ Avatar updated successfully:', imageData.avatar);
 
                 // Xóa avatar cũ nếu có
                 if (user.avatar) {
                     console.log('🗑️ Deleting old avatar:', user.avatar);
-                    await deleteFromS3(user.avatar);
+                    await deleteFromCloudflare(user.avatar);
                 }
             } catch (uploadError) {
                 console.error('❌ Avatar upload error:', uploadError);
