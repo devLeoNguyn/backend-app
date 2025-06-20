@@ -27,7 +27,8 @@ router.delete('/:id', deleteRating);
 
 // New like routes (userId từ body)
 router.post('/movies/:movie_id/like', likeMovie);
-router.delete('/movies/:movie_id/like', unlikeMovie);
+router.delete('/movies/:movie_id/like', unlikeMovie); // Backward compatibility
+router.post('/movies/:movie_id/unlike', unlikeMovie); // 🆕 FIX: Add correct POST endpoint for unlike
 
 // UNIFIED comment routes (userId từ body)
 router.post('/movies/:movie_id/comment', addComment);    // Add/Update comment (unified)

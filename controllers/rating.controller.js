@@ -301,6 +301,16 @@ exports.addComment = async (req, res) => {
             });
         }
 
+        // 🆕 FIX: Check if user exists
+        const User = require('../models/User');
+        const user = await User.findById(user_id);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy người dùng'
+            });
+        }
+
         // Create or update rating with comment
         let rating = await Rating.findOne({ user_id, movie_id });
         let isUpdate = !!rating;
@@ -317,8 +327,23 @@ exports.addComment = async (req, res) => {
             });
         }
 
-        // Populate user data for response
-        await rating.populate('user_id', 'name email');
+        // 🆕 FIX: Safely populate user data with error handling
+        try {
+            await rating.populate('user_id', 'name email');
+        } catch (populateError) {
+            console.error('Error populating user data:', populateError);
+            // Fallback: use the user data we already have
+            rating.user_id = user;
+        }
+
+        // 🆕 FIX: Safe access to user properties
+        const userData = rating.user_id || user;
+        if (!userData) {
+            return res.status(500).json({
+                status: 'error',
+                message: 'Lỗi không thể lấy thông tin người dùng'
+            });
+        }
 
         const message = isUpdate ? 'Đã cập nhật bình luận thành công' : 'Đã thêm bình luận thành công';
 
@@ -330,9 +355,9 @@ exports.addComment = async (req, res) => {
                 rating: {
                     _id: rating._id,
                     user: {
-                        _id: rating.user_id._id,
-                        name: rating.user_id.name,
-                        email: rating.user_id.email
+                        _id: userData._id,
+                        name: userData.name || 'Unknown User',
+                        email: userData.email || 'unknown@email.com'
                     },
                     comment: rating.comment,
                     isLike: rating.is_like,
@@ -350,6 +375,7 @@ exports.addComment = async (req, res) => {
             });
         }
         
+        console.error('Error in addComment:', error);
         res.status(500).json({
             status: 'error',
             message: error.message
@@ -403,18 +429,22 @@ exports.getComments = async (req, res) => {
         res.json({
             status: 'success',
             data: {
-                comments: comments.map(rating => ({
-                    _id: rating._id,
-                    user: {
-                        _id: rating.user_id._id,
-                        name: rating.user_id.name,
-                        email: rating.user_id.email
-                    },
-                    comment: rating.comment,
-                    isLike: rating.is_like,
-                    createdAt: rating.createdAt,
-                    updatedAt: rating.updatedAt
-                })),
+                comments: comments.map(rating => {
+                    // 🆕 FIX: Safe access to user properties
+                    const user = rating.user_id || {};
+                    return {
+                        _id: rating._id,
+                        user: {
+                            _id: user._id || null,
+                            name: user.name || 'Unknown User',
+                            email: user.email || 'unknown@email.com'
+                        },
+                        comment: rating.comment,
+                        isLike: rating.is_like,
+                        createdAt: rating.createdAt,
+                        updatedAt: rating.updatedAt
+                    };
+                }),
                 pagination: {
                     currentPage: parseInt(page),
                     totalPages,
@@ -426,6 +456,7 @@ exports.getComments = async (req, res) => {
         });
 
     } catch (error) {
+        console.error('Error in getComments:', error);
         res.status(500).json({
             status: 'error',
             message: error.message

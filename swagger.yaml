@@ -2593,7 +2593,7 @@ paths:
         Lấy Cloudflare Stream URLs để phát video trong Expo app.
       parameters:
         - name: videoId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -2650,7 +2650,7 @@ paths:
       description: Làm mới Stream URL với thời gian hết hạn mới
       parameters:
         - name: videoId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -2678,7 +2678,7 @@ paths:
       description: Kiểm tra trạng thái video và khả năng truy cập
       parameters:
         - name: videoId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -2812,7 +2812,7 @@ paths:
       description: Lấy tiến độ xem đã lưu để resume video từ vị trí đã xem
       parameters:
         - name: episodeId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -2865,7 +2865,7 @@ paths:
       description: Lưu tiến độ xem hiện tại của user để có thể resume sau
       parameters:
         - name: episodeId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -2977,7 +2977,7 @@ paths:
       description: Lấy thông tin chi tiết của một episode
       parameters:
         - name: id
-          in: path
+          in: query
           required: true
           schema:
             type: string

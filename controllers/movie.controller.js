@@ -582,16 +582,20 @@ const getMovieDetailWithInteractions = async (req, res) => {
             },
 
             // Bình luận gần đây
-            recentComments: recentComments.map(comment => ({
-                _id: comment._id,
-                user: {
-                    name: comment.user_id.name,
-                    email: comment.user_id.email
-                },
-                comment: comment.comment,
-                isLike: comment.is_like,
-                createdAt: comment.createdAt
-            })),
+            recentComments: recentComments.map(comment => {
+                // 🆕 FIX: Safe access to user properties
+                const user = comment.user_id || {};
+                return {
+                    _id: comment._id,
+                    user: {
+                        name: user.name || 'Unknown User',
+                        email: user.email || 'unknown@email.com'
+                    },
+                    comment: comment.comment,
+                    isLike: comment.is_like,
+                    createdAt: comment.createdAt
+                };
+            }),
 
             // Trạng thái tương tác của user (nếu đăng nhập)
             userInteractions,
