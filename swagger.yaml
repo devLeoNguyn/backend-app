@@ -2580,6 +2580,465 @@ paths:
                 status: "error"
                 message: "Lỗi server khi tìm kiếm phim"
 
+  # === VIDEO STREAMING APIs ===
+  /api/video-url/{videoId}:
+    get:
+      tags:
+        - Video Player
+      summary: 🎬 API chính lấy Stream URL cho Expo Video Player
+      operationId: getVideoStreamUrl
+      description: |
+        **🎯 API QUAN TRỌNG NHẤT CHO VIDEO PLAYER**
+        
+        Lấy Cloudflare Stream URLs để phát video trong Expo app.
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Episode ID hoặc Movie ID
+          example: "675a1234567890abcdef1234"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [auto, episode, movie]
+            default: auto
+          description: Loại tìm kiếm (tự động detect)
+        - name: quality
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [auto, 360p, 480p, 720p]
+            default: auto
+          description: Chất lượng video
+      responses:
+        "200":
+          description: Lấy stream URLs thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStreamResponse"
+        "202":
+          description: Video đang được xử lý
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Video yêu cầu thanh toán
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Video không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/video-url/{videoId}/refresh:
+    post:
+      tags:
+        - Video Streaming
+      summary: 🔄 Refresh Stream URL
+      operationId: refreshVideoStreamUrl
+      description: Làm mới Stream URL với thời gian hết hạn mới
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: URL đã được làm mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStreamResponse"
+        "404":
+          description: Video không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/video-url/{videoId}/status:
+    get:
+      tags:
+        - Video Streaming
+      summary: 📊 Check Video Status
+      operationId: getVideoStatus
+      description: Kiểm tra trạng thái video và khả năng truy cập
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: Thông tin trạng thái video
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      videoId:
+                        type: string
+                      streamUid:
+                        type: string
+                      available:
+                        type: boolean
+                      accessible:
+                        type: boolean
+                      message:
+                        type: string
+        "404":
+          description: Video không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # === UPLOAD APIs ===
+  /api/upload/image:
+    post:
+      tags:
+        - Upload
+      summary: 🖼️ Upload Image to Cloudflare Images
+      operationId: uploadImage
+      description: Upload ảnh lên Cloudflare Images với auto-optimization
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Image file (JPEG/PNG/GIF/WebP, max 5MB)"
+                folder:
+                  type: string
+                  default: "general"
+                  description: "Folder name for organization"
+                variant:
+                  type: string
+                  enum: [avatar, thumbnail, medium, public]
+                  default: "public"
+                  description: "Image variant for optimization"
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudflareImageResponse"
+        "400":
+          description: File không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/upload/video:
+    post:
+      tags:
+        - Upload
+      summary: 🎬 Upload Video to Cloudflare Stream
+      operationId: uploadVideo
+      description: Upload video lên Cloudflare Stream với auto-processing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - episodeId
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "Video file (MP4/AVI/MOV/WebM/MKV/FLV, max 500MB)"
+                episodeId:
+                  type: string
+                  description: "Episode ID để liên kết video"
+                movieTitle:
+                  type: string
+                  description: "Tên phim (optional)"
+                episodeTitle:
+                  type: string
+                  description: "Tên tập phim (optional)"
+      responses:
+        "200":
+          description: Video uploaded và đang xử lý
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloudflareVideoUploadResponse"
+        "400":
+          description: File không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # === WATCHING PROGRESS APIs ===
+  /api/watching/progress/{episodeId}:
+    get:
+      tags:
+        - Video Player
+      summary: 📊 API lấy tiến độ xem đã lưu
+      operationId: getWatchingProgress
+      description: Lấy tiến độ xem đã lưu để resume video từ vị trí đã xem
+      parameters:
+        - name: episodeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "User ID để lấy progress cá nhân"
+          example: "675a1234567890abcdef1234"
+      responses:
+        "200":
+          description: Tiến độ xem đã lưu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  episode_id:
+                    type: string
+                  current_time:
+                    type: number
+                    example: 1250
+                    description: "Vị trí đã xem (giây)"
+                  duration:
+                    type: number
+                    example: 1800
+                  completed:
+                    type: boolean
+                    example: false
+                  watch_percentage:
+                    type: number
+                    example: 69.4
+                  last_watched:
+                    type: string
+                    format: date-time
+        "404":
+          description: Không tìm thấy progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - Video Player
+      summary: 💾 API lưu tiến độ xem
+      operationId: saveWatchingProgress
+      description: Lưu tiến độ xem hiện tại của user để có thể resume sau
+      parameters:
+        - name: episodeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - currentTime
+                - duration
+              properties:
+                userId:
+                  type: string
+                  description: "User ID"
+                currentTime:
+                  type: number
+                  description: "Vị trí hiện tại (giây)"
+                duration:
+                  type: number
+                  description: "Tổng thời lượng video (giây)"
+                completed:
+                  type: boolean
+                  description: "Đã xem xong hay chưa"
+      responses:
+        "200":
+          description: Lưu progress thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/watching/history:
+    get:
+      tags:
+        - Video Player
+      summary: 📺 Lấy lịch sử xem phim
+      operationId: getWatchingHistory
+      description: Lấy danh sách phim/episode user đã xem gần đây
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "User ID"
+          example: "675a1234567890abcdef1234"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: "Số lượng items tối đa"
+      responses:
+        "200":
+          description: Lịch sử xem phim
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        episode_id:
+                          type: string
+                        movie:
+                          type: object
+                        episode:
+                          type: object
+                        current_time:
+                          type: number
+                        duration:
+                          type: number
+                        watch_percentage:
+                          type: number
+                        last_watched:
+                          type: string
+                          format: date-time
+        "400":
+          description: UserId không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # === EPISODE APIs ===
+  /api/episodes/{id}:
+    get:
+      tags:
+        - Episode
+      summary: 📺 Chi tiết Episode
+      operationId: getEpisodeDetail
+      description: Lấy thông tin chi tiết của một episode
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Episode ID"
+          example: "675a1234567890abcdef1234"
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "User ID để lấy progress và interactions"
+      responses:
+        "200":
+          description: Chi tiết episode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      episode:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          episode_title:
+                            type: string
+                            example: "Tập 1: Khởi đầu"
+                          episode_number:
+                            type: integer
+                            example: 1
+                          description:
+                            type: string
+                          duration:
+                            type: number
+                            example: 1800
+                          uri:
+                            type: string
+                            nullable: true
+                          streamUid:
+                            type: string
+                            nullable: true
+                      movie:
+                        type: object
+                        description: "Thông tin phim chứa episode này"
+                      userProgress:
+                        type: object
+                        nullable: true
+                        description: "Tiến độ xem của user (nếu có userId)"
+        "404":
+          description: Episode không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     PhoneRequest:
