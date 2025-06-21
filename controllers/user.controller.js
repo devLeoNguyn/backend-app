@@ -3,7 +3,7 @@ const { uploadToCloudflare, deleteFromCloudflare } = require('../utils/cloudflar
 const mongoose = require('mongoose');
 
 // Lấy thông tin profile (userId từ query params)
-exports.getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
     try {
         const { userId } = req.query;
         
@@ -43,7 +43,7 @@ exports.getProfile = async (req, res) => {
 };
 
 // Cập nhật profile (có thể kèm upload avatar)
-exports.updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
     try {
         const { userId } = req.query;
         const { full_name, phone, gender } = req.body;
@@ -293,6 +293,5 @@ const formatWatchTime = (seconds) => {
 module.exports = {
     getProfile,
     updateProfile,
-    // getUserMovieInteractions - REMOVED (duplicate with getMovieDetailWithInteractions)
     getUserInteractionsSummary
 }; 
