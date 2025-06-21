@@ -9,7 +9,8 @@ const {
     getAnimeHot,
     getVietnameseSeries,
     getComingSoon,
-    getTopRatedMovies
+    getTopRatedMovies,
+    getTopFavoriteMovies
 } = require('../controllers/home.controller');
 
 // 1. API Phim mới ra mắt - Section Banner - Public
@@ -31,6 +32,10 @@ router.get('/trending', getTrendingMovies);
 // 5. API Phim đánh giá cao - Public
 // Query params: limit (default: 10)
 router.get('/top-rated', getTopRatedMovies);
+
+// 5.1. API Phim được yêu thích nhất - Public - NEW!
+// Query params: limit (default: 8), timeRange (week/month/year), showAll (true/false)
+router.get('/top-favorites', getTopFavoriteMovies);
 
 // 6. API Sự kiện thể thao - Public
 // Query params: limit (default: 10), status (upcoming/live/ended)

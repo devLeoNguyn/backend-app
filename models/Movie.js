@@ -80,11 +80,7 @@ const movieSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
-  language: {
-    type: String,
-    default: 'vi',
-    enum: ['vi', 'en', 'ja', 'ko', 'zh', 'other']
-  }
+
 }, {
   timestamps: true,
   toJSON: {

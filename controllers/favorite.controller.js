@@ -1,6 +1,124 @@
 const Favorite = require('../models/Favorite');
 const Movie = require('../models/Movie');
 
+// ==============================================
+// NEW UNIFIED FAVORITE API (RESTful approach)
+// ==============================================
+
+// ⚡ UNIFIED TOGGLE FAVORITE API
+// PUT /api/favorites/movies/{movie_id}
+// Body: { "isFavorite": true/false, "userId": "xxx" }
+exports.toggleFavorite = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { isFavorite, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        if (typeof isFavorite !== 'boolean') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'isFavorite phải là boolean (true/false)'
+            });
+        }
+        
+        const user_id = userId;
+
+        // Kiểm tra phim có tồn tại không
+        const movie = await Movie.findById(movie_id);
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Tìm favorite hiện tại
+        const existingFavorite = await Favorite.findOne({ user_id, movie_id });
+
+        if (isFavorite) {
+            // Thêm vào favorites
+            if (!existingFavorite) {
+                const favorite = await Favorite.create({
+                    user_id,
+                    movie_id
+                });
+
+                return res.json({
+                    status: 'success',
+                    message: 'Đã thêm phim vào danh sách yêu thích',
+                    data: {
+                        movieId: movie_id,
+                        isFavorite: true,
+                        favoriteId: favorite._id,
+                        addedAt: favorite.added_at
+                    }
+                });
+            } else {
+                // Đã có trong favorites
+                return res.json({
+                    status: 'success',
+                    message: 'Phim đã có trong danh sách yêu thích',
+                    data: {
+                        movieId: movie_id,
+                        isFavorite: true,
+                        favoriteId: existingFavorite._id,
+                        addedAt: existingFavorite.added_at
+                    }
+                });
+            }
+        } else {
+            // Xóa khỏi favorites
+            if (existingFavorite) {
+                await Favorite.findByIdAndDelete(existingFavorite._id);
+                
+                return res.json({
+                    status: 'success',
+                    message: 'Đã xóa phim khỏi danh sách yêu thích',
+                    data: {
+                        movieId: movie_id,
+                        isFavorite: false
+                    }
+                });
+            } else {
+                // Không có trong favorites
+                return res.json({
+                    status: 'success',
+                    message: 'Phim không có trong danh sách yêu thích',
+                    data: {
+                        movieId: movie_id,
+                        isFavorite: false
+                    }
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error in toggleFavorite:', error);
+        
+        // Xử lý lỗi trùng lặp (unique index violation)
+        if (error.code === 11000) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Phim đã có trong danh sách yêu thích'
+            });
+        }
+
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// ==============================================
+// LEGACY FAVORITE FUNCTIONS (for backward compatibility)
+// ==============================================
+
 // Thêm phim vào danh sách yêu thích
 exports.addToFavorites = async (req, res) => {
     try {

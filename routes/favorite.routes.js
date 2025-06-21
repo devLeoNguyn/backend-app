@@ -1,11 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const {
+    toggleFavorite,
     addToFavorites,
     getFavorites,
     removeFromFavorites,
     checkFavorite
 } = require('../controllers/favorite.controller');
+
+// ==============================================
+// NEW UNIFIED INTERACTION APIS
+// ==============================================
+
+// ⚡ NEW: Toggle favorite/unfavorite in one API (RESTful)
+router.put('/movies/:movie_id', toggleFavorite);
+
+// ==============================================
+// LEGACY ROUTES (for backward compatibility)
+// ==============================================
 
 // Thêm phim vào danh sách yêu thích (userId từ body)
 router.post('/', addToFavorites);

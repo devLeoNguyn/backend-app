@@ -5,8 +5,9 @@ const {
     // updateRating,
     deleteRating,
     getMovieRatings,
-    likeMovie,
-    unlikeMovie,
+    toggleLike,        // ⚡ NEW: Toggle like API
+    likeMovie,         // Legacy
+    unlikeMovie,       // Legacy
     addComment,
     getComments,
     deleteUserComment
@@ -25,7 +26,18 @@ router.post('/', createRating);
 // Xóa đánh giá (userId từ body)
 router.delete('/:id', deleteRating);
 
-// New like routes (userId từ body)
+// ==============================================
+// NEW UNIFIED INTERACTION APIS
+// ==============================================
+
+// ⚡ NEW: Toggle like/unlike in one API (RESTful)
+router.put('/movies/:movie_id/like', toggleLike);
+
+// ==============================================
+// LEGACY ROUTES (for backward compatibility)
+// ==============================================
+
+// Legacy like routes (userId từ body)
 router.post('/movies/:movie_id/like', likeMovie);
 router.delete('/movies/:movie_id/like', unlikeMovie); // Backward compatibility
 router.post('/movies/:movie_id/unlike', unlikeMovie); // 🆕 FIX: Add correct POST endpoint for unlike

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { uploadToCloudflare, deleteFromCloudflare } = require('../utils/cloudflare.config');
+const mongoose = require('mongoose');
 
 // Lấy thông tin profile (userId từ query params)
 exports.getProfile = async (req, res) => {
@@ -158,4 +159,140 @@ exports.updateProfile = async (req, res) => {
             message: error.message || 'Lỗi khi cập nhật profile'
         });
     }
+};
+
+// ❌ REMOVED: getUserMovieInteractions function
+// Reason: Duplicate functionality with getMovieDetailWithInteractions
+// Use getMovieDetailWithInteractions instead for movie detail screen
+
+// 📊 NEW: Get user's interaction summary (for profile/dashboard)
+// GET /api/users/{userId}/interactions/summary
+const getUserInteractionsSummary = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // Validate user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy user'
+            });
+        }
+
+        // Import models
+        const Rating = require('../models/Rating');
+        const Favorite = require('../models/Favorite');
+        const Watching = require('../models/Watching');
+
+        // Get summary statistics in parallel
+        const [
+            totalRatings,
+            totalLikes,
+            totalFavorites,
+            totalWatchingRecords,
+            recentActivity
+        ] = await Promise.all([
+            // Total ratings given by user
+            Rating.countDocuments({ user_id: userId }),
+            
+            // Total likes given by user
+            Rating.countDocuments({ user_id: userId, is_like: true }),
+            
+            // Total movies in favorites
+            Favorite.countDocuments({ user_id: userId }),
+            
+            // Total watching records
+            Watching.countDocuments({ user_id: userId }),
+            
+            // Recent activity (last 10 interactions)
+            Rating.find({ user_id: userId })
+                .populate('movie_id', 'movie_title poster_path movie_type')
+                .sort({ createdAt: -1 })
+                .limit(10)
+        ]);
+
+        // Get watching time statistics
+        const watchingStats = await Watching.aggregate([
+            { $match: { user_id: mongoose.Types.ObjectId(userId) } },
+            {
+                $group: {
+                    _id: null,
+                    totalWatchTime: { $sum: '$current_time' },
+                    avgWatchPercentage: { $avg: '$watch_percentage' },
+                    completedEpisodes: {
+                        $sum: { $cond: [{ $eq: ['$completed', true] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        const stats = watchingStats[0] || {
+            totalWatchTime: 0,
+            avgWatchPercentage: 0,
+            completedEpisodes: 0
+        };
+
+        res.json({
+            status: 'success',
+            data: {
+                userId,
+                userName: user.full_name,
+                
+                // Activity counters
+                stats: {
+                    totalRatings,
+                    totalLikes,
+                    totalFavorites,
+                    totalWatchingRecords,
+                    completedEpisodes: stats.completedEpisodes,
+                    totalWatchTime: Math.round(stats.totalWatchTime), // in seconds
+                    totalWatchTimeFormatted: formatWatchTime(stats.totalWatchTime),
+                    avgWatchPercentage: Math.round(stats.avgWatchPercentage || 0)
+                },
+
+                // Recent activity
+                recentActivity: recentActivity.map(activity => ({
+                    _id: activity._id,
+                    movieId: activity.movie_id._id,
+                    movieTitle: activity.movie_id.movie_title,
+                    movieType: activity.movie_id.movie_type,
+                    poster: activity.movie_id.poster_path,
+                    action: activity.comment ? 'commented' : 'liked',
+                    comment: activity.comment,
+                    isLike: activity.is_like,
+                    createdAt: activity.createdAt
+                }))
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting user interactions summary:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy tổng kết tương tác người dùng',
+            error: error.message
+        });
+    }
+};
+
+// Helper function to format watch time
+const formatWatchTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m`;
+    } else {
+        return `${Math.floor(seconds)}s`;
+    }
+};
+
+module.exports = {
+    getProfile,
+    updateProfile,
+    // getUserMovieInteractions - REMOVED (duplicate with getMovieDetailWithInteractions)
+    getUserInteractionsSummary
 }; 

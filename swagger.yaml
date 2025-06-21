@@ -27,6 +27,12 @@ info:
     // - /api/series/korean?showAll=true
     ```
 
+    **🚀 CẬP NHẬT API CONSISTENCY v1.3.0:**
+    - ✅ **Tối ưu hóa API:** Loại bỏ duplicate endpoints  
+    - ✅ **Nhất quán dữ liệu:** 1 API duy nhất cho màn hình chi tiết phim
+    - ❌ **Đã XÓA:** `/api/users/{userId}/interactions/movie/{movieId}` (trùng lặp)
+    - ✅ **SỬ DỤNG:** `/api/movies/{id}/detail-with-interactions?userId={userId}` cho màn hình detail
+
     **🔄 PHIÊN BẢN ĐÃ CẬP NHẬT:**
     - ❌ Đã bỏ JWT tokens  
     - ❌ Đã bỏ authentication middleware
@@ -59,7 +65,24 @@ info:
     - **Content-Type:** multipart/form-data
     - **Fields:** full_name, gender, avatar (file)
     - **Integration:** Direct S3 upload + MongoDB update
-  version: 1.2.0
+
+    **🎬 MOVIE DETAIL SCREEN WORKFLOW:**
+    ```javascript
+    // 1. Load movie detail (API chính thức duy nhất)
+    GET /api/movies/{id}/detail-with-interactions?userId={userId}
+    // → Trả về: movie info + user interactions + UI tabs config
+    
+    // 2. User actions (realtime updates)
+    PUT /api/ratings/movies/{id}/like        // Toggle like
+    PUT /api/favorites/movies/{id}           // Toggle favorite  
+    PUT /api/watching/progress/{episodeId}   // Update progress
+    
+    // 3. Video streaming
+    GET /api/video-url/{episodeId}          // Get stream URLs
+    ```
+    
+    **❌ DEPRECATED:** `/api/users/{userId}/interactions/movie/{movieId}` (removed - duplicate functionality)
+  version: 1.3.0
   contact:
     email: your-email@example.com
 
@@ -73,7 +96,11 @@ tags:
   - name: Authentication
     description: Các API liên quan đến xác thực người dùng (/api/auth) - Trả về userId
   - name: User
-    description: Các API liên quan đến thông tin người dùng (/api/users) - Cần userId
+    description: |
+      Các API liên quan đến thông tin người dùng (/api/users) - Cần userId
+      
+      **🚨 IMPORTANT CHANGE:** Đã XÓA `/api/users/{userId}/interactions/movie/{movieId}` 
+      → Sử dụng `/api/movies/{id}/detail-with-interactions?userId={userId}` thay thế
   - name: Movie
     description: Các API liên quan đến phim (/api/movies)
   - name: Episode
@@ -101,7 +128,7 @@ paths:
     post:
       tags:
         - Authentication
-      summary: 🔄 Gửi mã OTP (Đăng ký/Đăng nhập thống nhất)
+      summary: 🔄 Gửi mã OTP (Đăng ký/Đăng nhập thống nhất) (Frontend)
       description: |
         **🔄 FLOW MỚI:** Gửi mã OTP cho cả đăng ký và đăng nhập trong 1 API duy nhất.
 
@@ -161,7 +188,7 @@ paths:
     post:
       tags:
         - Authentication
-      summary: 🔄 Xác thực OTP (Đăng ký/Đăng nhập thống nhất)
+      summary: 🔄 Xác thực OTP (Đăng ký/Đăng nhập thống nhất) (Frontend)
       description: |
         **🔄 FLOW MỚI:** Xác thực mã OTP cho cả đăng ký và đăng nhập.
 
@@ -238,7 +265,7 @@ paths:
     post:
       tags:
         - Authentication
-      summary: 🔄 Hoàn tất đăng ký (Sau khi verify OTP)
+      summary: 🔄 Hoàn tất đăng ký (Sau khi verify OTP) (Frontend)
       description: |
         **🔄 FLOW MỚI:** Hoàn tất quá trình đăng ký sau khi verify OTP thành công.
 
@@ -277,7 +304,7 @@ paths:
     post:
       tags:
         - Authentication
-      summary: 🔄 Đăng xuất
+      summary: 🔄 Đăng xuất (Frontend)
       description: |
         Đăng xuất người dùng (chỉ trả về success message).
 
@@ -303,7 +330,7 @@ paths:
     get:
       tags:
         - User
-      summary: Lấy thông tin profile
+      summary: Lấy thông tin profile (Frontend)
       description: |
         Lấy thông tin chi tiết của user.
 
@@ -357,7 +384,7 @@ paths:
     put:
       tags:
         - User
-      summary: 🔄 Cập nhật profile (với upload avatar)
+      summary: 🔄 Cập nhật profile (với upload avatar) (Frontend)
       description: |
         **🔄 API ĐÃ CẬP NHẬT:** Hỗ trợ upload avatar trực tiếp lên Cloudflare Images + cập nhật thông tin profile.
 
@@ -508,11 +535,172 @@ paths:
                 status: "error"
                 message: "Lỗi server khi xử lý upload"
 
+  /api/users/{userId}/interactions/summary:
+    get:
+      tags:
+        - User
+      summary: 📊 Tổng kết tương tác người dùng [ĐÃ GIỮ LẠI] (Frontend/Admin)
+      description: |
+        **📊 API TỔNG KẾT:** Lấy thống kê tổng quan về hoạt động tương tác của user.
+        
+        **🚨 LƯU Ý:** API này KHÁC với API đã xóa:
+        - ❌ **Đã XÓA:** `/api/users/{userId}/interactions/movie/{movieId}` (trùng lặp)
+        - ✅ **GIỮ LẠI:** `/api/users/{userId}/interactions/summary` (thống kê tổng quan)
+        
+        **💡 Use Cases:**
+        - Profile/Dashboard hiển thị thống kê user
+        - Activity summary cho user
+        - Analytics về engagement của user
+        
+        **🔄 WORKFLOW:**
+        - Dùng cho màn hình Profile/Dashboard
+        - KHÔNG dùng cho màn hình chi tiết phim (dùng getMovieDetailWithInteractions)
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "683d7b63d0ee4aeb15a11369"
+          description: "ID của user cần lấy thống kê"
+      responses:
+        "200":
+          description: ✅ Lấy thống kê thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                        example: "683d7b63d0ee4aeb15a11369"
+                      userName:
+                        type: string
+                        example: "Nguyễn Văn A"
+                      stats:
+                        type: object
+                        properties:
+                          totalRatings:
+                            type: integer
+                            example: 25
+                            description: "Tổng số lượt đánh giá"
+                          totalLikes:
+                            type: integer
+                            example: 18
+                            description: "Tổng số lượt thích"
+                          totalFavorites:
+                            type: integer
+                            example: 12
+                            description: "Tổng số phim yêu thích"
+                          totalWatchingRecords:
+                            type: integer
+                            example: 45
+                            description: "Tổng số tập đã xem"
+                          completedEpisodes:
+                            type: integer
+                            example: 32
+                            description: "Tổng số tập đã hoàn thành"
+                          totalWatchTime:
+                            type: integer
+                            example: 64800
+                            description: "Tổng thời gian xem (giây)"
+                          totalWatchTimeFormatted:
+                            type: string
+                            example: "18h 0m"
+                            description: "Thời gian xem formatted"
+                          avgWatchPercentage:
+                            type: integer
+                            example: 78
+                            description: "Phần trăm xem trung bình"
+                      recentActivity:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "rating_id"
+                            movieId:
+                              type: string
+                              example: "movie_id"
+                            movieTitle:
+                              type: string
+                              example: "Spider-Man"
+                            movieType:
+                              type: string
+                              example: "Phim lẻ"
+                            poster:
+                              type: string
+                              example: "https://example.com/poster.jpg"
+                            action:
+                              type: string
+                              enum: ["commented", "liked"]
+                              example: "liked"
+                            comment:
+                              type: string
+                              example: "Phim hay quá!"
+                              description: "Comment của user (có thể null)"
+                            isLike:
+                              type: boolean
+                              example: true
+                            createdAt:
+                              type: string
+                              format: date-time
+                              example: "2024-01-15T10:30:00Z"
+              example:
+                status: "success"
+                data:
+                  userId: "683d7b63d0ee4aeb15a11369"
+                  userName: "Nguyễn Văn A"
+                  stats:
+                    totalRatings: 25
+                    totalLikes: 18
+                    totalFavorites: 12
+                    totalWatchingRecords: 45
+                    completedEpisodes: 32
+                    totalWatchTime: 64800
+                    totalWatchTimeFormatted: "18h 0m"
+                    avgWatchPercentage: 78
+                  recentActivity:
+                    - _id: "rating123"
+                      movieId: "movie456"
+                      movieTitle: "Spider-Man: No Way Home"
+                      movieType: "Phim lẻ"
+                      poster: "https://example.com/spiderman.jpg"
+                      action: "liked"
+                      comment: null
+                      isLike: true
+                      createdAt: "2024-01-15T10:30:00Z"
+        "404":
+          description: ❌ Không tìm thấy user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Không tìm thấy user"
+        "500":
+          description: ❌ Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: "error"
+                message: "Lỗi khi lấy tổng kết tương tác người dùng"
+
   /api/home/new-releases:
     get:
       tags:
         - Home
-      summary: API Banner và Phim đề xuất
+      summary: API Banner và Phim đề xuất (Frontend)
       description: |
         Lấy danh sách phim mới ra mắt cho Banner đầu trang và danh sách ở dưới "Phim dành cho bạn".
 
@@ -603,7 +791,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Đang xem (Cần userId sẽ phát triển trong tương lai)
+      summary: API Đang xem (Cần userId sẽ phát triển trong tương lai) (Frontend)
       description: |
         Lấy danh sách phim đang xem của user.
 
@@ -678,7 +866,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Phim đang thịnh hành
+      summary: API Phim đang thịnh hành (Frontend)
       description: |
         Lấy danh sách phim đang thịnh hành (được xem nhiều nhất).
 
@@ -753,7 +941,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Phim được đánh giá cao
+      summary: API Phim được đánh giá cao (Frontend)
       description: |
         Lấy danh sách phim được đánh giá cao nhất.
 
@@ -828,7 +1016,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Sự kiện thể thao
+      summary: API Sự kiện thể thao (Frontend)
       description: |
         Lấy danh sách sự kiện thể thao.
 
@@ -915,7 +1103,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Anime/Hoạt hình hot
+      summary: API Anime/Hoạt hình hot (Frontend)
       description: |
         Lấy danh sách anime/hoạt hình nổi bật với logic đặc trưng.
         
@@ -999,7 +1187,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Phim Việt đặc sắc
+      summary: API Phim Việt đặc sắc (Frontend)
       description: |
         Lấy danh sách phim Việt Nam với logic tìm kiếm đặc trưng.
 
@@ -1102,7 +1290,7 @@ paths:
     get:
       tags:
         - Home
-      summary: API Phim sắp chiếu (đặt lịch sẽ phát triển trong tương lai)
+      summary: API Phim sắp chiếu (đặt lịch sẽ phát triển trong tương lai) (Frontend)
       description: |
         Lấy danh sách phim sắp chiếu với logic đặc trưng.
         
@@ -1208,7 +1396,7 @@ paths:
     get:
       tags:
         - Series
-      summary: 🎬 API Banner và phim bộ đề xuất cho màn hình Series
+      summary: 🎬 API Banner và phim bộ đề xuất cho màn hình Series (Frontend)
       description: |
         **🎯 API CHUYÊN DÀNH CHO MÀN HÌNH PHIM BỘ**
 
@@ -1368,7 +1556,7 @@ paths:
     get:
       tags:
         - Series
-      summary: 🔥 API Phim bộ đang thịnh hành
+      summary: 🔥 API Phim bộ đang thịnh hành (Frontend)
       description: |
         **🎯 API PHIM BỘ HOT NHẤT**
 
@@ -1469,7 +1657,7 @@ paths:
     get:
       tags:
         - Series
-      summary: 🇻🇳 API Phim bộ Việt Nam
+      summary: 🇻🇳 API Phim bộ Việt Nam (Frontend)
       description: |
         **🎯 API PHIM BỘ VIỆT NAM ĐẶC SẮC**
 
@@ -1537,7 +1725,7 @@ paths:
     get:
       tags:
         - Series
-      summary: 🎌 API Phim bộ Anime/Hoạt hình
+      summary: 🎌 API Phim bộ Anime/Hoạt hình (Frontend)
       description: |
         **🎯 API ANIME SERIES HOT**
 
@@ -1605,7 +1793,7 @@ paths:
     get:
       tags:
         - Series
-      summary: 🇰🇷 API Phim bộ Hàn Quốc (K-Drama)
+      summary: 🇰🇷 API Phim bộ Hàn Quốc (K-Drama) (Frontend)
       description: |
         **🎯 API K-DRAMA HOT NHẤT**
 
@@ -1687,9 +1875,14 @@ paths:
     get:
       tags:
         - Movie
-      summary: 🎬 API Chi tiết phim tổng hợp cho màn hình detail
+      summary: 🎬 API Chi tiết phim tổng hợp cho màn hình detail [CHÍNH THỨC] (Frontend)
       description: |
         **🎯 Mục đích:** API tổng hợp mọi thông tin cần thiết cho màn hình chi tiết phim.
+
+        **🚀 API CHÍNH THỨC DUY NHẤT:** Đây là API CHÍNH THỨC và DUY NHẤT cho màn hình chi tiết phim.
+        
+        **❌ ĐÃ XÓA API CŨ:** `/api/users/{userId}/interactions/movie/{movieId}` (trùng lặp)
+        **✅ SỬ DỤNG API NÀY:** Tất cả dữ liệu user interactions đã được tích hợp vào đây.
 
         **🌟 Đặc điểm:**
         - ✅ API hybrid: Public (không cần userId) hoặc Protected (có userId)
@@ -1855,7 +2048,7 @@ paths:
     get:
       tags:
         - Genre
-      summary: Lấy danh sách thể loại
+      summary: Lấy danh sách thể loại (Frontend/Admin)
       description: |
         Lấy danh sách thể loại với nhiều options.
         
@@ -1925,7 +2118,7 @@ paths:
     get:
       tags:
         - Genre
-      summary: Lấy danh sách phim của thể loại
+      summary: Lấy danh sách phim của thể loại (Frontend)
       description: Lấy danh sách phim thuộc một thể loại cụ thể
       parameters:
         - in: query
@@ -1962,7 +2155,7 @@ paths:
     put:
       tags:
         - Genre
-      summary: Cập nhật thể loại
+      summary: Cập nhật thể loại (Admin)
       description: Cập nhật thông tin của một thể loại
       parameters:
         - in: query
@@ -2012,7 +2205,7 @@ paths:
     delete:
       tags:
         - Genre
-      summary: Xóa thể loại
+      summary: Xóa thể loại (Admin)
       description: Xóa một thể loại
       parameters:
         - in: query
@@ -2040,7 +2233,7 @@ paths:
     put:
       tags:
         - Genre
-      summary: Cập nhật trạng thái thể loại
+      summary: Cập nhật trạng thái thể loại (Admin)
       description: |
         Cập nhật trạng thái của thể loại (activate/deactivate/toggle).
         
@@ -2086,12 +2279,133 @@ paths:
                         $ref: "#/components/schemas/Genre"
 
   # === MOVIE INTERACTION APIs ===
+  
+  # ==============================================
+  # NEW UNIFIED INTERACTION APIS (RESTful)
+  # ==============================================
+  
   /api/ratings/movies/{movie_id}/like:
+    put:
+      tags:
+        - Movie Interactions
+      summary: ⚡ Toggle Thích/Bỏ thích phim (UNIFIED) (Frontend)
+      description: |
+        **🆕 API MỚI - RESTful Toggle Approach**
+        
+        **🎯 Mục đích:** Toggle trạng thái like/unlike phim trong 1 API duy nhất.
+        
+        **✅ Ưu điểm:**
+        - Giảm duplicate code từ 2 APIs xuống 1 API
+        - RESTful và semantic hơn (PUT cho update)
+        - Dễ implement ở frontend (1 function thay vì 2)
+        - Response nhất quán cho cả like và unlike
+        
+        **💡 Cách dùng:**
+        ```javascript
+        // Like phim
+        PUT /api/ratings/movies/{movie_id}/like
+        { "isLike": true, "userId": "xxx" }
+        
+        // Unlike phim  
+        PUT /api/ratings/movies/{movie_id}/like
+        { "isLike": false, "userId": "xxx" }
+        ```
+      parameters:
+        - name: movie_id
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "675a1234567890abcdef1234"
+          description: "ID của phim"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - isLike
+              properties:
+                userId:
+                  type: string
+                  example: "683d7b63d0ee4aeb15a11369"
+                  description: "ID của user thực hiện thao tác"
+                isLike:
+                  type: boolean
+                  example: true
+                  description: "true = thích phim, false = bỏ thích phim"
+      responses:
+        "200":
+          description: ✅ Toggle like/unlike thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Đã thích phim"
+                  data:
+                    type: object
+                    properties:
+                      movieId:
+                        type: string
+                        example: "675a1234567890abcdef1234"
+                      isLike:
+                        type: boolean
+                        example: true
+                        description: "Trạng thái hiện tại"
+                      likeCount:
+                        type: integer
+                        example: 893
+                        description: "Tổng số like của phim"
+                      userRating:
+                        type: object
+                        nullable: true
+                        description: "Thông tin rating của user (null nếu đã unlike hoàn toàn)"
+                        properties:
+                          _id:
+                            type: string
+                          isLike:
+                            type: boolean
+                          hasComment:
+                            type: boolean
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+        "400":
+          description: ❌ Lỗi validate request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: ❌ Không tìm thấy phim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ==============================================
+  # LEGACY INTERACTION APIS (Backward Compatible)
+  # ==============================================
+
+  /api/ratings/movies/{movie_id}/like-legacy:
     post:
       tags:
         - Movie Interactions
-      summary: ❤️ Thích phim
+      summary: ❤️ Thích phim (LEGACY) (Frontend)
       description: |
+        **⚠️ LEGACY API - Sử dụng API PUT mới được khuyến nghị**
+        
         **🎯 Mục đích:** User thích một bộ phim.
 
         **🔄 THAY ĐỔI:** Sử dụng userId trong body thay vì Authorization header
@@ -2154,7 +2468,7 @@ paths:
     post:
       tags:
         - Movie Interactions
-      summary: 💔 Bỏ thích phim
+      summary: 💔 Bỏ thích phim (Frontend)
       description: |
         **🎯 Mục đích:** User bỏ thích một bộ phim.
 
@@ -2212,7 +2526,7 @@ paths:
     post:
       tags:
         - Movie Interactions
-      summary: 💬 Thêm bình luận phim
+      summary: 💬 Thêm bình luận phim (Frontend)
       description: |
         **🎯 Mục đích:** User thêm bình luận cho một bộ phim.
 
@@ -2289,7 +2603,7 @@ paths:
     post:
       tags:
         - Movie Interactions
-      summary: ⭐ Thêm vào danh sách yêu thích
+      summary: ⭐ Thêm vào danh sách yêu thích (Frontend)
       description: |
         **🎯 Mục đích:** User thêm phim vào danh sách yêu thích.
 
@@ -2334,7 +2648,7 @@ paths:
     post:
       tags:
         - Movie Interactions
-      summary: ❌ Xóa khỏi danh sách yêu thích
+      summary: ❌ Xóa khỏi danh sách yêu thích (Frontend)
       description: |
         **🎯 Mục đích:** User xóa phim khỏi danh sách yêu thích.
 
@@ -2379,7 +2693,7 @@ paths:
     get:
       tags:
         - Movie
-      summary: 🔍 Tìm kiếm phim đơn giản theo tên và mô tả
+      summary: 🔍 Tìm kiếm phim đơn giản theo tên và mô tả (Frontend)
       description: |
         **🎯 API TÌM KIẾM PHIM ĐƠN GIẢN**
 
@@ -2585,7 +2899,7 @@ paths:
     get:
       tags:
         - Video Player
-      summary: 🎬 API chính lấy Stream URL cho Expo Video Player
+      summary: 🎬 API chính lấy Stream URL cho Expo Video Player (Frontend)
       operationId: getVideoStreamUrl
       description: |
         **🎯 API QUAN TRỌNG NHẤT CHO VIDEO PLAYER**
@@ -2645,7 +2959,7 @@ paths:
     post:
       tags:
         - Video Streaming
-      summary: 🔄 Refresh Stream URL
+      summary: 🔄 Refresh Stream URL (Frontend)
       operationId: refreshVideoStreamUrl
       description: Làm mới Stream URL với thời gian hết hạn mới
       parameters:
@@ -2673,7 +2987,7 @@ paths:
     get:
       tags:
         - Video Streaming
-      summary: 📊 Check Video Status
+      summary: 📊 Check Video Status (Frontend/Admin)
       operationId: getVideoStatus
       description: Kiểm tra trạng thái video và khả năng truy cập
       parameters:
@@ -2719,7 +3033,7 @@ paths:
     post:
       tags:
         - Upload
-      summary: 🖼️ Upload Image to Cloudflare Images
+      summary: 🖼️ Upload Image to Cloudflare Images (Admin)
       operationId: uploadImage
       description: Upload ảnh lên Cloudflare Images với auto-optimization
       requestBody:
@@ -2762,7 +3076,7 @@ paths:
     post:
       tags:
         - Upload
-      summary: 🎬 Upload Video to Cloudflare Stream
+      summary: 🎬 Upload Video to Cloudflare Stream (Admin)
       operationId: uploadVideo
       description: Upload video lên Cloudflare Stream với auto-processing
       requestBody:
@@ -2807,7 +3121,7 @@ paths:
     get:
       tags:
         - Video Player
-      summary: 📊 API lấy tiến độ xem đã lưu
+      summary: 📊 API lấy tiến độ xem đã lưu (Frontend)
       operationId: getWatchingProgress
       description: Lấy tiến độ xem đã lưu để resume video từ vị trí đã xem
       parameters:
@@ -2860,7 +3174,7 @@ paths:
     post:
       tags:
         - Video Player
-      summary: 💾 API lưu tiến độ xem
+      summary: 💾 API lưu tiến độ xem (Frontend)
       operationId: saveWatchingProgress
       description: Lưu tiến độ xem hiện tại của user để có thể resume sau
       parameters:
@@ -2911,7 +3225,7 @@ paths:
     get:
       tags:
         - Video Player
-      summary: 📺 Lấy lịch sử xem phim
+      summary: 📺 Lấy lịch sử xem phim (Frontend)
       operationId: getWatchingHistory
       description: Lấy danh sách phim/episode user đã xem gần đây
       parameters:
@@ -2972,7 +3286,7 @@ paths:
     get:
       tags:
         - Episode
-      summary: 📺 Chi tiết Episode
+      summary: 📺 Chi tiết Episode (Frontend)
       operationId: getEpisodeDetail
       description: Lấy thông tin chi tiết của một episode
       parameters:

@@ -5,6 +5,9 @@ const Episode = require('../models/Episode');
 const Rating = require('../models/Rating');
 const mongoose = require('mongoose');
 
+// Import movie service for centralized operations
+const movieService = require('../services/movie.service');
+
 // Import shared utility functions (eliminates duplication)
 const {
     calculateMovieRating,
@@ -78,6 +81,59 @@ const getNewReleases = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: 'Lỗi khi lấy phim mới',
+            error: error.message
+        });
+    }
+};
+
+// 1.1. 🔥 Top Favorite Movies - NEW SECTION using Movie Service
+const getTopFavoriteMovies = async (req, res) => {
+    try {
+        const showAll = req.query.showAll === 'true';
+        const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
+        const timeRange = req.query.timeRange || null; // week, month, year
+
+        // Use movie service to get top favorite movies
+        const topFavoriteMovies = await movieService.getTopFavoriteMovies(limit, timeRange);
+
+        // Format for response
+        const formattedMovies = topFavoriteMovies.map(movie => ({
+            movieId: movie._id,
+            title: movie.movie_title,
+            poster: movie.poster_path,
+            description: movie.description,
+            movieType: movie.movie_type,
+            producer: movie.producer,
+            favoriteCount: movie.favoriteCount,
+            genres: movie.genres ? movie.genres.slice(0, 3).map(g => g.genre_name) : [],
+            releaseYear: movie.production_time ? new Date(movie.production_time).getFullYear() : null,
+            price: movie.price,
+            is_free: movie.is_free
+        }));
+
+        const timeRangeText = {
+            week: 'tuần',
+            month: 'tháng',
+            year: 'năm'
+        };
+
+        res.json({
+            status: 'success',
+            data: {
+                title: timeRange ? 
+                    `Phim được yêu thích nhất ${timeRangeText[timeRange]}` : 
+                    "Phim được yêu thích nhất",
+                type: "grid",
+                movies: formattedMovies,
+                showAll: showAll,
+                timeRange: timeRange
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching top favorite movies:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy phim được yêu thích nhất',
             error: error.message
         });
     }
@@ -644,5 +700,6 @@ module.exports = {
     getSportsEvents,
     getAnimeHot,
     getVietnameseSeries,
-    getComingSoon
+    getComingSoon,
+    getTopFavoriteMovies
 };

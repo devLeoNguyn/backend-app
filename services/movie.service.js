@@ -2,8 +2,12 @@ const Movie = require('../models/Movie');
 const Episode = require('../models/Episode');
 const Genre = require('../models/Genre');
 const Favorite = require('../models/Favorite');
-const { validatePrice, validateEpisodes, validateGenres, determineMovieType } = require('../validators/movieValidator');
+const { validatePrice, validateEpisodes, validateGenres, determineMovieType, validateMovieData } = require('../validators/movieValidator');
 
+/**
+ * 🎬 CORE MOVIE CREATION SERVICE
+ * Centralized service for all movie creation operations
+ */
 const createMovie = async (movieData) => {
     try {
         // Validate price
@@ -32,19 +36,11 @@ const createMovie = async (movieData) => {
             is_free: validatedPrice === 0
         });
 
-        // Create episodes
-        const episodes = await Promise.all(movieData.episodes.map(async (ep) => {
-            return await Episode.create({
-                episode_title: ep.episode_title,
-                uri: ep.uri,
-                episode_number: ep.episode_number,
-                episode_description: ep.episode_description || '',
-                movie_id: newMovie._id
-            });
-        }));
+        // Create episodes using centralized method
+        const episodes = await createEpisodesForMovie(newMovie._id, movieData.episodes, movie_type);
 
         // Populate genres for response
-        await newMovie.populate('genres', 'name description is_active');
+        await newMovie.populate('genres', 'genre_name description is_active');
 
         return { newMovie, episodes };
     } catch (error) {
@@ -52,9 +48,182 @@ const createMovie = async (movieData) => {
     }
 };
 
+/**
+ * 🎬 COMPREHENSIVE MOVIE CREATION (All Types)
+ * Supports: Regular Movies, Sports Events, Anime
+ */
+const createMovieComprehensive = async (movieData) => {
+    try {
+        // Use comprehensive validation
+        const validatedData = validateMovieData(movieData);
+
+        const {
+            movie_title,
+            description,
+            production_time,
+            producer,
+            price,
+            movie_type,
+            poster_path,
+            genres = [],
+            event_start_time,
+            event_status,
+            maxEpisodeNumber
+        } = validatedData;
+
+        // Validate genres exist
+        const validGenres = await Genre.find({ _id: { $in: genres } });
+        if (validGenres.length !== genres.length) {
+            throw new Error('Một hoặc nhiều thể loại không tồn tại');
+        }
+
+        // Create movie data object
+        const movieCreateData = {
+            movie_title,
+            description,
+            production_time,
+            producer,
+            price,
+            movie_type,
+            genres,
+            total_episodes: maxEpisodeNumber,
+            poster_path: poster_path || '',
+            is_free: price === 0
+        };
+
+        // Handle sports events special fields
+        if (movie_type === 'Thể thao') {
+            movieCreateData.event_start_time = event_start_time;
+            movieCreateData.event_status = event_status;
+        }
+
+        // Create movie
+        const newMovie = new Movie(movieCreateData);
+        await newMovie.save();
+
+        // Create episodes
+        const episodes = await createEpisodesForMovie(newMovie._id, movieData.episodes, movie_type);
+
+        // Populate genres
+        await newMovie.populate('genres', 'genre_name description is_active');
+
+        return { newMovie, episodes };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * ⚽ SPORTS EVENT CREATION SERVICE
+ */
+const createSportsEvent = async (sportsData) => {
+    try {
+        const movieData = {
+            ...sportsData,
+            movie_type: 'Thể thao'
+        };
+
+        return await createMovieComprehensive(movieData);
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 📺 CENTRALIZED EPISODE CREATION
+ * Handles episode creation for all movie types
+ */
+const createEpisodesForMovie = async (movieId, episodesData, movieType) => {
+    try {
+        const episodes = await Promise.all(episodesData.map(async (ep, index) => {
+            return await Episode.create({
+                episode_title: ep.episode_title,
+                uri: ep.uri,
+                episode_number: movieType === 'Thể thao' ? 1 : ep.episode_number,
+                episode_description: ep.episode_description || '',
+                duration: ep.duration || 0,
+                movie_id: movieId
+            });
+        }));
+
+        return episodes;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 🔄 UPDATE MOVIE SERVICE
+ */
+const updateMovie = async (movieId, updateData) => {
+    try {
+        // Validate update data if price is being updated
+        if (updateData.price !== undefined) {
+            updateData.price = validatePrice(updateData.price);
+            updateData.is_free = updateData.price === 0;
+        }
+
+        // Update movie
+        const updatedMovie = await Movie.findByIdAndUpdate(
+            movieId,
+            updateData,
+            { new: true, runValidators: true }
+        ).populate('genres', 'genre_name description is_active');
+
+        if (!updatedMovie) {
+            throw new Error('Không tìm thấy phim');
+        }
+
+        // Update episodes if provided
+        let episodes = [];
+        if (updateData.episodes && updateData.episodes.length > 0) {
+            // Delete old episodes
+            await Episode.deleteMany({ movie_id: movieId });
+
+            // Create new episodes
+            episodes = await createEpisodesForMovie(movieId, updateData.episodes, updatedMovie.movie_type);
+        } else {
+            // Get existing episodes
+            episodes = await Episode.find({ movie_id: movieId })
+                .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
+                .sort({ episode_number: 1 });
+        }
+
+        return { updatedMovie, episodes };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 🎯 GET MOVIE BY ID WITH EPISODES
+ */
+const getMovieById = async (movieId) => {
+    try {
+        const movie = await Movie.findById(movieId)
+            .populate('genres', 'genre_name description is_active');
+
+        if (!movie) {
+            throw new Error('Không tìm thấy phim');
+        }
+
+        const episodes = await Episode.find({ movie_id: movieId })
+            .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
+            .sort({ episode_number: 1 });
+
+        return { movie, episodes };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 🔥 GET TOP FAVORITE MOVIES
+ * Enhanced version with time range support
+ */
 const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
     try {
-        // Xây dựng điều kiện thời gian nếu có
+        // Build time condition if provided
         const timeCondition = {};
         if (timeRange) {
             const now = new Date();
@@ -77,12 +246,12 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
             }
         }
 
-        // Aggregate để đếm số lượt yêu thích và lấy thông tin phim
+        // Aggregate to count favorites and get movie info
         const topMovies = await Favorite.aggregate([
-            // Lọc theo thời gian nếu có
+            // Filter by time if provided
             ...(Object.keys(timeCondition).length > 0 ? [{$match: timeCondition}] : []),
             
-            // Nhóm theo movie_id và đếm số lượt yêu thích
+            // Group by movie_id and count favorites
             {
                 $group: {
                     _id: '$movie_id',
@@ -90,17 +259,17 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
                 }
             },
 
-            // Sắp xếp theo số lượt yêu thích giảm dần
+            // Sort by favorite count descending
             {
                 $sort: { favoriteCount: -1 }
             },
 
-            // Giới hạn số lượng kết quả
+            // Limit results
             {
                 $limit: limit
             },
 
-            // Lookup để lấy thông tin phim
+            // Lookup movie information
             {
                 $lookup: {
                     from: 'movies',
@@ -115,7 +284,7 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
                 $unwind: '$movie'
             },
 
-            // Lookup để lấy thông tin thể loại
+            // Lookup genre information
             {
                 $lookup: {
                     from: 'genres',
@@ -125,7 +294,7 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
                 }
             },
 
-            // Project để format kết quả
+            // Project to format result
             {
                 $project: {
                     _id: '$movie._id',
@@ -150,7 +319,7 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
             }
         ]);
 
-        // Lấy thông tin episodes cho mỗi phim
+        // Get episode information for each movie
         const moviesWithEpisodes = await Promise.all(topMovies.map(async (movie) => {
             const episodes = await Episode.find({ movie_id: movie._id })
                 .select('episode_title uri episode_number episode_description')
@@ -172,25 +341,123 @@ const getTopFavoriteMovies = async (limit = 10, timeRange = null) => {
     }
 };
 
-// const formatMovieResponse = (movie, episodes) => {
-//     const responseData = movie.toObject();
-    
-//     if (responseData.movie_type === 'Phim bộ') {
-//         // Sắp xếp episodes theo episode_number
-//         episodes.sort((a, b) => a.episode_number - b.episode_number);
-//         responseData.episodes = episodes.map(ep => ({
-//             ...ep.toObject(),
-//             uri: responseData.is_free ? ep.uri : null
-//         }));
-//     } else {
-//         responseData.uri = responseData.is_free ? episodes[0].uri : null;
-//         responseData.episode_description = episodes[0].episode_description;
-//     }
+/**
+ * 🗑️ DELETE MOVIE SERVICE
+ */
+const deleteMovie = async (movieId) => {
+    try {
+        // Delete associated episodes first
+        await Episode.deleteMany({ movie_id: movieId });
 
-//     return responseData;
-// };
+        // Delete movie
+        const deletedMovie = await Movie.findByIdAndDelete(movieId);
+
+        if (!deletedMovie) {
+            throw new Error('Không tìm thấy phim');
+        }
+
+        return deletedMovie;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 🔍 SEARCH MOVIES SERVICE
+ */
+const searchMovies = async (query, options = {}) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            genre,
+            movie_type,
+            price_type
+        } = options;
+
+        const skip = (page - 1) * limit;
+
+        // Build search criteria
+        const searchCriteria = {
+            $or: [
+                { movie_title: { $regex: query, $options: 'i' } },
+                { description: { $regex: query, $options: 'i' } },
+                { producer: { $regex: query, $options: 'i' } }
+            ]
+        };
+
+        // Add filters
+        if (genre) {
+            searchCriteria.genres = genre;
+        }
+        if (movie_type) {
+            searchCriteria.movie_type = movie_type;
+        }
+        if (price_type === 'free') {
+            searchCriteria.price = 0;
+        } else if (price_type === 'paid') {
+            searchCriteria.price = { $gt: 0 };
+        }
+
+        // Execute search
+        const [movies, total] = await Promise.all([
+            Movie.find(searchCriteria)
+                .populate('genres', 'genre_name')
+                .select('movie_title description production_time producer movie_type price is_free poster_path')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Movie.countDocuments(searchCriteria)
+        ]);
+
+        return {
+            movies,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total_pages: Math.ceil(total / limit)
+            }
+        };
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * 📊 GET RECENT MOVIES SERVICE
+ */
+const getRecentMovies = async (limit = 5) => {
+    try {
+        const recentMovies = await Movie.find()
+            .select('movie_title description production_time producer movie_type price is_free price_display')
+            .sort({ production_time: -1 })
+            .limit(limit);
+
+        // Process each movie and get episodes
+        const moviesWithDetails = await Promise.all(recentMovies.map(async (movie) => {
+            const episodes = await Episode.find({ movie_id: movie._id })
+                .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
+                .sort({ episode_number: 1 });
+
+            return movie.formatMovieResponse(episodes);
+        }));
+
+        return moviesWithDetails;
+    } catch (error) {
+        throw error;
+    }
+};
 
 module.exports = {
     createMovie,
-    getTopFavoriteMovies
+    createMovieComprehensive,
+    createSportsEvent,
+    createEpisodesForMovie,
+    updateMovie,
+    getMovieById,
+    getTopFavoriteMovies,
+    deleteMovie,
+    searchMovies,
+    getRecentMovies
 }; 

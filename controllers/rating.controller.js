@@ -168,7 +168,101 @@ exports.deleteUserComment = async (req, res) => {
 // NEW LIKE FUNCTIONS
 // ==============================================
 
-// Like a movie
+// ⚡ UNIFIED TOGGLE LIKE API (RESTful approach)
+// PUT /api/ratings/movies/{movie_id}/like
+// Body: { "isLike": true/false, "userId": "xxx" }
+exports.toggleLike = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { isLike, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        if (typeof isLike !== 'boolean') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'isLike phải là boolean (true/false)'
+            });
+        }
+        
+        const user_id = userId;
+
+        // Check if movie exists
+        const movie = await Movie.findById(movie_id);
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Find or create rating
+        let rating = await Rating.findOne({ user_id, movie_id });
+        let isNewRating = false;
+        
+        if (rating) {
+            // Update existing rating
+            const previousState = rating.is_like;
+            rating.is_like = isLike;
+            await rating.save();
+            
+            // If toggling to false and no comment, remove the rating entirely
+            if (!isLike && (!rating.comment || rating.comment.trim() === '')) {
+                await Rating.findByIdAndDelete(rating._id);
+                rating = null;
+            }
+        } else if (isLike) {
+            // Create new rating only if liking
+            rating = await Rating.create({
+                user_id,
+                movie_id,
+                is_like: true
+            });
+            isNewRating = true;
+        }
+
+        // Calculate new like count
+        const likeCount = await Rating.countDocuments({ 
+            movie_id, 
+            is_like: true 
+        });
+
+        res.json({
+            status: 'success',
+            message: isLike ? 'Đã thích phim' : 'Đã bỏ thích phim',
+            data: {
+                movieId: movie_id,
+                isLike,
+                likeCount,
+                userRating: rating ? {
+                    _id: rating._id,
+                    isLike: rating.is_like,
+                    hasComment: !!(rating.comment && rating.comment.trim()),
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
+                } : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in toggleLike:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// ==============================================
+// LEGACY LIKE FUNCTIONS (for backward compatibility)
+// ==============================================
+
+// Like a movie (Legacy)
 exports.likeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
@@ -228,7 +322,7 @@ exports.likeMovie = async (req, res) => {
     }
 };
 
-// Unlike a movie
+// Unlike a movie (Legacy)
 exports.unlikeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
