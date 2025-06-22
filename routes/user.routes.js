@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { 
-    getProfile, 
+    getProfile,
     updateProfile,
     // getUserMovieInteractions - REMOVED (duplicate functionality)
     getUserInteractionsSummary

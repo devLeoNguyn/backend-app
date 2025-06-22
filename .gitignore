@@ -1,6 +1,9 @@
 # Node modules
 node_modules/
 
+# Documentation files - do not track generated or reference docs
+docs/
+
 # Environment variables
 .env
 
