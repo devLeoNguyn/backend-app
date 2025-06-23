@@ -236,8 +236,31 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 is_locked: !movie.is_free
             };
         } else {
-            // Logic for series - use schema method
+            // Logic for series - use schema method but override episode URIs if user has rental access
             movieData = movie.formatMovieResponse(episodes);
+            
+            // Check if user has rental access to override locked episodes
+            if (userId && !movie.is_free) {
+                const MovieRental = require('../models/MovieRental');
+                const userRental = await MovieRental.findOne({
+                    user_id: userId,
+                    movie_id: id,
+                    status: 'active',
+                    endTime: { $gt: new Date() }
+                });
+                
+                // If user has active rental, show real URIs
+                if (userRental && movieData.episodes) {
+                    movieData.episodes = movieData.episodes.map(ep => {
+                        const fullEpisode = episodes.find(fullEp => fullEp.episode_number === ep.episode_number);
+                        return {
+                            ...ep,
+                            uri: fullEpisode ? fullEpisode.uri : null,
+                            is_locked: false
+                        };
+                    });
+                }
+            }
         }
 
         // Add interaction data
