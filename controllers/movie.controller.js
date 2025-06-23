@@ -275,7 +275,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 })
                 .populate('user_id', 'name email')
                 .sort({ updatedAt: -1 })
-                .limit(5)
+                .limit(10)
             ]);
 
             // Add user-specific interaction data
@@ -338,7 +338,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
             })
             .populate('user_id', 'name email')
             .sort({ updatedAt: -1 })
-            .limit(5);
+            .limit(10);
 
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
