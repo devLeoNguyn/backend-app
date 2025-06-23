@@ -172,7 +172,17 @@ class RentalService {
      */
     async checkRentalAccess(userId, movieId) {
         try {
+            console.log(`[DEBUG] Checking rental access - userId: ${userId}, movieId: ${movieId}`);
+            
+            // Verify movie exists
+            const movie = await Movie.findById(movieId);
+            if (!movie) {
+                console.log(`[DEBUG] Movie not found with ID: ${movieId}`);
+                throw new Error('Not Found');
+            }
+
             const rental = await MovieRental.findActiveRental(userId, movieId);
+            console.log(`[DEBUG] Active rental found:`, rental);
             
             if (!rental) {
                 return {
@@ -187,6 +197,8 @@ class RentalService {
             const remainingTime = rental.remainingTime;
             const remainingHours = Math.ceil(remainingTime / (1000 * 60 * 60));
             const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+
+            console.log(`[DEBUG] Access granted - Remaining time: ${remainingTime}ms, Hours: ${remainingHours}, Days: ${remainingDays}`);
 
             return {
                 hasAccess: true,
