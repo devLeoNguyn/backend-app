@@ -242,12 +242,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Check if user has rental access to override locked episodes
             if (userId && !movie.is_free) {
                 const MovieRental = require('../models/MovieRental');
-                const userRental = await MovieRental.findOne({
-                    user_id: userId,
-                    movie_id: id,
-                    status: 'active',
-                    endTime: { $gt: new Date() }
-                });
+                const userRental = await MovieRental.findActiveRental(userId, id);
                 
                 // If user has active rental, show real URIs
                 if (userRental && movieData.episodes) {
