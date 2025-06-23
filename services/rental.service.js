@@ -45,7 +45,7 @@ class RentalService {
             const orderCode = Date.now();
             
             // Tạo PayOS order
-            const description = `Thuê phim "${movie.title}" - Gói ${rentalType}`;
+            const description = `${movie.title.substring(0, 20)}`;
             const payosBody = {
                 orderCode,
                 amount,
