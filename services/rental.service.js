@@ -45,7 +45,7 @@ class RentalService {
             const orderCode = Date.now();
             
             // Tạo PayOS order
-            const description = `${movie.title.substring(0, 20)}`;
+            const description = `${movie.movie_title.substring(0, 20)}`;
             const payosBody = {
                 orderCode,
                 amount,
@@ -178,7 +178,7 @@ class RentalService {
             const movie = await Movie.findById(movieId);
             if (!movie) {
                 console.log(`[DEBUG] Movie not found with ID: ${movieId}`);
-                throw new Error('Not Found');
+                throw new Error('Không tìm thấy phim với ID này');
             }
 
             const rental = await MovieRental.findActiveRental(userId, movieId);
