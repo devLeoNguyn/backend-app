@@ -140,13 +140,19 @@ class RentalService {
             const movie = payment.movieId;
             const rentalType = payment.amount === (movie.price * 0.3) ? '48h' : '30d';
 
+            // Tính endTime dựa trên rentalType
+            const startTime = new Date();
+            const duration = rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+            const endTime = new Date(startTime.getTime() + duration);
+
             // Tạo rental record
             const rental = new MovieRental({
                 userId: payment.userId,
                 movieId: payment.movieId._id,
                 paymentId: payment._id,
                 rentalType,
-                startTime: new Date()
+                startTime,
+                endTime
             });
 
             await rental.save();
