@@ -124,7 +124,7 @@ class RentalService {
             }
 
             // Kiểm tra trạng thái từ PayOS
-            const payosOrder = await payOS.getPaymentLinkInfomation(orderCode);
+            const payosOrder = await payOS.getPaymentLinkInformation(orderCode);
             
             if (payosOrder.status !== 'PAID') {
                 throw new Error('Đơn hàng chưa được thanh toán');

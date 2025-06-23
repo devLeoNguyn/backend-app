@@ -143,7 +143,7 @@ router.get("/:orderId", async (req, res) => {
       // Kiểm tra trạng thái từ PayOS nếu đơn chưa hoàn thành
       if (localPayment.status === 'PENDING') {
         try {
-          const payosOrder = await payOS.getPaymentLinkInfomation(req.params.orderId);
+          const payosOrder = await payOS.getPaymentLinkInformation(req.params.orderId);
           // Cập nhật thông tin mới nhất từ PayOS
           if (payosOrder) {
             localPayment.status = payosOrder.status === 'PAID' ? 'SUCCESS' : 'PENDING';
