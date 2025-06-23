@@ -26,4 +26,9 @@ router.get('/trending', animeController.getTrendingAnime);
 // GET /api/anime/:id
 router.get('/:id', animeController.getAnimeDetail);
 
+
+// Banner anime phim bộ (giống banner phim bộ nhưng chỉ lấy hoạt hình)
+// GET /api/anime/banner-list
+router.get('/banner-list', animeController.getBannerAnime);
+
 module.exports = router; 

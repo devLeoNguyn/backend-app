@@ -9,7 +9,7 @@ exports.getAnimeSeries = async (req, res) => {
         const skip = (page - 1) * limit;
 
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -78,7 +78,7 @@ exports.getAnimeMovies = async (req, res) => {
         const skip = (page - 1) * limit;
 
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -153,7 +153,7 @@ exports.getAnimeDetail = async (req, res) => {
         const { id } = req.params;
 
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -235,7 +235,7 @@ exports.getTrendingAnime = async (req, res) => {
         const price_type = req.query.price_type; // 'free' hoặc 'paid'
 
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -305,7 +305,7 @@ exports.getTrendingAnime = async (req, res) => {
 exports.getAllAnime = async (req, res) => {
     try {
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -384,7 +384,7 @@ exports.getAllAnime = async (req, res) => {
 exports.getAnimeCategories = async (req, res) => {
     try {
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -476,6 +476,88 @@ exports.getAnimeCategories = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: 'Lỗi khi lấy danh sách thể loại phim hoạt hình'
+        });
+    }
+};
+
+
+// API banner anime phim bộ (giống banner phim bộ nhưng chỉ lấy hoạt hình)
+exports.getBannerAnime = async (req, res) => {
+    try {
+        const showAll = req.query.showAll === 'true';
+        const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5);
+        const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6);
+        const days = parseInt(req.query.days) || 30;
+        const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+        // Tìm genre hoạt hình
+        const animeGenre = await Genre.findOne({ genre_name: { $regex: '^hoạt hình$', $options: 'i' }, parent_genre: null });
+        if (!animeGenre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại hoạt hình'
+            });
+        }
+
+        // Lấy phim bộ hoạt hình mới nhất
+        const newAnimeSeries = await Movie.find({
+            movie_type: 'Phim bộ',
+            release_status: 'released',
+            genres: animeGenre._id,
+            createdAt: { $gte: fromDate }
+        })
+            .populate('genres', 'genre_name')
+            .select('movie_title poster_path description production_time movie_type producer genres createdAt')
+            .sort({ createdAt: -1 })
+            .limit(bannerLimit + gridLimit)
+            .lean();
+
+        // Banner section
+        const bannerAnime = newAnimeSeries.slice(0, bannerLimit).map(series => ({
+            movieId: series._id,
+            title: series.movie_title || '',
+            poster: series.poster_path || '',
+            description: series.description || '',
+            releaseYear: (series.production_time && !isNaN(Date.parse(series.production_time)))
+                ? new Date(series.production_time).getFullYear()
+                : null,
+            movieType: series.movie_type || '',
+            producer: series.producer || '',
+            genres: Array.isArray(series.genres)
+                ? series.genres.slice(0, 3).map(g => g.genre_name || '')
+                : []
+        }));
+
+        // Grid section
+        const gridAnime = newAnimeSeries.slice(0, gridLimit).map(series => ({
+            movieId: series._id,
+            title: series.movie_title || '',
+            poster: series.poster_path || '',
+            movieType: series.movie_type || '',
+            producer: series.producer || ''
+        }));
+
+        res.json({
+            status: 'success',
+            data: {
+                banner: {
+                    title: 'Hoạt hình mới ra mắt',
+                    type: 'banner_list',
+                    movies: bannerAnime
+                },
+                recommended: {
+                    title: 'Hoạt hình dành cho bạn',
+                    type: 'grid',
+                    movies: gridAnime
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Banner anime error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy banner anime',
+            error: error.message
         });
     }
 }; 

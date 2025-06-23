@@ -106,3 +106,18 @@ genreSchema.methods.hasChildren = async function() {
 };
 
 module.exports = mongoose.model('Genre', genreSchema);
+
+// Category model (tách biệt hoàn toàn với Genre)
+const { Schema } = mongoose;
+
+const categorySchema = new Schema({
+    name: { type: String, required: true },
+    parent: { type: Schema.Types.ObjectId, ref: 'Category', default: null },
+    isParent: { type: Boolean, default: false },
+    description: { type: String },
+    poster: { type: String }
+});
+
+const Category = mongoose.model('Category', categorySchema);
+
+module.exports = Category;

@@ -150,11 +150,15 @@ const getGenreMovies = async (req, res) => {
  * Lấy danh sách phim của một thể loại
  * GET /api/genres/:genreId/movies
  */
-exports.getGenreMovies = async (req, res) => {
+const getMoviesByGenre = async (req, res) => {
     try {
-        const { genreId } = req.params;
-        
-        // Kiểm tra thể loại tồn tại
+        const { genreId } = req.query;
+        if (!genreId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Thiếu genreId trong query'
+            });
+        }
         const genre = await Genre.findById(genreId);
         if (!genre) {
             return res.status(404).json({
@@ -162,22 +166,30 @@ exports.getGenreMovies = async (req, res) => {
                 message: 'Không tìm thấy thể loại'
             });
         }
-
-        // Lấy danh sách phim thuộc thể loại này
         const movies = await Movie.find({ genres: genreId })
-            .select('title poster release_date rating')
-            .sort({ release_date: -1 });
-
-        res.json(createResponse({
-            genre: await getGenreBasicInfo(genre),
-            movies,
-            total: movies.length
-        }));
+            .select('movie_title description poster_path movie_type production_time')
+            .sort({ createdAt: -1 });
+        res.json({
+            status: 'success',
+            genre: {
+                _id: genre._id,
+                name: genre.genre_name
+            },
+            total: movies.length,
+            movies: movies.map(movie => ({
+                _id: movie._id,
+                title: movie.movie_title,
+                description: movie.description,
+                poster: movie.poster_path,
+                movieType: movie.movie_type,
+                productionTime: movie.production_time
+            }))
+        });
     } catch (error) {
-        console.error('Get genre movies error:', error);
+        console.error('Get movies by genre error:', error);
         res.status(500).json({
             status: 'error',
-            message: 'Lỗi khi lấy danh sách phim của thể loại',
+            message: 'Lỗi khi lấy danh sách phim theo thể loại',
             error: error.message
         });
     }
@@ -355,6 +367,7 @@ module.exports = {
     createGenre,
     updateGenre,
     updateStatus,
-    deleteGenre
+    deleteGenre,
+    getMoviesByGenre
 };
 

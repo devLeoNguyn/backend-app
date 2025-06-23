@@ -37,6 +37,7 @@ router.get('/', genreController.getGenres);
  */
 router.get('/:genreId/movies', genreController.getGenreMovies);
 
+
 // === ADMIN ROUTES (Không yêu cầu xác thực - Dự án sinh viên) ===
 /**
  * @route   POST /api/genres
