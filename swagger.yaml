@@ -109,6 +109,8 @@ tags:
     description: Các API liên quan đến danh sách yêu thích (/api/favorites) - Cần userId
   - name: Payment
     description: Các API liên quan đến thanh toán (/api/payments) - Cần userId
+  - name: Rental
+    description: Các API liên quan đến thuê phim (/api/rentals) - Cần userId, PayOS integration
   - name: Rating
     description: Các API liên quan đến đánh giá (/api/ratings) - Cần userId
   - name: Genre
@@ -3353,6 +3355,354 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ====================================
+  # RENTAL SYSTEM ENDPOINTS (PayOS Integration)
+  # ====================================
+  
+  /api/rentals/rent:
+    post:
+      tags:
+        - Rental
+      summary: 🎬 Tạo order thuê phim (PayOS)
+      description: |
+        **🎯 Tạo order thuê phim với tích hợp PayOS.**
+        
+        **Pricing Logic:**
+        - Gói 48h: 30% giá phim
+        - Gói 30d: 50% giá phim
+        
+        **Flow:**
+        1. Validate user và movie tồn tại
+        2. Kiểm tra user chưa thuê phim này (active rental)
+        3. Tạo PayOS payment link
+        4. Lưu payment record với status PENDING
+        5. Trả về QR code và checkout URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRentalRequest"
+      responses:
+        "201":
+          description: Tạo order thuê phim thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateRentalResponse"
+        "400":
+          description: Validation error hoặc user đã thuê phim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User hoặc Movie không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/rentals/confirm-payment:
+    post:
+      tags:
+        - Rental
+      summary: 🔐 Xác nhận thanh toán (PayOS webhook/manual)
+      description: |
+        **🔐 Xác nhận thanh toán và kích hoạt rental.**
+        
+        **Logic:**
+        1. Kiểm tra payment tồn tại và thuộc về user
+        2. Verify payment status từ PayOS
+        3. Cập nhật payment status thành SUCCESS
+        4. Tạo rental record với thời gian bắt đầu
+        5. Trả về thông tin rental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmPaymentRequest"
+      responses:
+        "200":
+          description: Xác nhận thanh toán thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmPaymentResponse"
+        "400":
+          description: Đơn hàng không tồn tại hoặc chưa thanh toán
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/rentals/status/{movieId}:
+    get:
+      tags:
+        - Rental
+      summary: 📱 Kiểm tra quyền xem phim
+      description: |
+        **📱 Kiểm tra user có quyền xem phim hay không.**
+        
+        **Return data:**
+        - `hasAccess`: boolean - có quyền xem không
+        - `rental`: object - thông tin rental (nếu có)
+        - `remainingTime`: number - milliseconds còn lại
+        - `remainingHours/Days`: number - thời gian còn lại formatted
+        - `message`: string - thông báo cho user
+      parameters:
+        - name: movieId
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "683d94d3602b36157f1c7af3"
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "507f1f77bcf86cd799439011"
+      responses:
+        "200":
+          description: Kiểm tra quyền xem thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalAccessResponse"
+
+  /api/rentals/history:
+    get:
+      tags:
+        - Rental
+      summary: 📜 Lịch sử thuê phim của user
+      description: |
+        **📜 Lấy danh sách lịch sử thuê phim với pagination.**
+        
+        **Filters:**
+        - `status`: active, expired, cancelled
+        - `rentalType`: 48h, 30d
+        - `page`: trang hiện tại (default: 1)
+        - `limit`: số item per page (default: 10)
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "507f1f77bcf86cd799439011"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, expired, cancelled]
+        - name: rentalType
+          in: query
+          schema:
+            type: string
+            enum: [48h, 30d]
+      responses:
+        "200":
+          description: Lấy lịch sử thuê phim thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalHistoryResponse"
+
+  /api/rentals/{rentalId}/cancel:
+    put:
+      tags:
+        - Rental
+      summary: ❌ Hủy rental
+      description: |
+        **❌ Hủy rental của user (chỉ trong vòng 24h đầu).**
+      parameters:
+        - name: rentalId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+      responses:
+        "200":
+          description: Hủy rental thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # ====================================
+  # ADMIN STATISTICS ENDPOINTS 
+  # ====================================
+
+  /api/rentals/stats/revenue:
+    get:
+      tags:
+        - Rental
+      summary: 📊 Thống kê doanh thu (Admin)
+      description: |
+        **📊 Lấy thống kê doanh thu theo khoảng thời gian.**
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+      responses:
+        "200":
+          description: Lấy thống kê doanh thu thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueStatsResponse"
+
+  /api/rentals/stats/popular:
+    get:
+      tags:
+        - Rental
+      summary: 🔥 Phim được thuê nhiều nhất (Admin)
+      description: |
+        **🔥 Lấy danh sách phim được thuê nhiều nhất.**
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Lấy danh sách phim phổ biến thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PopularRentalsResponse"
+
+  # ====================================
+  # CRON JOB MANAGEMENT ENDPOINTS (Admin)
+  # ====================================
+
+  /api/rentals/cron/status:
+    get:
+      tags:
+        - Rental
+      summary: ⚙️ Trạng thái cron jobs (Admin)
+      description: |
+        **⚙️ Lấy trạng thái tất cả cron jobs.**
+      responses:
+        "200":
+          description: Lấy trạng thái cron jobs thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronStatusResponse"
+
+  /api/rentals/cron/manual-check:
+    post:
+      tags:
+        - Rental
+      summary: 🔄 Chạy manual check (Admin)
+      description: |
+        **🔄 Chạy manual check rental expiration ngay lập tức.**
+      responses:
+        "200":
+          description: Manual check hoàn thành
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManualCheckResponse"
+
+  /api/rentals/cron/{action}/{jobName}:
+    put:
+      tags:
+        - Rental
+      summary: 🎛️ Control cron job (Admin)
+      description: |
+        **🎛️ Start/Stop một cron job cụ thể.**
+        
+        **Available jobs:**
+        - `expiredRentalsCheck`
+        - `expiringNotifications`
+        - `cleanupOldRentals`
+        - `dailyStatsGeneration`
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [start, stop]
+        - name: jobName
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [expiredRentalsCheck, expiringNotifications, cleanupOldRentals, dailyStatsGeneration]
+      responses:
+        "200":
+          description: Control cron job thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /api/rentals/webhook/payment-success:
+    post:
+      tags:
+        - Rental
+      summary: 🔗 PayOS webhook (PayOS only)
+      description: |
+        **🔗 Webhook từ PayOS khi thanh toán thành công.**
+        
+        **⚠️ Chỉ PayOS được phép gọi endpoint này.**
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orderCode:
+                  type: string
+                status:
+                  type: string
+                amount:
+                  type: number
+      responses:
+        "200":
+          description: Webhook xử lý thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
 components:
   schemas:
     PhoneRequest:
@@ -4259,6 +4609,404 @@ components:
               type: string
               example: "ready"
               description: "Video processing status"
+
+    # ====================================
+    # RENTAL SYSTEM SCHEMAS
+    # ====================================
+
+    CreateRentalRequest:
+      type: object
+      required:
+        - userId
+        - movieId
+        - rentalType
+      properties:
+        userId:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+          description: "ID của user thuê phim"
+        movieId:
+          type: string
+          example: "683d94d3602b36157f1c7af3"
+          description: "ID của phim cần thuê"
+        rentalType:
+          type: string
+          enum: [48h, 30d]
+          example: "48h"
+          description: "Loại gói thuê: 48h (30% giá phim) hoặc 30d (50% giá phim)"
+
+    CreateRentalResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Tạo order thuê phim thành công"
+        data:
+          type: object
+          properties:
+            orderCode:
+              type: string
+              example: "1736758123456"
+              description: "Mã đơn hàng PayOS"
+            checkoutUrl:
+              type: string
+              example: "https://pay.payos.vn/web/a1b2c3d4"
+              description: "URL checkout PayOS"
+            amount:
+              type: number
+              example: 15000
+              description: "Số tiền cần thanh toán (VNĐ)"
+            rentalType:
+              type: string
+              example: "48h"
+            movieTitle:
+              type: string
+              example: "Avatar: The Way of Water"
+            qrCode:
+              type: string
+              example: "00020101021238570010A000000727012800069704...QR_CODE_DATA"
+              description: "QR Code string cho thanh toán"
+            paymentInfo:
+              type: object
+              properties:
+                bin:
+                  type: string
+                  example: "970436"
+                accountNumber:
+                  type: string
+                  example: "12345678901"
+                accountName:
+                  type: string
+                  example: "CONG TY TNHH ABC"
+
+    ConfirmPaymentRequest:
+      type: object
+      required:
+        - orderCode
+        - userId
+      properties:
+        orderCode:
+          type: string
+          example: "1736758123456"
+          description: "Mã đơn hàng PayOS"
+        userId:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+          description: "ID của user"
+
+    ConfirmPaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Thuê phim thành công! Bạn có thể xem phim trong 48 giờ."
+        data:
+          $ref: "#/components/schemas/RentalInfo"
+
+    RentalAccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            hasAccess:
+              type: boolean
+              example: true
+              description: "User có quyền xem phim hay không"
+            rental:
+              $ref: "#/components/schemas/RentalInfo"
+              nullable: true
+            remainingTime:
+              type: number
+              example: 167400000
+              description: "Thời gian còn lại (milliseconds)"
+            remainingHours:
+              type: number
+              example: 47
+              description: "Số giờ còn lại"
+            remainingDays:
+              type: number
+              example: 2
+              description: "Số ngày còn lại"
+            message:
+              type: string
+              example: "Còn lại 47 giờ"
+
+    RentalHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lấy lịch sử thuê phim thành công"
+        data:
+          type: object
+          properties:
+            rentals:
+              type: array
+              items:
+                $ref: "#/components/schemas/RentalInfo"
+            pagination:
+              type: object
+              properties:
+                currentPage:
+                  type: integer
+                  example: 1
+                totalPages:
+                  type: integer
+                  example: 3
+                total:
+                  type: integer
+                  example: 25
+                hasNext:
+                  type: boolean
+                  example: true
+                hasPrev:
+                  type: boolean
+                  example: false
+
+    RentalInfo:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "64f1a2b3c4d5e6f7g8h9i0j1"
+        userId:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        movieId:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: "683d94d3602b36157f1c7af3"
+            title:
+              type: string
+              example: "Avatar: The Way of Water"
+            poster:
+              type: string
+              example: "https://imagedelivery.net/.../poster.jpg"
+            duration:
+              type: number
+              example: 120
+        paymentId:
+          type: object
+          properties:
+            _id:
+              type: string
+            amount:
+              type: number
+              example: 15000
+            orderCode:
+              type: string
+              example: "1736758123456"
+        rentalType:
+          type: string
+          enum: [48h, 30d]
+          example: "48h"
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+          example: "active"
+        startTime:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+        endTime:
+          type: string
+          format: date-time
+          example: "2024-01-17T10:30:00.000Z"
+        accessCount:
+          type: number
+          example: 5
+          description: "Số lần user đã truy cập xem phim"
+        lastAccess:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RevenueStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lấy thống kê doanh thu thành công"
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                totalRevenue:
+                  type: number
+                  example: 5420000
+                  description: "Tổng doanh thu (VNĐ)"
+                totalRentals:
+                  type: number
+                  example: 287
+                  description: "Tổng số lượt thuê"
+                averageRevenuePerRental:
+                  type: number
+                  example: 18884
+                  description: "Doanh thu trung bình mỗi lượt thuê"
+            dailyStats:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                    example: "2024-01-15"
+                  revenue:
+                    type: number
+                    example: 125000
+                  rentals:
+                    type: number
+                    example: 8
+                  rentalTypes:
+                    type: object
+                    properties:
+                      "48h":
+                        type: number
+                        example: 5
+                      "30d":
+                        type: number
+                        example: 3
+
+    PopularRentalsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lấy danh sách phim phổ biến thành công"
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              movieId:
+                type: string
+                example: "683d94d3602b36157f1c7af3"
+              title:
+                type: string
+                example: "Avatar: The Way of Water"
+              poster:
+                type: string
+                example: "https://imagedelivery.net/.../poster.jpg"
+              totalRentals:
+                type: number
+                example: 45
+                description: "Tổng số lượt thuê"
+              revenue:
+                type: number
+                example: 850000
+                description: "Doanh thu từ phim này"
+              rentalTypes:
+                type: object
+                properties:
+                  "48h":
+                    type: number
+                    example: 30
+                  "30d":
+                    type: number
+                    example: 15
+
+    CronStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Lấy trạng thái cron jobs thành công"
+        data:
+          type: object
+          properties:
+            expiredRentalsCheck:
+              type: object
+              properties:
+                running:
+                  type: boolean
+                  example: false
+                scheduled:
+                  type: boolean
+                  example: false
+            expiringNotifications:
+              type: object
+              properties:
+                running:
+                  type: boolean
+                  example: false
+                scheduled:
+                  type: boolean
+                  example: false
+            cleanupOldRentals:
+              type: object
+              properties:
+                running:
+                  type: boolean
+                  example: false
+                scheduled:
+                  type: boolean
+                  example: false
+            dailyStatsGeneration:
+              type: object
+              properties:
+                running:
+                  type: boolean
+                  example: false
+                scheduled:
+                  type: boolean
+                  example: false
+
+    ManualCheckResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Manual check hoàn thành"
+        data:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+            expiredCount:
+              type: number
+              example: 3
+              description: "Số rental đã bị expire"
+            expiringCount:
+              type: number
+              example: 5
+              description: "Số rental sắp hết hạn"
 
   securitySchemes:
     ApiKeyAuth:

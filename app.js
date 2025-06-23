@@ -40,6 +40,7 @@ const movieRoutes = require('./routes/movie.routes');
 const episodeRoutes = require('./routes/episode.routes');
 const favoriteRoutes = require('./routes/favorite.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const rentalRoutes = require('./routes/rental.routes');
 const ratingRoutes = require('./routes/rating.routes');
 const genreRoutes = require('./routes/genre.routes');
 const watchingRoutes = require('./routes/watching.routes');
@@ -59,6 +60,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/rentals', rentalRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/genres', genreRoutes);
 app.use('/api/watching', watchingRoutes);
@@ -104,6 +106,11 @@ mongoose.connect(process.env.MONGO_URI)
     
     console.log('Testing Cloudflare Stream connection...');
     await cloudflareStreamService.testConnection();
+    
+    // Initialize cron jobs for rental system
+    console.log('Initializing rental cron jobs...');
+    const cronService = require('./services/cron.service');
+    cronService.init();
   })
   .catch((err) => console.error('MongoDB connection error:', err));
 
