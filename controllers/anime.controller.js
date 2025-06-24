@@ -8,18 +8,20 @@ exports.getAnimeSeries = async (req, res) => {
         const { page = 1, limit = 10, sort = '-createdAt' } = req.query;
         const skip = (page - 1) * limit;
 
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Query cho anime phim bộ
         const query = { 
-            genres: animeGenre._id,
+            genres: { $in: animeGenreIds },
             movie_type: 'Phim bộ',
             release_status: 'released'
         };
@@ -77,18 +79,20 @@ exports.getAnimeMovies = async (req, res) => {
         const { page = 1, limit = 10, sort = '-createdAt', price_type } = req.query;
         const skip = (page - 1) * limit;
 
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Query cho anime chiếu rạp
         const query = { 
-            genres: animeGenre._id,
+            genres: { $in: animeGenreIds },
             movie_type: 'Phim lẻ',
             release_status: 'released'
         };
@@ -152,19 +156,21 @@ exports.getAnimeDetail = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Tìm phim
         const anime = await Movie.findOne({
             _id: id,
-            genres: animeGenre._id
+            genres: { $in: animeGenreIds }
         }).populate('genres', 'genre_name description');
 
         if (!anime) {
@@ -234,18 +240,20 @@ exports.getTrendingAnime = async (req, res) => {
         const type = req.query.type; // 'series' hoặc 'movie'
         const price_type = req.query.price_type; // 'free' hoặc 'paid'
 
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Xây dựng query
         const query = {
-            genres: animeGenre._id,
+            genres: { $in: animeGenreIds },
             release_status: 'released'
         };
 
@@ -304,18 +312,20 @@ exports.getTrendingAnime = async (req, res) => {
 // Lấy tất cả phim hoạt hình theo các loại
 exports.getAllAnime = async (req, res) => {
     try {
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Query cơ bản cho tất cả anime
         const baseQuery = { 
-            genres: animeGenre._id,
+            genres: { $in: animeGenreIds },
             release_status: 'released'
         };
 
@@ -383,18 +393,20 @@ exports.getAllAnime = async (req, res) => {
 // Lấy danh sách thể loại phim hoạt hình
 exports.getAnimeCategories = async (req, res) => {
     try {
-        // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
-        if (!animeGenre) {
+        // Tìm tất cả genres hoạt hình
+        const animeGenres = await Genre.find({ genre_name: /hoạt hình/i });
+        if (!animeGenres || animeGenres.length === 0) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy thể loại hoạt hình'
             });
         }
 
+        const animeGenreIds = animeGenres.map(g => g._id);
+
         // Query cơ bản cho tất cả anime
         const baseQuery = { 
-            genres: animeGenre._id,
+            genres: { $in: animeGenreIds },
             release_status: 'released'
         };
 
