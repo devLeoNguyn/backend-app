@@ -84,6 +84,13 @@ const validateDateRange = [
 router.post('/rent', validateCreateRental, rentalController.createRentalOrder);
 
 /**
+ * @route POST /api/rentals/check-status
+ * @desc Kiểm tra trạng thái thanh toán mà không confirm
+ * @access Public
+ */
+router.post('/check-status', validateConfirmPayment, rentalController.checkPaymentStatus);
+
+/**
  * @route POST /api/rentals/confirm-payment
  * @desc Xác nhận thanh toán và kích hoạt rental
  * @access Public

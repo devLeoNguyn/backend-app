@@ -107,6 +107,52 @@ class RentalService {
     }
 
     /**
+     * Kiểm tra trạng thái thanh toán mà không confirm
+     */
+    async checkPaymentStatus(orderCode, userId) {
+        try {
+            // Tìm payment
+            const payment = await MoviePayment.findOne({ orderCode });
+
+            if (!payment) {
+                return { isPaid: false, status: 'NOT_FOUND' };
+            }
+
+            // Kiểm tra quyền
+            if (payment.userId.toString() !== userId) {
+                return { isPaid: false, status: 'UNAUTHORIZED' };
+            }
+
+            // Nếu đã SUCCESS thì return true luôn
+            if (payment.status === 'SUCCESS') {
+                return { isPaid: true, status: 'SUCCESS' };
+            }
+
+            // Nếu PENDING thì check với PayOS
+            if (payment.status === 'PENDING') {
+                try {
+                    const payosOrder = await payOS.getPaymentLinkInformation(orderCode);
+                    
+                    if (payosOrder.status === 'PAID') {
+                        return { isPaid: true, status: 'PAID' };
+                    } else {
+                        return { isPaid: false, status: payosOrder.status || 'PENDING' };
+                    }
+                } catch (payosError) {
+                    console.log('PayOS check error:', payosError.message);
+                    return { isPaid: false, status: 'PENDING' };
+                }
+            }
+
+            return { isPaid: false, status: payment.status };
+
+        } catch (error) {
+            console.error('Error checking payment status:', error);
+            return { isPaid: false, status: 'ERROR' };
+        }
+    }
+
+    /**
      * Xác nhận thanh toán và kích hoạt rental
      */
     async confirmRentalPayment(orderCode, userId) {

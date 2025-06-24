@@ -49,6 +49,39 @@ class RentalController {
     }
 
     /**
+     * POST /api/rentals/check-status
+     * Kiểm tra trạng thái thanh toán mà không confirm
+     */
+    async checkPaymentStatus(req, res) {
+        try {
+            const { orderCode, userId } = req.body;
+
+            if (!orderCode || !userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'orderCode và userId là bắt buộc'
+                });
+            }
+
+            const result = await rentalService.checkPaymentStatus(orderCode, userId);
+
+            res.json({
+                success: true,
+                message: 'Kiểm tra trạng thái thành công',
+                data: result
+            });
+
+        } catch (error) {
+            console.error('Error in checkPaymentStatus:', error);
+            res.status(200).json({
+                success: false,
+                message: error.message || 'Lỗi server khi kiểm tra trạng thái thanh toán',
+                data: { isPaid: false }
+            });
+        }
+    }
+
+    /**
      * POST /api/rentals/confirm-payment
      * Xác nhận thanh toán và kích hoạt rental
      */
