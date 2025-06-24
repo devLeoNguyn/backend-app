@@ -32,8 +32,8 @@ class RentalService {
 
             // Tính giá thuê
             const rentalPrices = {
-                '48h': movie.price * 0.3, // 30% giá phim
-                '30d': movie.price * 0.5   // 50% giá phim
+                '48h': Math.round(movie.price * 0.3), // 30% giá phim
+                '30d': Math.round(movie.price * 0.5)   // 50% giá phim
             };
 
             const amount = rentalPrices[rentalType];
@@ -45,7 +45,7 @@ class RentalService {
             const orderCode = Date.now();
             
             // Tạo PayOS order
-            const description = `${movie.movie_title.substring(0, 20)}`;
+            const description = `Thuê phim ${rentalType}: ${movie.title}`;
             const payosBody = {
                 orderCode,
                 amount,
@@ -63,7 +63,7 @@ class RentalService {
 
             const paymentLinkRes = await payOS.createPaymentLink(payosBody);
 
-            // Lưu thông tin payment
+            // Lưu thông tin payment với rentalType
             const payment = new MoviePayment({
                 orderCode,
                 userId,
@@ -71,6 +71,7 @@ class RentalService {
                 amount,
                 description,
                 status: 'PENDING',
+                rentalType, // Lưu rentalType vào payment
                 payosData: {
                     bin: paymentLinkRes.bin,
                     checkoutUrl: paymentLinkRes.checkoutUrl,
@@ -136,9 +137,11 @@ class RentalService {
             payment.paymentMethod = payosOrder.paymentMethod || 'BANK_TRANSFER';
             await payment.save();
 
-            // Xác định loại rental từ amount
-            const movie = payment.movieId;
-            const rentalType = payment.amount === (movie.price * 0.3) ? '48h' : '30d';
+            // Lấy rentalType từ payment (đã lưu khi tạo order)
+            const rentalType = payment.rentalType;
+            if (!rentalType) {
+                throw new Error('Không tìm thấy thông tin loại thuê');
+            }
 
             // Tính endTime dựa trên rentalType
             const startTime = new Date();

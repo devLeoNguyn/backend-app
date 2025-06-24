@@ -30,6 +30,11 @@ const moviePaymentSchema = new mongoose.Schema({
         enum: ['PENDING', 'SUCCESS', 'CANCELLED', 'FAILED'],
         default: 'PENDING'
     },
+    rentalType: {
+        type: String,
+        enum: ['48h', '30d'],
+        required: true
+    },
     paymentMethod: {
         type: String,
         enum: ['BANK_TRANSFER', 'CREDIT_CARD', 'MOMO', 'ZALOPAY', 'VNPAY', 'OTHER'],
