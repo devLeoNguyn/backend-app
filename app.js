@@ -71,6 +71,8 @@ app.use('/api/series', seriesRoutes);
 app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 
+app.use('/api/categories', require('./routes/category.routes'));
+
 // Swagger Documentation
 const swaggerPath = path.join(__dirname, 'swagger.yaml');
 const swaggerDocument = YAML.load(swaggerPath);
