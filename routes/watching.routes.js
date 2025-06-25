@@ -13,7 +13,15 @@ const {
 
 // UNIFIED: Update watching progress
 // PUT /api/watching/progress - userId và episode_id từ body
-router.put('/progress', updateWatchProgress);
+router.put('/progress', (req, res, next) => {
+    console.log('🔥 [ROUTE] PUT /api/watching/progress hit:', {
+        timestamp: new Date().toISOString(),
+        body: req.body,
+        headers: req.headers['content-type'],
+        userAgent: req.headers['user-agent']?.substr(0, 50)
+    });
+    updateWatchProgress(req, res, next);
+});
 
 // Get watching progress for a specific episode - userId từ query
 router.get('/progress/:episodeId', getWatchProgress);
