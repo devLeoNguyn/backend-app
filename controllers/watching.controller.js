@@ -9,9 +9,25 @@ const { calculateViewCount, formatViewCount } = require('../utils/movieStatsUtil
 // UNIFIED: Cập nhật tiến độ xem video (hỗ trợ cả start watching và update progress)
 exports.updateWatchProgress = async (req, res) => {
     try {
+        console.log('🎬 [updateWatchProgress] Request received:', {
+            body: req.body,
+            params: req.params,
+            url: req.url,
+            method: req.method
+        });
+        
         // Support both URL params and request body for episode_id
         const episode_id = req.params.episode_id || req.body.episode_id;
         const { currentTime, userId, duration, isMovie, completed } = req.body;
+        
+        console.log('🎬 [updateWatchProgress] Parsed parameters:', {
+            episode_id,
+            currentTime,
+            userId,
+            duration,
+            isMovie,
+            completed
+        });
         
         if (!userId) {
             return res.status(400).json({
@@ -50,8 +66,23 @@ exports.updateWatchProgress = async (req, res) => {
         // Sử dụng static method để tìm hoặc tạo watching record
         let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration, isMovie);
         
+        console.log('🎬 [updateWatchProgress] Before update:', {
+            id: watching._id,
+            current_time: watching.current_time,
+            duration: watching.duration,
+            completed: watching.completed
+        });
+        
         // Sử dụng instance method để cập nhật progress
         await watching.updateProgress(time, completed);
+        
+        console.log('🎬 [updateWatchProgress] After update:', {
+            id: watching._id,
+            current_time: watching.current_time,
+            duration: watching.duration,
+            completed: watching.completed,
+            last_watched: watching.last_watched
+        });
 
         const isStarting = time === 0;
         const message = isStarting ? 'Đã bắt đầu xem phim' : 'Đã cập nhật tiến trình xem thành công';
