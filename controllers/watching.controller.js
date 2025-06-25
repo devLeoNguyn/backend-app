@@ -48,7 +48,7 @@ exports.updateWatchProgress = async (req, res) => {
         }
 
         // Sử dụng static method để tìm hoặc tạo watching record
-        let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration);
+        let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration, isMovie);
         
         // Sử dụng instance method để cập nhật progress
         await watching.updateProgress(time, completed);

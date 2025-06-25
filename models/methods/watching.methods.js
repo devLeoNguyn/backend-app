@@ -65,16 +65,26 @@ const applyWatchingMethods = (watchingSchema) => {
         });
     };
 
-    watchingSchema.statics.findOrCreateWatching = async function(userId, episodeId, duration) {
+    watchingSchema.statics.findOrCreateWatching = async function(userId, episodeId, duration, isMovie = false) {
         let watching = await this.findOne({
             user_id: userId,
             episode_id: episodeId
         });
 
         if (!watching) {
-            const episode = await this.model('Episode').findById(episodeId);
-            if (!episode) {
-                throw new Error('Episode not found');
+            let episode;
+            if (isMovie) {
+                // If it's a movie, treat the movie as an episode
+                episode = await this.model('Movie').findById(episodeId);
+                if (!episode) {
+                    throw new Error('Movie not found');
+                }
+            } else {
+                // If it's a series episode, find the episode
+                episode = await this.model('Episode').findById(episodeId);
+                if (!episode) {
+                    throw new Error('Episode not found');
+                }
             }
 
             watching = new this({
