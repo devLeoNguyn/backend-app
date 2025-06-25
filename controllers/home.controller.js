@@ -179,15 +179,26 @@ const getContinueWatching = async (req, res) => {
             
         console.log('🎬 [getContinueWatching] Raw watching data found:', {
             totalRecords: watchingData.length,
-            records: watchingData.map(w => ({
-                id: w._id,
-                userId: w.user_id,
-                episodeId: w.episode_id?._id,
-                hasMovie: !!w.episode_id?.movie_id,
-                movieTitle: w.episode_id?.movie_id?.movie_title,
-                currentTime: w.current_time,
-                duration: w.duration
-            }))
+            records: watchingData.map(w => {
+                try {
+                    return {
+                        id: w._id,
+                        userId: w.user_id,
+                        episodeId: w.episode_id?._id || 'NULL',
+                        hasEpisode: !!w.episode_id,
+                        hasMovie: !!(w.episode_id?.movie_id),
+                        movieTitle: w.episode_id?.movie_id?.movie_title || 'NO_TITLE',
+                        currentTime: w.current_time,
+                        duration: w.duration
+                    };
+                } catch (err) {
+                    return {
+                        id: w._id,
+                        error: 'Failed to process record',
+                        errorMessage: err.message
+                    };
+                }
+            })
         });
 
         const continueWatching = watchingData
@@ -240,6 +251,12 @@ const getContinueWatching = async (req, res) => {
                     episodeTitle: watch.episode_id.episode_title
                 };
             });
+
+        console.log('🎬 [getContinueWatching] Processed data:', {
+            originalCount: watchingData.length,
+            validCount: continueWatching.length,
+            filteredOut: watchingData.length - continueWatching.length
+        });
 
         res.json({
             status: 'success',
