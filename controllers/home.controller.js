@@ -163,6 +163,25 @@ const getContinueWatching = async (req, res) => {
         }
 
         console.log('🎬 [getContinueWatching] Querying database...');
+        
+        // Debug: Check for duplicate records
+        const allUserRecords = await Watching.find({
+            user_id: userId
+        }).select('episode_id current_time duration completed last_watched');
+        
+        console.log('🔍 [getContinueWatching] All user records:', {
+            userId,
+            totalRecords: allUserRecords.length,
+            records: allUserRecords.map(r => ({
+                id: r._id,
+                episode_id: r.episode_id,
+                current_time: r.current_time,
+                duration: r.duration,
+                completed: r.completed,
+                last_watched: r.last_watched
+            }))
+        });
+        
         const watchingData = await Watching.find({
             user_id: userId,
             completed: false
