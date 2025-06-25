@@ -167,17 +167,43 @@ const getContinueWatching = async (req, res) => {
             .sort({ last_watched: -1 })
             .limit(limit);
 
-        const continueWatching = watchingData.map(watch => ({
-            movieId: watch.episode_id.movie_id._id,
-            title: watch.episode_id.movie_id.movie_title,
-            poster: watch.episode_id.movie_id.poster_path,
-            movieType: watch.episode_id.movie_id.movie_type,
-            lastWatchedAt: watch.last_watched,
-            progress: Number((watch.current_time / watch.duration).toFixed(2)),
-            episodeId: watch.episode_id._id,
-            currentTime: watch.current_time,
-            duration: watch.duration
-        }));
+        const continueWatching = watchingData.map(watch => {
+            const progress = watch.current_time / watch.duration;
+            const progressPercentage = Math.round(progress * 100);
+            const remainingTime = Math.max(0, watch.duration - watch.current_time);
+            const remainingMinutes = Math.ceil(remainingTime / 60);
+            
+            // Format remaining time
+            let remainingTimeFormatted;
+            if (remainingMinutes < 60) {
+                remainingTimeFormatted = `${remainingMinutes} phút còn lại`;
+            } else {
+                const hours = Math.floor(remainingMinutes / 60);
+                const minutes = remainingMinutes % 60;
+                if (minutes === 0) {
+                    remainingTimeFormatted = `${hours} giờ còn lại`;
+                } else {
+                    remainingTimeFormatted = `${hours}g ${minutes}p còn lại`;
+                }
+            }
+
+            return {
+                movieId: watch.episode_id.movie_id._id,
+                title: watch.episode_id.movie_id.movie_title,
+                poster: watch.episode_id.movie_id.poster_path,
+                movieType: watch.episode_id.movie_id.movie_type,
+                progress: Number(progress.toFixed(3)), // 0-1
+                progressPercentage, // 0-100
+                currentTime: watch.current_time,
+                duration: watch.duration,
+                remainingTime,
+                remainingTimeFormatted,
+                lastWatchedAt: watch.last_watched,
+                episodeId: watch.episode_id._id,
+                episodeNumber: watch.episode_id.episode_number,
+                episodeTitle: watch.episode_id.episode_title
+            };
+        });
 
         res.json({
             status: 'success',
