@@ -226,34 +226,44 @@ class RentalService {
      * Kiểm tra quyền xem phim
      */
     async checkRentalAccess(userId, movieId) {
+        const startTime = Date.now();
+        
         try {
-            console.log(`[DEBUG] Checking rental access - userId: ${userId}, movieId: ${movieId}`);
+            console.log(`[DEBUG] Checking rental access - userId: ${userId}, movieId: ${movieId}, startTime: ${startTime}`);
             
-            // Verify movie exists
-            const movie = await Movie.findById(movieId);
-            if (!movie) {
-                console.log(`[DEBUG] Movie not found with ID: ${movieId}`);
-                throw new Error('Không tìm thấy phim với ID này');
-            }
-
+            // Optimize: Check rental first (more likely to exist), skip movie verification for performance
+            // Movie existence is already verified when rental was created
+            const dbQueryStart = Date.now();
             const rental = await MovieRental.findActiveRental(userId, movieId);
+            const dbQueryEnd = Date.now();
+            
+            console.log(`[DEBUG] Database query time: ${dbQueryEnd - dbQueryStart}ms`);
             console.log(`[DEBUG] Active rental found:`, rental);
             
             if (!rental) {
+                const endTime = Date.now();
+                console.log(`[DEBUG] No rental found - Total time: ${endTime - startTime}ms`);
                 return {
                     hasAccess: false,
                     message: 'Bạn chưa thuê phim này hoặc đã hết hạn'
                 };
             }
 
-            // Record access
-            await rental.recordAccess();
+            // Record access (async without waiting to improve performance)
+            const recordAccessStart = Date.now();
+            rental.recordAccess().catch(err => {
+                console.error('Error recording access (non-blocking):', err);
+            });
+            const recordAccessEnd = Date.now();
+            console.log(`[DEBUG] Record access time: ${recordAccessEnd - recordAccessStart}ms`);
 
             const remainingTime = rental.remainingTime;
             const remainingHours = Math.ceil(remainingTime / (1000 * 60 * 60));
             const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
 
+            const endTime = Date.now();
             console.log(`[DEBUG] Access granted - Remaining time: ${remainingTime}ms, Hours: ${remainingHours}, Days: ${remainingDays}`);
+            console.log(`[DEBUG] Total checkRentalAccess time: ${endTime - startTime}ms`);
 
             return {
                 hasAccess: true,
