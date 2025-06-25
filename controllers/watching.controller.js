@@ -11,7 +11,7 @@ exports.updateWatchProgress = async (req, res) => {
     try {
         // Support both URL params and request body for episode_id
         const episode_id = req.params.episode_id || req.body.episode_id;
-        const { current_time, userId } = req.body;
+        const { currentTime, userId } = req.body;
         
         if (!userId) {
             return res.status(400).json({
@@ -31,7 +31,7 @@ exports.updateWatchProgress = async (req, res) => {
         }
 
         // current_time = 0 means start watching, > 0 means update progress
-        const time = current_time || 0;
+        const time = currentTime || 0;
         
         if (time < 0) {
             return res.status(400).json({

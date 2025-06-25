@@ -5,10 +5,17 @@
 const applyWatchingMethods = (watchingSchema) => {
     // Instance methods
     watchingSchema.methods.updateProgress = async function(currentTime) {
+        const oldTime = this.current_time || 0;
         this.current_time = currentTime;
-        if (currentTime > this.current_time) {
-            this.watch_count += 1;
+        
+        // Chỉ tăng watch_count khi thời gian mới lớn hơn thời gian cũ
+        if (currentTime > oldTime) {
+            this.watch_count = (this.watch_count || 0) + 1;
         }
+        
+        // Tính watch_percentage
+        this.watch_percentage = this.duration > 0 ? 
+            Math.min(100, (currentTime / this.duration) * 100) : 0;
         
         // Tính completed dựa trên watch_percentage >= 95%
         this.completed = this.duration > 0 && 
@@ -111,12 +118,6 @@ const applyWatchingMethods = (watchingSchema) => {
     // Virtuals
     watchingSchema.virtual('remainingTime').get(function() {
         return Math.max(0, this.duration - this.current_time);
-    });
-
-    // Add watch_percentage virtual property
-    watchingSchema.virtual('watch_percentage').get(function() {
-        if (this.duration <= 0) return 0;
-        return Math.min(100, (this.current_time / this.duration) * 100);
     });
 
     // Middleware

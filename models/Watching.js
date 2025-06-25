@@ -33,6 +33,12 @@ const watchingSchema = new mongoose.Schema({
     watch_count: {
         type: Number,
         default: 1
+    },
+    watch_percentage: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
     }
 }, {
     timestamps: true,
