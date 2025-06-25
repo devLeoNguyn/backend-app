@@ -11,6 +11,13 @@ const cloudflareStreamService = require('../services/cloudflare-stream.service')
  * - movie_id (cho phim lẻ)
  */
 const getVideoStreamUrl = async (req, res) => {
+    const startTime = Date.now();
+    console.log('🎬 [VideoController] getVideoStreamUrl started:', {
+        videoId: req.params.videoId,
+        query: req.query,
+        startTime
+    });
+    
     try {
         const { videoId } = req.params;
         const { type = 'auto', quality = 'auto', format = 'auto' } = req.query;
@@ -20,6 +27,13 @@ const getVideoStreamUrl = async (req, res) => {
         let movieInfo = null;
 
         // 🔍 Xác định loại video và lấy thông tin
+        const dbQueryStart = Date.now();
+        console.log('🔍 [VideoController] Starting database queries:', {
+            type,
+            videoId,
+            queryStartTime: dbQueryStart
+        });
+        
         if (type === 'episode' || type === 'auto') {
             // Thử tìm episode trước
             const episode = await Episode.findById(videoId)
@@ -84,9 +98,25 @@ const getVideoStreamUrl = async (req, res) => {
         }
 
         // 🎥 Lấy Stream URL từ Cloudflare Stream
+        const cloudflareStart = Date.now();
+        console.log('☁️ [VideoController] Calling Cloudflare Stream service:', {
+            streamUid,
+            quality,
+            format,
+            cloudflareStartTime: cloudflareStart,
+            dbQueryTime: cloudflareStart - dbQueryStart
+        });
+        
         const streamData = await cloudflareStreamService.getStreamUrl(streamUid, {
             quality,
             format
+        });
+        
+        const cloudflareEnd = Date.now();
+        console.log('☁️ [VideoController] Cloudflare Stream response:', {
+            cloudflareResponseTime: cloudflareEnd - cloudflareStart,
+            status: streamData.status,
+            hasUrls: !!streamData.expo?.uri
         });
 
         // ⚠️ Kiểm tra trạng thái video
@@ -110,6 +140,14 @@ const getVideoStreamUrl = async (req, res) => {
         }
 
         // �� Trả về stream URLs tối ưu cho EXPO APP
+        const responseTime = Date.now();
+        console.log('✅ [VideoController] Sending response:', {
+            totalTime: responseTime - startTime,
+            responseTime,
+            videoId,
+            streamUid
+        });
+        
         return res.json({
             status: 'success',
             data: {
