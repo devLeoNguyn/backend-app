@@ -142,17 +142,27 @@ const getTopFavoriteMovies = async (req, res) => {
 // 2. ▶️ Continue Watching - Đang xem (không cần rating/view)
 const getContinueWatching = async (req, res) => {
     try {
+        console.log('🎬 [getContinueWatching] Request received:', {
+            query: req.query,
+            url: req.url,
+            method: req.method
+        });
+        
         const { userId } = req.query;
         const showAll = req.query.showAll === 'true';
         const limit = parseInt(req.query.limit) || (showAll ? 20 : 8);
 
+        console.log('🎬 [getContinueWatching] Parameters:', { userId, showAll, limit });
+
         if (!userId) {
+            console.log('❌ [getContinueWatching] Missing userId');
             return res.status(400).json({
                 status: 'error',
                 message: 'userId là bắt buộc'
             });
         }
 
+        console.log('🎬 [getContinueWatching] Querying database...');
         const watchingData = await Watching.find({
             user_id: userId,
             completed: false
@@ -166,44 +176,70 @@ const getContinueWatching = async (req, res) => {
             })
             .sort({ last_watched: -1 })
             .limit(limit);
-
-        const continueWatching = watchingData.map(watch => {
-            const progress = watch.current_time / watch.duration;
-            const progressPercentage = Math.round(progress * 100);
-            const remainingTime = Math.max(0, watch.duration - watch.current_time);
-            const remainingMinutes = Math.ceil(remainingTime / 60);
             
-            // Format remaining time
-            let remainingTimeFormatted;
-            if (remainingMinutes < 60) {
-                remainingTimeFormatted = `${remainingMinutes} phút còn lại`;
-            } else {
-                const hours = Math.floor(remainingMinutes / 60);
-                const minutes = remainingMinutes % 60;
-                if (minutes === 0) {
-                    remainingTimeFormatted = `${hours} giờ còn lại`;
-                } else {
-                    remainingTimeFormatted = `${hours}g ${minutes}p còn lại`;
-                }
-            }
-
-            return {
-            movieId: watch.episode_id.movie_id._id,
-            title: watch.episode_id.movie_id.movie_title,
-            poster: watch.episode_id.movie_id.poster_path,
-            movieType: watch.episode_id.movie_id.movie_type,
-                progress: Number(progress.toFixed(3)), // 0-1
-                progressPercentage, // 0-100
-                currentTime: watch.current_time,
-                duration: watch.duration,
-                remainingTime,
-                remainingTimeFormatted,
-            lastWatchedAt: watch.last_watched,
-            episodeId: watch.episode_id._id,
-                episodeNumber: watch.episode_id.episode_number,
-                episodeTitle: watch.episode_id.episode_title
-            };
+        console.log('🎬 [getContinueWatching] Raw watching data found:', {
+            totalRecords: watchingData.length,
+            records: watchingData.map(w => ({
+                id: w._id,
+                userId: w.user_id,
+                episodeId: w.episode_id?._id,
+                hasMovie: !!w.episode_id?.movie_id,
+                movieTitle: w.episode_id?.movie_id?.movie_title,
+                currentTime: w.current_time,
+                duration: w.duration
+            }))
         });
+
+        const continueWatching = watchingData
+            .filter(watch => {
+                // Filter out records with missing populate data
+                if (!watch.episode_id) {
+                    console.log('⚠️ [getContinueWatching] Missing episode_id for watching record:', watch._id);
+                    return false;
+                }
+                if (!watch.episode_id.movie_id) {
+                    console.log('⚠️ [getContinueWatching] Missing movie_id for episode:', watch.episode_id._id);
+                    return false;
+                }
+                return true;
+            })
+            .map(watch => {
+                const progress = watch.current_time / watch.duration;
+                const progressPercentage = Math.round(progress * 100);
+                const remainingTime = Math.max(0, watch.duration - watch.current_time);
+                const remainingMinutes = Math.ceil(remainingTime / 60);
+                
+                // Format remaining time
+                let remainingTimeFormatted;
+                if (remainingMinutes < 60) {
+                    remainingTimeFormatted = `${remainingMinutes} phút còn lại`;
+                } else {
+                    const hours = Math.floor(remainingMinutes / 60);
+                    const minutes = remainingMinutes % 60;
+                    if (minutes === 0) {
+                        remainingTimeFormatted = `${hours} giờ còn lại`;
+                    } else {
+                        remainingTimeFormatted = `${hours}g ${minutes}p còn lại`;
+                    }
+                }
+
+                return {
+                movieId: watch.episode_id.movie_id._id,
+                title: watch.episode_id.movie_id.movie_title,
+                poster: watch.episode_id.movie_id.poster_path,
+                movieType: watch.episode_id.movie_id.movie_type,
+                    progress: Number(progress.toFixed(3)), // 0-1
+                    progressPercentage, // 0-100
+                    currentTime: watch.current_time,
+                    duration: watch.duration,
+                    remainingTime,
+                    remainingTimeFormatted,
+                lastWatchedAt: watch.last_watched,
+                episodeId: watch.episode_id._id,
+                    episodeNumber: watch.episode_id.episode_number,
+                    episodeTitle: watch.episode_id.episode_title
+                };
+            });
 
         res.json({
             status: 'success',
