@@ -11,12 +11,9 @@ const {
     getMovieEpisodesViewCount
 } = require('../controllers/watching.controller');
 
-// UNIFIED: Update watching progress - supports both URL params and body
-// POST /api/watching/progress (legacy - episodeId in body) - userId từ body  
-// PUT /api/watching/episodes/:episode_id/progress (new - episode_id in params) - userId từ body
-// NOTE: current_time = 0 means start watching, > 0 means update progress
-router.post('/progress', updateWatchProgress);
-router.put('/episodes/:episode_id/progress', updateWatchProgress);
+// UNIFIED: Update watching progress
+// PUT /api/watching/progress - userId và episode_id từ body
+router.put('/progress', updateWatchProgress);
 
 // Get watching progress for a specific episode - userId từ query
 router.get('/progress/:episodeId', getWatchProgress);

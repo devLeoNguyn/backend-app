@@ -11,7 +11,7 @@ exports.updateWatchProgress = async (req, res) => {
     try {
         // Support both URL params and request body for episode_id
         const episode_id = req.params.episode_id || req.body.episode_id;
-        const { currentTime, userId } = req.body;
+        const { currentTime, userId, duration, isMovie, completed } = req.body;
         
         if (!userId) {
             return res.status(400).json({
@@ -30,6 +30,13 @@ exports.updateWatchProgress = async (req, res) => {
             });
         }
 
+        if (!duration) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Duration là bắt buộc'
+            });
+        }
+
         // current_time = 0 means start watching, > 0 means update progress
         const time = currentTime || 0;
         
@@ -41,10 +48,10 @@ exports.updateWatchProgress = async (req, res) => {
         }
 
         // Sử dụng static method để tìm hoặc tạo watching record
-        let watching = await Watching.findOrCreateWatching(user_id, episode_id);
+        let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration);
         
         // Sử dụng instance method để cập nhật progress
-        await watching.updateProgress(time);
+        await watching.updateProgress(time, completed);
 
         const isStarting = time === 0;
         const message = isStarting ? 'Đã bắt đầu xem phim' : 'Đã cập nhật tiến trình xem thành công';

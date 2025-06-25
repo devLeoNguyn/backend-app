@@ -4,7 +4,7 @@
  */
 const applyWatchingMethods = (watchingSchema) => {
     // Instance methods
-    watchingSchema.methods.updateProgress = async function(currentTime) {
+    watchingSchema.methods.updateProgress = async function(currentTime, forceCompleted = false) {
         const oldTime = this.current_time || 0;
         this.current_time = currentTime;
         
@@ -17,9 +17,9 @@ const applyWatchingMethods = (watchingSchema) => {
         this.watch_percentage = this.duration > 0 ? 
             Math.min(100, (currentTime / this.duration) * 100) : 0;
         
-        // Tính completed dựa trên watch_percentage >= 95%
-        this.completed = this.duration > 0 && 
-            (currentTime / this.duration) >= 0.95;
+        // Tính completed dựa trên watch_percentage >= 95% hoặc forceCompleted
+        this.completed = forceCompleted || 
+            (this.duration > 0 && (currentTime / this.duration) >= 0.95);
         
         this.last_watched = new Date();
         await this.save();
@@ -30,11 +30,11 @@ const applyWatchingMethods = (watchingSchema) => {
     };
 
     // Method to handle completion for both single movies and episodes
-    watchingSchema.methods.markCompleteIfEligible = async function() {
-        // Only mark as completed if watch progress >= 95%
+    watchingSchema.methods.markCompleteIfEligible = async function(forceCompleted = false) {
+        // Mark as completed if forced or watch progress >= 95%
         const watchPercentage = this.duration > 0 ? (this.current_time / this.duration) : 0;
         
-        if (watchPercentage >= 0.95) {
+        if (forceCompleted || watchPercentage >= 0.95) {
             this.completed = true;
             this.last_watched = new Date();
             await this.save();
@@ -65,7 +65,7 @@ const applyWatchingMethods = (watchingSchema) => {
         });
     };
 
-    watchingSchema.statics.findOrCreateWatching = async function(userId, episodeId) {
+    watchingSchema.statics.findOrCreateWatching = async function(userId, episodeId, duration) {
         let watching = await this.findOne({
             user_id: userId,
             episode_id: episodeId
@@ -80,23 +80,27 @@ const applyWatchingMethods = (watchingSchema) => {
             watching = new this({
                 user_id: userId,
                 episode_id: episodeId,
-                duration: episode.duration
+                duration: duration || episode.duration
             });
+        } else if (duration && watching.duration !== duration) {
+            // Update duration if it has changed
+            watching.duration = duration;
+            await watching.save();
         }
 
         return watching;
     };
 
     // Method to complete a movie/episode with proper validation
-    watchingSchema.statics.completeWatching = async function(userId, episodeId, currentTime = null) {
+    watchingSchema.statics.completeWatching = async function(userId, episodeId, currentTime = null, forceCompleted = false) {
         const watching = await this.findOrCreateWatching(userId, episodeId);
         
         // If currentTime is provided, update progress first
         if (currentTime !== null) {
-            await watching.updateProgress(currentTime);
+            await watching.updateProgress(currentTime, forceCompleted);
         } else {
             // Check if eligible for completion based on current progress
-            await watching.markCompleteIfEligible();
+            await watching.markCompleteIfEligible(forceCompleted);
         }
         
         return watching;
@@ -124,8 +128,8 @@ const applyWatchingMethods = (watchingSchema) => {
     watchingSchema.pre('save', async function(next) {
         if (this.isModified('current_time') || this.isModified('duration')) {
             // Tính completed dựa trên watch_percentage >= 95%
-            this.completed = this.duration > 0 && 
-                (this.current_time / this.duration) >= 0.95;
+            this.completed = this.completed || 
+                (this.duration > 0 && (this.current_time / this.duration) >= 0.95);
         }
         this.last_watched = new Date();
         next();

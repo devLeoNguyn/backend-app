@@ -188,18 +188,18 @@ const getContinueWatching = async (req, res) => {
             }
 
             return {
-                movieId: watch.episode_id.movie_id._id,
-                title: watch.episode_id.movie_id.movie_title,
-                poster: watch.episode_id.movie_id.poster_path,
-                movieType: watch.episode_id.movie_id.movie_type,
+            movieId: watch.episode_id.movie_id._id,
+            title: watch.episode_id.movie_id.movie_title,
+            poster: watch.episode_id.movie_id.poster_path,
+            movieType: watch.episode_id.movie_id.movie_type,
                 progress: Number(progress.toFixed(3)), // 0-1
                 progressPercentage, // 0-100
                 currentTime: watch.current_time,
                 duration: watch.duration,
                 remainingTime,
                 remainingTimeFormatted,
-                lastWatchedAt: watch.last_watched,
-                episodeId: watch.episode_id._id,
+            lastWatchedAt: watch.last_watched,
+            episodeId: watch.episode_id._id,
                 episodeNumber: watch.episode_id.episode_number,
                 episodeTitle: watch.episode_id.episode_title
             };
