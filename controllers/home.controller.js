@@ -215,7 +215,7 @@ const getContinueWatching = async (req, res) => {
                 movieId: movie._id,
                 title: movie.movie_title,
                 poster: movie.poster_path,
-                movieType: movie.movie_type === 'series' ? 'Phim bộ' : 'Phim lẻ',
+                movieType: movie.movie_type,
                 progress,
                 progressPercentage,
                 currentTime: item.current_time,
