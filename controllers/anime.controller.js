@@ -3,7 +3,7 @@ const Episode = require('../models/Episode');
 const Genre = require('../models/Genre');
 
 // Lấy danh sách anime phim bộ
-exports.getAnimeSeries = async (req, res) => {
+const getAnimeSeries = async (req, res) => {
     try {
         const { page = 1, limit = 10, sort = '-createdAt' } = req.query;
         const skip = (page - 1) * limit;
@@ -72,7 +72,7 @@ exports.getAnimeSeries = async (req, res) => {
 };
 
 // Lấy danh sách anime chiếu rạp (phân loại theo phí)
-exports.getAnimeMovies = async (req, res) => {
+const getAnimeMovies = async (req, res) => {
     try {
         const { page = 1, limit = 10, sort = '-createdAt', price_type } = req.query;
         const skip = (page - 1) * limit;
@@ -148,7 +148,7 @@ exports.getAnimeMovies = async (req, res) => {
 };
 
 // Lấy chi tiết phim hoạt hình
-exports.getAnimeDetail = async (req, res) => {
+const getAnimeDetail = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -228,7 +228,7 @@ exports.getAnimeDetail = async (req, res) => {
 };
 
 // Lấy anime trending (phim bộ và chiếu rạp)
-exports.getTrendingAnime = async (req, res) => {
+const getTrendingAnime = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 8;
         const type = req.query.type; // 'series' hoặc 'movie'
@@ -302,7 +302,7 @@ exports.getTrendingAnime = async (req, res) => {
 };
 
 // Lấy tất cả phim hoạt hình theo các loại
-exports.getAllAnime = async (req, res) => {
+const getAllAnime = async (req, res) => {
     try {
         // Tìm genre hoạt hình
         const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
@@ -381,7 +381,7 @@ exports.getAllAnime = async (req, res) => {
 };
 
 // Lấy danh sách thể loại phim hoạt hình
-exports.getAnimeCategories = async (req, res) => {
+const getAnimeCategories = async (req, res) => {
     try {
         // Tìm genre hoạt hình
         const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
@@ -478,4 +478,77 @@ exports.getAnimeCategories = async (req, res) => {
             message: 'Lỗi khi lấy danh sách thể loại phim hoạt hình'
         });
     }
+};
+
+const getBannerAnime = async (req, res) => {
+    try {
+        const { bannerLimit = 5, limit = 10, days = 30, showAll = false } = req.query;
+
+        // Lấy phim hoạt hình mới nhất
+        const query = {
+            movie_type: { $in: ['anime', 'hoat-hinh'] },
+            is_active: true,
+            release_date: {
+                $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+            }
+        };
+
+        const newAnime = await Movie.find(query)
+            .sort({ release_date: -1, created_at: -1 })
+            .limit(showAll ? 0 : Math.max(bannerLimit, limit));
+
+        // Xử lý phim cho banner
+        const bannerAnime = newAnime.slice(0, bannerLimit).map(anime => ({
+            movieId: anime._id,
+            title: anime.movie_title || '',
+            poster: anime.poster_path || '',
+            description: anime.description || '',
+            releaseYear: anime.release_year,
+            movieType: anime.movie_type || '',
+            producer: anime.producer || '',
+            genres: anime.genres || []
+        }));
+
+        // Xử lý phim cho grid
+        const gridAnime = newAnime.slice(0, limit).map(anime => ({
+            movieId: anime._id,
+            title: anime.movie_title || '',
+            poster: anime.poster_path || '',
+            movieType: anime.movie_type || '',
+            producer: anime.producer || ''
+        }));
+
+        res.json({
+            status: 'success',
+            data: {
+                banner: {
+                    title: "Hoạt hình mới ra mắt",
+                    type: "banner_list",
+                    movies: bannerAnime
+                },
+                recommended: {
+                    title: "Hoạt hình dành cho bạn", 
+                    type: "grid",
+                    movies: gridAnime
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Banner anime error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy banner hoạt hình',
+            error: error.message
+        });
+    }
+};
+
+module.exports = {
+    getAnimeSeries,
+    getAnimeMovies,
+    getAnimeDetail,
+    getTrendingAnime,
+    getAllAnime,
+    getAnimeCategories,
+    getBannerAnime
 }; 

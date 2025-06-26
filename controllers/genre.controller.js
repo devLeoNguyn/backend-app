@@ -118,7 +118,7 @@ const getGenreMovies = async (req, res) => {
             status: 'success',
             data: {
                 movies,
-                pagination: {
+            pagination: {
                     total,
                     page: parseInt(page),
                     totalPages,

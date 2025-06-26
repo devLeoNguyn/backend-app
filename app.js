@@ -74,7 +74,11 @@ app.use('/api/upload', uploadRoutes);
 // Swagger Documentation
 const swaggerPath = path.join(__dirname, 'swagger.yaml');
 const swaggerDocument = YAML.load(swaggerPath);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "Movie App API Documentation"
+}));
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

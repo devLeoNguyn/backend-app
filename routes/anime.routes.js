@@ -26,4 +26,77 @@ router.get('/trending', animeController.getTrendingAnime);
 // GET /api/anime/:id
 router.get('/:id', animeController.getAnimeDetail);
 
+/**
+ * @swagger
+ * /api/anime/banner-anime:
+ *   get:
+ *     tags: [Anime]
+ *     summary: Lấy banner hoạt hình
+ *     description: Lấy danh sách phim hoạt hình mới nhất cho banner và grid
+ *     parameters:
+ *       - in: query
+ *         name: bannerLimit
+ *         schema:
+ *           type: integer
+ *         description: Số lượng phim tối đa cho banner
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Số lượng phim tối đa cho grid
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *         description: Số ngày gần đây để lọc phim mới
+ *       - in: query
+ *         name: showAll
+ *         schema:
+ *           type: boolean
+ *         description: Hiển thị tất cả phim không giới hạn số lượng
+ *     responses:
+ *       200:
+ *         description: Thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     banner:
+ *                       type: object
+ *                       properties:
+ *                         title:
+ *                           type: string
+ *                           example: Hoạt hình mới ra mắt
+ *                         type:
+ *                           type: string
+ *                           example: banner_list
+ *                         movies:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/BannerMovie'
+ *                     recommended:
+ *                       type: object
+ *                       properties:
+ *                         title:
+ *                           type: string
+ *                           example: Hoạt hình dành cho bạn
+ *                         type:
+ *                           type: string
+ *                           example: grid
+ *                         movies:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/GridMovie'
+ *       500:
+ *         description: Lỗi server
+ */
+router.get('/banner-anime', animeController.getBannerAnime);
+
 module.exports = router; 
