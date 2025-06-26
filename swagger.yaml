@@ -640,7 +640,7 @@ paths:
                 status: success
                 data:
                   title: 'Anime hot'
-                  type: grid
+                  type: string
                   movies: []
         '500':
           description: 'Lỗi server'
@@ -692,7 +692,7 @@ paths:
                 status: success
                 data:
                   title: 'Phim Việt đặc sắc'
-                  type: grid
+                  type: string
                   movies: [{movieId: 683fb55d88e880e019875aa7, title: 'Mình Yêu Nhau, Bình Yên Thôi', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/minh-yeu-nhau-binh-yen-thoi/medium', movieType: 'Phim bộ', producer: 'SK Pictures, VTV3'}, {movieId: 683e6774602b36157f1c7b18, title: 'Gặp Lại Chị Bầu', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/gap-lai-chi-bau-500/medium', movieType: 'Phim lẻ', producer: 'CJ Entertainment Vietnam'}, {movieId: 683fb6e188e880e019875ac3, title: 'Ngày Xưa Có Một Chuyện Tình', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/ngay-xua-co-cau-chuyen-tinh/medium', movieType: 'Phim lẻ', producer: 'HK Film, Hãng phim Anh Tễu'}]
         '500':
           description: 'Lỗi server'
@@ -755,7 +755,7 @@ paths:
                 status: success
                 data:
                   title: 'Sắp chiếu'
-                  type: grid
+                  type: string
                   movies: [{movieId: 683fb76c88e880e019875acb, title: 'Avatar: The Way of Water 2', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/avatar-way-of-water-2/medium', movieType: 'Phim lẻ', producer: '20th Century Studios'}, {movieId: 683e922d88e880e019875a1f, title: 'World Cup 2026 Final', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/world-cup-2026/medium', movieType: 'Thể thao', producer: FIFA}]
         '500':
           description: 'Lỗi server'
@@ -828,8 +828,8 @@ paths:
               example:
                 status: success
                 data:
-                  banner: {title: 'Phim bộ mới ra mắt', type: banner_list, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', description: 'Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian...', releaseYear: 2024, movieType: 'Phim bộ', producer: 'WeTV Thailand', genres: ['Tình cảm', Drama]}]}
-                  recommended: {title: 'Phim bộ dành cho bạn', type: grid, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}
+                  banner: {title: 'Phim bộ mới ra mắt', type: string, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', description: 'Bộ phim tình cảm đặc sắc từ Thái Lan với câu chuyện tình yêu vượt thời gian...', releaseYear: 2024, movieType: 'Phim bộ', producer: 'WeTV Thailand', genres: ['Tình cảm', Drama]}]}
+                  recommended: {title: 'Phim bộ dành cho bạn', type: string, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}
         '500':
           description: '❌ Lỗi server'
           content:
@@ -870,10 +870,10 @@ paths:
               examples:
                 default_view:
                   summary: 'Xem mặc định (8 phim bộ top)'
-                  value: {status: success, data: {title: 'Phim bộ đang thịnh hành', type: grid, showAll: false, total: 8, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}}
+                  value: {status: success, data: {title: 'Phim bộ đang thịnh hành', type: string, showAll: false, total: 8, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}}
                 show_all_view:
                   summary: 'Xem tất cả phim bộ thịnh hành'
-                  value: {status: success, data: {title: 'Tất cả phim bộ thịnh hành', type: grid, showAll: true, total: 45, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}}
+                  value: {status: success, data: {title: 'Tất cả phim bộ thịnh hành', type: string, showAll: true, total: 45, movies: [{movieId: 683fb76c88e880e019875aca, title: '1000 Years Old', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/phimbo-1000-years-old/medium', movieType: 'Phim bộ', producer: 'WeTV Thailand'}]}}
   /api/series/vietnamese:
     get:
       tags:
@@ -962,7 +962,7 @@ paths:
                 status: success
                 data:
                   title: 'K-Drama hot nhất'
-                  type: grid
+                  type: string
                   showAll: false
                   total: 8
                   movies: [{movieId: 683fb123456789abcdef1234, title: 'Hometown''s Embrace', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/hometown-embrace/medium', movieType: 'Phim bộ', producer: 'KBS Drama'}]
@@ -1068,81 +1068,95 @@ paths:
     get:
       tags:
         - Genre
-      summary: 'Lấy danh sách phim của thể loại'
-      description: "Lấy danh sách phim thuộc một thể loại cụ thể.\n\n**Query Parameters:**\n- `include_children`: Có lấy phim từ thể loại con không (mặc định: false)\n- `page`: Số trang (mặc định: 1)\n- `limit`: Số phim mỗi trang (mặc định: 10)\n- `sort`: Cách sắp xếp (mặc định: -createdAt)\n\n**Ví dụ:**\n```\nGET /api/genres/6847d080101e640d01a0c37f/movies?include_children=true&page=1&limit=10&sort=-createdAt\n```\n"
+      summary: 'Lấy danh sách phim theo thể loại (Frontend)'
+      description: "Lấy danh sách phim thuộc một thể loại cụ thể.\n\n**Đặc điểm:**\n- Public API (không cần đăng nhập)\n- Hỗ trợ phân trang\n- Sắp xếp theo ngày tạo mới nhất\n- Có thể include phim con (phim bộ)\n\n**🔥 Lưu ý quan trọng:**\n- ID thể loại được truyền qua path parameter, KHÔNG phải query parameter\n- Ví dụ đúng: `/api/genres/6847d080101e640d01a0c37f/movies`\n- Ví dụ sai: `/api/genres/{id}/movies?id=6847d080101e640d01a0c37f`\n"
       parameters:
         -
           name: id
-          in: query
-          description: 'ID của thể loại'
+          in: path
           required: true
           schema:
             type: string
-            pattern: '^[0-9a-fA-F]{24}$'
-            example: 6847d080101e640d01a0c37f
+          example: 6847d080101e640d01a0c37f
+          description: 'ID của thể loại cần lấy danh sách phim (truyền trực tiếp vào URL path)'
         -
           name: include_children
           in: query
-          description: 'Có lấy phim từ thể loại con không'
           required: false
           schema:
             type: boolean
             default: false
+          description: 'Có lấy thêm phim con (phim bộ) hay không'
+          example: false
         -
           name: page
           in: query
-          description: 'Số trang'
           required: false
           schema:
             type: integer
             default: 1
             minimum: 1
+          description: 'Số trang (mặc định 1)'
+          example: 1
         -
           name: limit
           in: query
-          description: 'Số phim mỗi trang'
           required: false
           schema:
             type: integer
             default: 10
             minimum: 1
+            maximum: 50
+          description: 'Số lượng phim mỗi trang (mặc định 10)'
+          example: 10
         -
           name: sort
           in: query
-          description: 'Cách sắp xếp (-createdAt, -view_count, etc.)'
           required: false
           schema:
             type: string
             default: '-createdAt'
+          description: 'Sắp xếp theo trường (prefix - để sắp xếp giảm dần)'
+          example: '-createdAt'
       responses:
         '200':
-          description: 'Thành công'
+          description: 'Lấy dữ liệu thành công'
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   status: {type: string, example: success}
-                  data: {type: object, properties: {movies: {type: array, items: {$ref: '#/components/schemas/MovieListItem'}}, pagination: {type: object, properties: {total: {type: integer, example: 50}, page: {type: integer, example: 1}, totalPages: {type: integer, example: 5}, limit: {type: integer, example: 10}}}}}
+                  data: {type: object, properties: {movies: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}, pagination: {type: object, properties: {total: {type: integer, example: 100}, page: {type: integer, example: 1}, limit: {type: integer, example: 10}, pages: {type: integer, example: 10}}}}}
+              example:
+                status: success
+                data:
+                  movies: [{_id: 6847d080101e640d01a0c37f, title: 'Spider-Man: No Way Home', description: 'Peter Parker seeks help from Doctor Strange...', poster: 'https://example.com/spiderman.jpg', backdrop: 'https://example.com/spiderman-backdrop.jpg', release_date: '2021-12-17', movie_type: 'Phim lẻ', duration: 148, genres: ['Hành động', 'Phiêu lưu'], rating: 4.5, total_ratings: 1000}]
+                  pagination: {total: 100, page: 1, limit: 10, pages: 10}
+        '400':
+          description: 'ID thể loại không hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'ID thể loại không hợp lệ'
         '404':
           description: 'Không tìm thấy thể loại'
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status: {type: string, example: error}
-                  message: {type: string, example: 'Không tìm thấy thể loại'}
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'Không tìm thấy thể loại'
         '500':
           description: 'Lỗi server'
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status: {type: string, example: error}
-                  message: {type: string, example: 'Lỗi khi lấy danh sách phim của thể loại'}
-                  error: {type: string}
+                $ref: '#/components/schemas/ErrorResponse'
   '/api/genres/{id}':
     put:
       tags:
@@ -2675,10 +2689,6 @@ components:
                   duration: {type: integer}
                   uri: {type: string, nullable: true}
                   is_locked: {type: boolean}
-            uri:
-              type: string
-              nullable: true
-              description: 'Video URL (chỉ có khi là phim lẻ)'
             duration:
               type: integer
               description: 'Thời lượng phim lẻ (phút)'
@@ -2972,7 +2982,7 @@ components:
             is_free:
               type: string
               nullable: true
-              example: 'true'
+              example: true
               description: 'Filter miễn phí'
             sort:
               type: string
