@@ -18,14 +18,13 @@ exports.updateWatchProgress = async (req, res) => {
         
         // Support both URL params and request body for episode_id
         const episode_id = req.params.episode_id || req.body.episode_id;
-        const { currentTime, userId, duration, isMovie, completed } = req.body;
+        const { currentTime, userId, duration, completed } = req.body;
         
         console.log('🎬 [updateWatchProgress] Parsed parameters:', {
             episode_id,
             currentTime,
             userId,
             duration,
-            isMovie,
             completed
         });
         
@@ -64,7 +63,7 @@ exports.updateWatchProgress = async (req, res) => {
         }
 
         // Sử dụng static method để tìm hoặc tạo watching record
-        let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration, isMovie);
+        let watching = await Watching.findOrCreateWatching(user_id, episode_id, duration);
         
         console.log('🎬 [updateWatchProgress] Before update:', {
             id: watching._id,

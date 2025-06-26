@@ -65,37 +65,91 @@ const applyWatchingMethods = (watchingSchema) => {
         });
     };
 
-    watchingSchema.statics.findOrCreateWatching = async function(userId, episodeId, duration, isMovie = false) {
+    watchingSchema.statics.findOrCreateWatching = async function(userId, id, duration) {
         let watching = await this.findOne({
             user_id: userId,
-            episode_id: episodeId
+            episode_id: id
         });
 
         if (!watching) {
-            let episode;
-            if (isMovie) {
-                // If it's a movie, treat the movie as an episode
-                episode = await this.model('Movie').findById(episodeId);
-                if (!episode) {
-                    throw new Error('Movie not found');
-                }
+            let targetEpisode;
+            let targetMovie;
+            
+            // Try to find as Episode first
+            targetEpisode = await this.model('Episode').findById(id);
+            
+            if (targetEpisode) {
+                // It's an Episode ID - straightforward case
+                console.log('🎬 [findOrCreateWatching] Found episode:', {
+                    episodeId: id,
+                    episodeTitle: targetEpisode.episode_title,
+                    duration: duration || targetEpisode.duration
+                });
+                
+                watching = new this({
+                    user_id: userId,
+                    episode_id: id,
+                    duration: duration || targetEpisode.duration
+                });
+                
             } else {
-                // If it's a series episode, find the episode
-                episode = await this.model('Episode').findById(episodeId);
-                if (!episode) {
-                    throw new Error('Episode not found');
+                // Not an Episode, try as Movie
+                targetMovie = await this.model('Movie').findById(id);
+                if (!targetMovie) {
+                    throw new Error(`Neither Episode nor Movie found: ${id}`);
                 }
+                
+                // For movies, check if there's an episode record, if not create one
+                let movieEpisode = await this.model('Episode').findOne({ movie_id: id });
+                if (!movieEpisode) {
+                    console.log('🎬 [findOrCreateWatching] Creating episode for movie:', id);
+                    movieEpisode = await this.model('Episode').create({
+                        movie_id: id,
+                        episode_title: targetMovie.movie_title,
+                        episode_number: 1,
+                        duration: duration || targetMovie.duration,
+                        video_url: targetMovie.video_url || targetMovie.uri,
+                        is_free: targetMovie.is_free
+                    });
+                }
+                
+                console.log('🎬 [findOrCreateWatching] Using episode for movie:', {
+                    movieId: id,
+                    episodeId: movieEpisode._id,
+                    movieTitle: targetMovie.movie_title,
+                    duration: duration || targetMovie.duration
+                });
+                
+                // Create watching record with the episode ID
+                watching = new this({
+                    user_id: userId,
+                    episode_id: movieEpisode._id,
+                    duration: duration || targetMovie.duration
+                });
             }
-
-            watching = new this({
+            
+            console.log('🎬 [findOrCreateWatching] Created new watching record:', {
+                id: watching._id,
                 user_id: userId,
-                episode_id: episodeId,
-                duration: duration || episode.duration
+                episode_id: watching.episode_id,
+                duration: watching.duration
             });
-        } else if (duration && watching.duration !== duration) {
-            // Update duration if it has changed
-            watching.duration = duration;
-            await watching.save();
+            
+        } else {
+            console.log('🎬 [findOrCreateWatching] Found existing watching record:', {
+                id: watching._id,
+                current_time: watching.current_time,
+                duration: watching.duration
+            });
+            
+            if (duration && watching.duration !== duration) {
+                console.log('🎬 [findOrCreateWatching] Updating duration:', {
+                    old: watching.duration,
+                    new: duration
+                });
+                watching.duration = duration;
+                await watching.save();
+            }
         }
 
         return watching;
