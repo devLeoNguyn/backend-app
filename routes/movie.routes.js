@@ -21,10 +21,11 @@ router.get('/new-week', getNewWeekMovies);
 // Tìm kiếm phim
 router.get('/search', searchMovies);
 
-// Lấy chi tiết một phim - ai cũng xem được
-router.get('/:id', getMovieById);
 // 🆕 Get movie detail with all interactions - Public/Protected (MUST BE BEFORE /:id)
 router.get('/:id/detail-with-interactions', getMovieDetailWithInteractions);
+
+// Lấy chi tiết một phim - ai cũng xem được
+router.get('/:id', getMovieById);
 
 // Get movie stats (likes, views, comments) - Public
 router.get('/:movie_id/stats', getMovieStats);
