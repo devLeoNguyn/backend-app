@@ -12,7 +12,8 @@ const movieService = require('../services/movie.service');
 const {
     calculateMovieRating,
     calculateViewCount,
-    formatViewCount
+    formatViewCount,
+    formatRemainingTime
 } = require('../utils/movieStatsUtils');
 
 // ==============================================
@@ -190,103 +191,58 @@ const getContinueWatching = async (req, res) => {
                 path: 'episode_id',
                 populate: {
                     path: 'movie_id',
-                    select: '_id movie_title poster_path movie_type'
+                    select: '_id movie_title poster_path movie_type price is_free'
                 }
             })
             .sort({ last_watched: -1 })
             .limit(limit);
+
+        // Lấy rental service để check access
+        const rentalService = require('../services/rental.service');
             
-        console.log('🎬 [getContinueWatching] Raw watching data found:', {
-            totalRecords: watchingData.length,
-            records: watchingData.map(w => {
-                try {
-                    return {
-                        id: w._id,
-                        userId: w.user_id,
-                        episodeId: w.episode_id?._id || 'NULL',
-                        hasEpisode: !!w.episode_id,
-                        hasMovie: !!(w.episode_id?.movie_id),
-                        movieTitle: w.episode_id?.movie_id?.movie_title || 'NO_TITLE',
-                        currentTime: w.current_time,
-                        duration: w.duration
-                    };
-                } catch (err) {
-                    return {
-                        id: w._id,
-                        error: 'Failed to process record',
-                        errorMessage: err.message
-                    };
-                }
-            })
-        });
+        // Map và format data với rental access check
+        const formattedData = await Promise.all(watchingData.map(async (item) => {
+            // Check rental access cho mỗi phim
+            const { hasAccess } = await rentalService.checkRentalAccess(
+                userId,
+                item.episode_id.movie_id._id
+            );
 
-        const continueWatching = watchingData
-            .filter(watch => {
-                // Filter out records with missing populate data
-                if (!watch.episode_id) {
-                    console.log('⚠️ [getContinueWatching] Missing episode_id for watching record:', watch._id);
-                    return false;
-                }
-                if (!watch.episode_id.movie_id) {
-                    console.log('⚠️ [getContinueWatching] Missing movie_id for episode:', watch.episode_id._id);
-                    return false;
-                }
-                return true;
-            })
-            .map(watch => {
-                const progress = watch.current_time / watch.duration;
-                const progressPercentage = Math.round(progress * 100);
-                const remainingTime = Math.max(0, watch.duration - watch.current_time);
-                const remainingMinutes = Math.ceil(remainingTime / 60);
-                
-                // Format remaining time
-                let remainingTimeFormatted;
-                if (remainingMinutes < 60) {
-                    remainingTimeFormatted = `${remainingMinutes} phút còn lại`;
-                } else {
-                    const hours = Math.floor(remainingMinutes / 60);
-                    const minutes = remainingMinutes % 60;
-                    if (minutes === 0) {
-                        remainingTimeFormatted = `${hours} giờ còn lại`;
-                    } else {
-                        remainingTimeFormatted = `${hours}g ${minutes}p còn lại`;
-                    }
-                }
+            const movie = item.episode_id.movie_id;
+            const progress = item.current_time / item.duration;
+            const progressPercentage = Math.round(progress * 100);
+            const remainingTime = item.duration - item.current_time;
 
-                return {
-                movieId: watch.episode_id.movie_id._id,
-                title: watch.episode_id.movie_id.movie_title,
-                poster: watch.episode_id.movie_id.poster_path,
-                movieType: watch.episode_id.movie_id.movie_type,
-                    progress: Number(progress.toFixed(3)), // 0-1
-                    progressPercentage, // 0-100
-                    currentTime: watch.current_time,
-                    duration: watch.duration,
-                    remainingTime,
-                    remainingTimeFormatted,
-                lastWatchedAt: watch.last_watched,
-                episodeId: watch.episode_id._id,
-                    episodeNumber: watch.episode_id.episode_number,
-                    episodeTitle: watch.episode_id.episode_title
-                };
-            });
-
-        console.log('🎬 [getContinueWatching] Processed data:', {
-            originalCount: watchingData.length,
-            validCount: continueWatching.length,
-            filteredOut: watchingData.length - continueWatching.length
-        });
+            return {
+                movieId: movie._id,
+                title: movie.movie_title,
+                poster: movie.poster_path,
+                movieType: movie.movie_type === 'series' ? 'Phim bộ' : 'Phim lẻ',
+                progress,
+                progressPercentage,
+                currentTime: item.current_time,
+                duration: item.duration,
+                remainingTime,
+                remainingTimeFormatted: formatRemainingTime(remainingTime),
+                lastWatchedAt: item.last_watched,
+                episodeId: item.episode_id._id,
+                episodeNumber: item.episode_id.episode_number,
+                episodeTitle: item.episode_id.episode_title,
+                hasRentalAccess: movie.is_free || hasAccess // Thêm hasRentalAccess vào response
+            };
+        }));
 
         res.json({
             status: 'success',
             data: {
-                title: "Đang xem",
+                title: "Tiếp tục xem",
                 type: "continue_watching",
-                data: continueWatching
+                data: formattedData
             }
         });
+
     } catch (error) {
-        console.error('Error fetching continue watching:', error);
+        console.error('Error in getContinueWatching:', error);
         res.status(500).json({
             status: 'error',
             message: 'Lỗi khi lấy danh sách đang xem',
