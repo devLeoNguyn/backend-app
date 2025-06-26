@@ -18,6 +18,7 @@ module.exports = function applyMovieMethods(schema) {
 // truyền từng tập cho frontend mà không lộ link khi chưa trả tiền
   schema.methods.formatEpisodeInfo = function (episode = []) {
     return {
+      _id: episode._id, // 🔧 FIX: Include episode _id for frontend identification
       episode_number: episode.episode_number,
       episode_title: episode.episode_title,
       episode_description: episode.episode_description,
