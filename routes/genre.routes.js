@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const genreController = require('../controllers/genre.controller');
+const { getMoviesByGenre } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES ===
 /**
@@ -26,16 +27,18 @@ const genreController = require('../controllers/genre.controller');
 router.get('/', genreController.getGenres);
 
 /**
- * @route   GET /api/genres/:genreId/movies
- * @desc    Lấy danh sách phim của một thể loại
+ * @route   GET /api/genres/:id/movies
+ * @desc    Lấy danh sách phim theo thể loại
  * @access  Public
+ * @params  id: ObjectId (genre ID)
  * @query   {
- *   include_children: boolean (default: false)
- *   page: number (default: 1)
- *   limit: number (default: 10)
+ *   include_children: boolean (default: false) - Có lấy phim của thể loại con không
+ *   page: number (default: 1) - Trang hiện tại
+ *   limit: number (default: 10) - Số phim mỗi trang
+ *   sort: string (default: '-createdAt') - Sắp xếp theo trường nào
  * }
  */
-router.get('/:genreId/movies', genreController.getGenreMovies);
+router.get('/:id/movies', getMoviesByGenre);
 
 // === ADMIN ROUTES (Không yêu cầu xác thực - Dự án sinh viên) ===
 /**

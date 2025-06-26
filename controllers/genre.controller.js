@@ -16,7 +16,6 @@ const {
  * Lấy danh sách thể loại với nhiều options
  * GET /api/genres
  * Query params:
-
  * - type: 'all' | 'parent' | 'active' (default: 'all')
  * - include_poster: boolean (default: true)
  * - include_children: boolean (default: true)
@@ -73,7 +72,12 @@ const getGenres = async (req, res) => {
 const getGenreMovies = async (req, res) => {
     try {
         const { genreId } = req.params;
-        const { include_children = 'false', page = 1, limit = 20 } = req.query;
+        const { 
+            include_children = 'false', 
+            page = 1, 
+            limit = 10,
+            sort = '-createdAt'  // Thêm tham số sắp xếp
+        } = req.query;
 
         // Kiểm tra thể loại tồn tại
         const genre = await Genre.findById(genreId);
@@ -97,82 +101,31 @@ const getGenreMovies = async (req, res) => {
         // Tính toán skip cho pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Lấy danh sách phim
+        // Lấy danh sách phim với đầy đủ thông tin
         const movies = await Movie.find({ genres: { $in: genreIds } })
-            .select('movie_title description poster_path movie_type production_time')
-            .sort({ createdAt: -1 })
+            .populate('genres', 'genre_name')
+            .sort(sort)
             .skip(skip)
-            .limit(parseInt(limit))
-            .populate('genres', 'genre_name');
+            .limit(parseInt(limit));
 
         // Đếm tổng số phim
-        const totalMovies = await Movie.countDocuments({ genres: { $in: genreIds } });
+        const total = await Movie.countDocuments({ genres: { $in: genreIds } });
 
-        // Format response
-        const formattedMovies = movies.map(movie => ({
-                    _id: movie._id,
-            title: movie.movie_title,
-                    description: movie.description,
-            poster: movie.poster_path,
-            movieType: movie.movie_type,
-            productionTime: movie.production_time,
-            genres: movie.genres.map(g => ({
-                _id: g._id,
-                name: g.genre_name
-            }))
-        }));
+        // Tính tổng số trang
+        const totalPages = Math.ceil(total / parseInt(limit));
 
-        res.json(createResponse({
-            genre: {
-                _id: genre._id,
-                name: genre.genre_name,
-                isParent: genre.is_parent
-            },
-            movies: formattedMovies,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(totalMovies / parseInt(limit)),
-                totalMovies,
-                hasMore: skip + movies.length < totalMovies
+        res.json({
+            status: 'success',
+            data: {
+                movies,
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    totalPages,
+                    limit: parseInt(limit)
+                }
             }
-        }));
-    } catch (error) {
-        console.error('Get genre movies error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Lỗi khi lấy danh sách phim của thể loại',
-            error: error.message
         });
-    }
-};
-
-/**
- * Lấy danh sách phim của một thể loại
- * GET /api/genres/:genreId/movies
- */
-exports.getGenreMovies = async (req, res) => {
-    try {
-        const { genreId } = req.params;
-        
-        // Kiểm tra thể loại tồn tại
-        const genre = await Genre.findById(genreId);
-        if (!genre) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Không tìm thấy thể loại'
-            });
-        }
-
-        // Lấy danh sách phim thuộc thể loại này
-        const movies = await Movie.find({ genres: genreId })
-            .select('title poster release_date rating')
-            .sort({ release_date: -1 });
-
-        res.json(createResponse({
-            genre: await getGenreBasicInfo(genre),
-            movies,
-            total: movies.length
-        }));
     } catch (error) {
         console.error('Get genre movies error:', error);
         res.status(500).json({

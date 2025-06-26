@@ -489,6 +489,89 @@ const searchMovies = async (req, res) => {
     }
 };
 
+// 🎬 Lấy danh sách phim theo thể loại
+const getMoviesByGenre = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { 
+            include_children = false, 
+            page = 1, 
+            limit = 10,
+            sort = '-createdAt'
+        } = req.query;
+
+        // Validate genreId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'ID thể loại không hợp lệ'
+            });
+        }
+
+        // Check if genre exists
+        const genre = await Genre.findById(id);
+        if (!genre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại'
+            });
+        }
+
+        // Get all genre IDs to search for (including children if requested)
+        let genreIds = [id];
+        if (include_children === 'true' && genre.children && genre.children.length > 0) {
+            genreIds = [...genreIds, ...genre.children];
+        }
+
+        // Calculate skip value for pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Find movies with the specified genres
+        const [movies, total] = await Promise.all([
+            Movie.find({ genres: { $in: genreIds } })
+                .populate('genres', 'genre_name')
+                .select('movie_title description poster_path genres producer price createdAt')
+                .sort(sort)
+                .skip(skip)
+                .limit(parseInt(limit))
+                .lean(),
+            Movie.countDocuments({ genres: { $in: genreIds } })
+        ]);
+
+        // Calculate total pages
+        const totalPages = Math.ceil(total / parseInt(limit));
+
+        res.json({
+            status: 'success',
+            data: {
+                movies: movies.map(movie => ({
+                    _id: movie._id,
+                    movie_title: movie.movie_title,
+                    description: movie.description,
+                    poster_path: movie.poster_path,
+                    genres: movie.genres,
+                    producer: movie.producer,
+                    price: movie.price,
+                    createdAt: movie.createdAt
+                })),
+                pagination: {
+                    total,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching movies by genre:', err);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+            error: err.message
+        });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -499,5 +582,6 @@ module.exports = {
     deleteMovie,
     getMovieStats,
     getMovieDetailWithInteractions,
-    searchMovies
+    searchMovies,
+    getMoviesByGenre
 };

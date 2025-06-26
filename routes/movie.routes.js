@@ -9,7 +9,8 @@ const {
     deleteMovie,
     getMovieStats,
     searchMovies,
-    getMovieDetailWithInteractions
+    getMovieDetailWithInteractions,
+    getMoviesByGenre
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===

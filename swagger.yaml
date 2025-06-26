@@ -694,9 +694,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                status: "error"
-                message: "Lỗi khi lấy tổng kết tương tác người dùng"
 
   /api/home/new-releases:
     get:
@@ -2116,21 +2113,69 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /api/genres/{genreId}/movies:
+  /api/genres/{id}/movies:
     get:
       tags:
         - Genre
-      summary: Lấy danh sách phim của thể loại (Frontend)
-      description: Lấy danh sách phim thuộc một thể loại cụ thể
+      summary: Lấy danh sách phim của thể loại
+      description: |
+        Lấy danh sách phim thuộc một thể loại cụ thể.
+        
+        **Query Parameters:**
+        - `include_children`: Có lấy phim từ thể loại con không (mặc định: false)
+        - `page`: Số trang (mặc định: 1)
+        - `limit`: Số phim mỗi trang (mặc định: 10)
+        - `sort`: Cách sắp xếp (mặc định: -createdAt)
+        
+        **Ví dụ:**
+        ```
+        GET /api/genres/6847d080101e640d01a0c37f/movies?include_children=true&page=1&limit=10&sort=-createdAt
+        ```
       parameters:
-        - in: query
-          name: genreId
+        - name: id
+          in: path
+          description: ID của thể loại
           required: true
+          style: simple
+          explode: false
+          allowReserved: true
           schema:
             type: string
-          description: ID thể loại
+            pattern: "^[0-9a-fA-F]{24}$"
+            example: "6847d080101e640d01a0c37f"
+        - name: include_children
+          in: query
+          description: Có lấy phim từ thể loại con không
+          required: false
+          schema:
+            type: string
+            enum: ['true', 'false']
+            default: 'false'
+        - name: page
+          in: query
+          description: Số trang
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Số phim mỗi trang
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+        - name: sort
+          in: query
+          description: Cách sắp xếp (-createdAt, -view_count, etc.)
+          required: false
+          schema:
+            type: string
+            default: '-createdAt'
       responses:
-        "200":
+        '200':
           description: Thành công
           content:
             application/json:
@@ -2139,19 +2184,57 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: "success"
+                    example: success
                   data:
                     type: object
                     properties:
-                      genre:
-                        $ref: "#/components/schemas/Genre"
                       movies:
                         type: array
                         items:
-                          $ref: "#/components/schemas/GridMovie"
-                      total:  
-                        type: integer
-                        example: 10
+                          $ref: '#/components/schemas/MovieListItem'
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 50
+                          page:
+                            type: integer
+                            example: 1
+                          totalPages:
+                            type: integer
+                            example: 5
+                          limit:
+                            type: integer
+                            example: 10
+        '404':
+          description: Không tìm thấy thể loại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Không tìm thấy thể loại
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Lỗi khi lấy danh sách phim của thể loại
+                  error:
+                    type: string
 
   /api/genres/{id}:
     put:
@@ -3703,8 +3786,55 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+
+
 components:
   schemas:
+    # === MOVIE LIST SCHEMAS ===
+    MovieListItem:
+      type: object
+      description: Schema cho phim trong danh sách
+      properties:
+        _id:
+          type: string
+          example: "683fb76c88e880e019875aca"
+          description: ID của phim
+        movie_title:
+          type: string
+          example: "1000 Years Old"
+          description: Tên phim
+        description:
+          type: string
+          example: "Bộ phim tình cảm đặc sắc từ Thái Lan..."
+          description: Mô tả phim
+        poster_path:
+          type: string
+          example: "https://imagedelivery.net/.../poster.jpg"
+          description: URL poster phim
+        genres:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+              genre_name:
+                type: string
+          description: Danh sách thể loại
+        producer:
+          type: string
+          example: "WeTV Thailand"
+          description: Nhà sản xuất
+        price:
+          type: number
+          example: 0
+          description: Giá phim
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời gian tạo
+
+    # === AUTH SCHEMAS ===
     PhoneRequest:
       type: object
       required:
@@ -5011,6 +5141,6 @@ components:
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
-      in: query
-      name: userId
-      description: User ID for authentication
+      in: header
+      name: x-api-key
+      description: API key for authentication
