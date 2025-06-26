@@ -196,7 +196,7 @@ const updateMovie = async (movieId, updateData) => {
 };
 
 /**
- * 🎯 GET MOVIE BY ID WITH EPISODES
+ * 🎯 GET MOVIE BY ID WITH EPISODES - ENHANCED WITH VALIDATION
  */
 const getMovieById = async (movieId) => {
     try {
@@ -210,6 +210,36 @@ const getMovieById = async (movieId) => {
         const episodes = await Episode.find({ movie_id: movieId })
             .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
             .sort({ episode_number: 1 });
+
+        // 🔧 VALIDATION: Check for series without episodes
+        if (movie.movie_type === 'Phim bộ' && episodes.length === 0) {
+            console.warn(`⚠️ [MovieService] Series "${movie.movie_title}" has no episodes, creating default episode`);
+            
+            // Create a default episode for series that don't have any
+            const defaultEpisode = await Episode.create({
+                episode_title: `${movie.movie_title} - Tập 1`,
+                uri: '', // Empty URI - will be handled by frontend
+                episode_number: 1,
+                episode_description: movie.description || 'Tập phim đầu tiên',
+                duration: 60, // Default 60 minutes
+                movie_id: movieId
+            });
+
+            // Update movie's total_episodes
+            movie.total_episodes = 1;
+            await movie.save();
+
+            console.log(`✅ [MovieService] Created default episode for series: ${movie.movie_title}`);
+            
+            return { movie, episodes: [defaultEpisode] };
+        }
+
+        // 🔧 VALIDATION: Sync total_episodes with actual episodes count
+        if (movie.total_episodes !== episodes.length && episodes.length > 0) {
+            console.log(`🔄 [MovieService] Syncing total_episodes for "${movie.movie_title}": ${movie.total_episodes} -> ${episodes.length}`);
+            movie.total_episodes = episodes.length;
+            await movie.save();
+        }
 
         return { movie, episodes };
     } catch (error) {

@@ -51,7 +51,12 @@ const movieSchema = new mongoose.Schema({
   },
   total_episodes: {
     type: Number,
-    min: 1
+    min: 1,
+    required: function() {
+      // Always require total_episodes
+      return true;
+    },
+    default: 1
   },
   release_status: {
     type: String,
@@ -91,6 +96,40 @@ const movieSchema = new mongoose.Schema({
     virtuals: true,
     getters: true
   }
+});
+
+// 🔧 VALIDATION MIDDLEWARE: Ensure series movies have episodes
+movieSchema.pre('save', async function(next) {
+  // Only validate for series
+  if (this.movie_type === 'Phim bộ' && !this.isNew) {
+    const Episode = mongoose.model('Episode');
+    const episodeCount = await Episode.countDocuments({ movie_id: this._id });
+    
+    if (episodeCount === 0) {
+      const error = new Error('Phim bộ phải có ít nhất 1 tập phim');
+      error.name = 'ValidationError';
+      return next(error);
+    }
+    
+    // Update total_episodes to match actual episodes
+    this.total_episodes = episodeCount;
+  }
+  
+  // For new documents, validation will be handled in the service layer
+  next();
+});
+
+// 🔧 VALIDATION MIDDLEWARE: Prevent deletion if episodes exist
+movieSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+  const Episode = mongoose.model('Episode');
+  const episodeCount = await Episode.countDocuments({ movie_id: this._id });
+  
+  if (episodeCount > 0) {
+    console.log(`🗑️ [Movie] Deleting ${episodeCount} episodes for movie: ${this.movie_title}`);
+    await Episode.deleteMany({ movie_id: this._id });
+  }
+  
+  next();
 });
 
 // Indexes for better query performance
