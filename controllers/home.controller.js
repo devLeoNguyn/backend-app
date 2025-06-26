@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 
 // Import movie service for centralized operations
 const movieService = require('../services/movie.service');
+const rentalService = require('../services/rental.service');
 
 // Import shared utility functions (eliminates duplication)
 const {
@@ -197,15 +198,12 @@ const getContinueWatching = async (req, res) => {
             .sort({ last_watched: -1 })
             .limit(limit);
 
-        // Lấy rental service để check access
-        const rentalService = require('../services/rental.service');
-            
         // Map và format data với rental access check
         const formattedData = await Promise.all(watchingData.map(async (item) => {
             // Check rental access cho mỗi phim
             const { hasAccess } = await rentalService.checkRentalAccess(
                 userId,
-                item.episode_id.movie_id._id
+                item.episode_id.movie_id._id.toString()
             );
 
             const movie = item.episode_id.movie_id;

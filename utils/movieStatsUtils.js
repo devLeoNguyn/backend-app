@@ -8,6 +8,25 @@ const mongoose = require('mongoose');
 // ===================================================
 
 /**
+ * Format remaining time for UI display
+ * Used by: home.controller.js, watching.controller.js
+ */
+const formatRemainingTime = (remainingTime) => {
+    const remainingMinutes = Math.ceil(remainingTime / 60);
+    if (remainingMinutes < 60) {
+        return `${remainingMinutes} phút còn lại`;
+    } else {
+        const hours = Math.floor(remainingMinutes / 60);
+        const minutes = remainingMinutes % 60;
+        if (minutes === 0) {
+            return `${hours} giờ còn lại`;
+        } else {
+            return `${hours}g ${minutes}p còn lại`;
+        }
+    }
+};
+
+/**
  * Calculate movie rating statistics
  * Used by: movie.controller.js, rating.controller.js, home.controller.js
  */
@@ -126,5 +145,6 @@ module.exports = {
     calculateViewCount,
     formatViewCount,
     calculateCommentCount,
-    getMovieStatistics
+    getMovieStatistics,
+    formatRemainingTime
 }; 
