@@ -217,6 +217,15 @@ const getMovieDetailWithInteractions = async (req, res) => {
         if (movie.movie_type === 'Phim lẻ') {
             // Logic for single movies
             const singleEpisode = episodes[0];
+
+            // Check rental access for paid movies
+            let hasRentalAccess = movie.is_free; // Default to true for free movies
+            if (!movie.is_free && userId) {
+                const MovieRental = require('../models/MovieRental');
+                const userRental = await MovieRental.findActiveRental(userId, id);
+                hasRentalAccess = !!userRental;
+            }
+
             movieData = {
                 _id: movie._id,
                 movie_title: movie.movie_title,
@@ -230,11 +239,22 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 is_free: movie.is_free,
                 price_display: movie.getPriceDisplay(),
                 
-                // Video information for single movies
-                uri: movie.is_free && singleEpisode ? singleEpisode.uri : null,
+                // Video information for single movies - only return URI if user has access
+                uri: hasRentalAccess && singleEpisode ? singleEpisode.uri : null,
+                video_url: hasRentalAccess && singleEpisode ? singleEpisode.video_url : null,
                 duration: singleEpisode ? singleEpisode.duration : null,
-                is_locked: !movie.is_free
+                is_locked: !hasRentalAccess
             };
+
+            console.log('🎬 [MovieDetail] Single movie access check:', {
+                movieId: id,
+                title: movie.movie_title,
+                isFree: movie.is_free,
+                userId: userId || 'not provided',
+                hasRentalAccess,
+                hasVideoUrl: !!movieData.uri || !!movieData.video_url
+            });
+
         } else {
             // Logic for series - use schema method but override episode URIs if user has rental access
             movieData = movie.formatMovieResponse(episodes);
