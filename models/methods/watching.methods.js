@@ -76,13 +76,21 @@ const applyWatchingMethods = (watchingSchema) => {
             let targetMovie;
             
             // Try to find as Episode first
-            targetEpisode = await this.model('Episode').findById(id);
+            targetEpisode = await this.model('Episode').findById(id)
+                .populate('movie_id', 'movie_title movie_type'); // Populate movie info
             
             if (targetEpisode) {
-                // It's an Episode ID - straightforward case
+                // Validate episode
+                if (!targetEpisode.movie_id) {
+                    throw new Error(`Episode ${id} không thuộc về phim nào`);
+                }
+
                 console.log('🎬 [findOrCreateWatching] Found episode:', {
                     episodeId: id,
                     episodeTitle: targetEpisode.episode_title,
+                    movieId: targetEpisode.movie_id._id,
+                    movieTitle: targetEpisode.movie_id.movie_title,
+                    movieType: targetEpisode.movie_id.movie_type,
                     duration: duration || targetEpisode.duration
                 });
                 
@@ -92,6 +100,8 @@ const applyWatchingMethods = (watchingSchema) => {
                     duration: duration || targetEpisode.duration
                 });
                 
+                await watching.save();
+                
             } else {
                 // Not an Episode, try as Movie
                 targetMovie = await this.model('Movie').findById(id);
@@ -99,18 +109,37 @@ const applyWatchingMethods = (watchingSchema) => {
                     throw new Error(`Neither Episode nor Movie found: ${id}`);
                 }
                 
+                if (targetMovie.movie_type === 'series') {
+                    throw new Error(`ID ${id} là phim bộ, vui lòng cung cấp episode_id`);
+                }
+                
                 // For movies, check if there's an episode record, if not create one
-                let movieEpisode = await this.model('Episode').findOne({ movie_id: id });
+                let movieEpisode = await this.model('Episode').findOne({ 
+                    movie_id: id,
+                    episode_number: 1 // Ensure we get the first episode
+                });
+
                 if (!movieEpisode) {
-                    console.log('🎬 [findOrCreateWatching] Creating episode for movie:', id);
-                    movieEpisode = await this.model('Episode').create({
-                        movie_id: id,
-                        episode_title: targetMovie.movie_title,
-                        episode_number: 1,
-                        duration: duration || targetMovie.duration,
-                        video_url: targetMovie.video_url || targetMovie.uri,
-                        is_free: targetMovie.is_free
-                    });
+                    // Double check if we already have any episodes for this movie
+                    const existingEpisodes = await this.model('Episode').find({ movie_id: id });
+                    if (existingEpisodes.length > 0) {
+                        movieEpisode = existingEpisodes[0]; // Use the first episode if exists
+                        console.log('🎬 [findOrCreateWatching] Using existing episode:', {
+                            movieId: id,
+                            episodeId: movieEpisode._id,
+                            episodeNumber: movieEpisode.episode_number
+                        });
+                    } else {
+                        console.log('🎬 [findOrCreateWatching] Creating episode for movie:', id);
+                        movieEpisode = await this.model('Episode').create({
+                            movie_id: id,
+                            episode_title: targetMovie.movie_title,
+                            episode_number: 1,
+                            duration: duration || targetMovie.duration,
+                            video_url: targetMovie.video_url || targetMovie.uri,
+                            is_free: targetMovie.is_free
+                        });
+                    }
                 }
                 
                 console.log('🎬 [findOrCreateWatching] Using episode for movie:', {
@@ -126,6 +155,8 @@ const applyWatchingMethods = (watchingSchema) => {
                     episode_id: movieEpisode._id,
                     duration: duration || targetMovie.duration
                 });
+                
+                await watching.save();
             }
             
             console.log('🎬 [findOrCreateWatching] Created new watching record:', {
