@@ -260,22 +260,34 @@ const getMovieDetailWithInteractions = async (req, res) => {
             movieData = movie.formatMovieResponse(episodes);
             
             // Check if user has rental access to override locked episodes
+            let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (userId && !movie.is_free) {
                 const MovieRental = require('../models/MovieRental');
                 const userRental = await MovieRental.findActiveRental(userId, id);
-                
-                // If user has active rental, show real URIs
-                if (userRental && movieData.episodes) {
-                    movieData.episodes = movieData.episodes.map(ep => {
-                        const fullEpisode = episodes.find(fullEp => fullEp.episode_number === ep.episode_number);
-                        return {
-                            ...ep,
-                            uri: fullEpisode ? fullEpisode.uri : null,
-                            is_locked: false
-                        };
-                    });
-                }
+                hasRentalAccess = !!userRental;
             }
+            
+            // If user has rental access, show real URIs for all episodes
+            if (hasRentalAccess && movieData.episodes) {
+                movieData.episodes = movieData.episodes.map(ep => {
+                    const fullEpisode = episodes.find(fullEp => fullEp.episode_number === ep.episode_number);
+                    return {
+                        ...ep,
+                        uri: fullEpisode ? fullEpisode.uri : null,
+                        is_locked: false
+                    };
+                });
+            }
+
+            console.log('🎬 [MovieDetail] Series access check:', {
+                movieId: id,
+                title: movie.movie_title,
+                isFree: movie.is_free,
+                userId: userId || 'not provided',
+                hasRentalAccess,
+                episodesCount: movieData.episodes?.length || 0,
+                firstEpisodeUri: movieData.episodes?.[0]?.uri || 'none'
+            });
         }
 
         // Add interaction data
