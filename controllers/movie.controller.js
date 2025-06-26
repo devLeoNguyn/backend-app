@@ -311,12 +311,27 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 // Check if movie is in user's favorites
                 Favorite.findOne({ user_id: userId, movie_id: id }),
                 
-                // Get user's watching progress (for first episode if series, or single episode if movie)
-                movie.movie_type === 'Phim lẻ' && episodes[0] ? 
-                    Watching.findOne({ user_id: userId, episode_id: episodes[0]._id }) :
-                    episodes.length > 0 ? 
-                        Watching.findOne({ user_id: userId, episode_id: episodes[0]._id }) : 
-                        null,
+                // 🔧 FIX: Get user's most recent watching progress for any episode of this movie
+                // Instead of just checking first episode, find the most recently watched episode
+                (async () => {
+                    if (episodes.length === 0) return null;
+                    
+                    // For single movies, check the single episode
+                    if (movie.movie_type === 'Phim lẻ' && episodes[0]) {
+                        return await Watching.findOne({ user_id: userId, episode_id: episodes[0]._id });
+                    }
+                    
+                    // For series, find the most recently watched episode
+                    if (episodes.length > 0) {
+                        const episodeIds = episodes.map(ep => ep._id);
+                        return await Watching.findOne({ 
+                            user_id: userId, 
+                            episode_id: { $in: episodeIds }
+                        }).sort({ last_watched: -1 }); // Most recent first
+                    }
+                    
+                    return null;
+                })(),
                 
                 // Get recent comments for display (sorted by updatedAt for latest updates first)
                 Rating.find({ 
@@ -337,13 +352,35 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 isFollowing: !!userFavorite, // Same as favorite for now
                 watchingProgress: userWatching ? {
                     episodeId: userWatching.episode_id,
-                    episodeNumber: movie.movie_type === 'Phim lẻ' ? 1 : episodes.findIndex(ep => ep._id.toString() === userWatching.episode_id.toString()) + 1,
+                    // 🔧 FIX: Calculate episode number correctly from actual episode
+                    episodeNumber: (() => {
+                        if (movie.movie_type === 'Phim lẻ') return 1;
+                        
+                        // For series, find the actual episode and get its episode_number
+                        const actualEpisode = episodes.find(ep => ep._id.toString() === userWatching.episode_id.toString());
+                        return actualEpisode ? actualEpisode.episode_number : 1;
+                    })(),
                     watchPercentage: userWatching.watch_percentage,
                     currentTime: userWatching.current_time,
+                    duration: userWatching.duration, // Add duration for better progress calculation
                     lastWatched: userWatching.last_watched,
                     completed: userWatching.completed
                 } : null
             };
+            
+            // 🔧 DEBUG: Log watching progress info
+            if (userWatching) {
+                console.log('🎬 [MovieDetail] User watching progress:', {
+                    movieId: id,
+                    movieTitle: movie.movie_title,
+                    movieType: movie.movie_type,
+                    watchingEpisodeId: userWatching.episode_id,
+                    episodeNumber: movieData.userInteractions.watchingProgress.episodeNumber,
+                    currentTime: userWatching.current_time,
+                    watchPercentage: userWatching.watch_percentage,
+                    lastWatched: userWatching.last_watched
+                });
+            }
 
             // Add recent comments to response
             movieData.recentComments = recentComments.map(comment => ({
