@@ -766,6 +766,45 @@ paths:
               example:
                 status: error
                 message: 'Lỗi khi lấy phim sắp chiếu'
+  /api/anime/banner-anime:
+    get:
+      tags:
+        - Anime
+      summary: 'Banner phim hoạt hình'
+      description: "API lấy banner và danh sách phim hoạt hình"
+      parameters:
+        - name: bannerLimit
+          in: query
+          schema:
+            type: integer
+            default: 5
+          description: 'Số phim banner'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 6
+          description: 'Số phim grid'
+      responses:
+        '200':
+          description: 'Thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      banner:
+                        type: array
+                      grid:
+                        type: array
+        '500':
+          description: 'Lỗi server'
   /api/series/banner-series:
     get:
       tags:
@@ -1370,7 +1409,7 @@ paths:
       parameters:
         -
           name: movie_id
-          in: query
+          in: query             
           required: true
           schema:
             type: string
@@ -3526,9 +3565,3 @@ components:
               type: number
               example: 5
               description: 'Số rental sắp hết hạn'
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: query
-      name: userId
-      description: 'User ID for authentication'

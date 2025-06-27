@@ -22,10 +22,6 @@ router.get('/movies', animeController.getAnimeMovies);
 // GET /api/anime/trending?type=series|movie&price_type=free|paid&limit=8
 router.get('/trending', animeController.getTrendingAnime);
 
-// Lấy chi tiết phim hoạt hình
-// GET /api/anime/:id
-router.get('/:id', animeController.getAnimeDetail);
-
 /**
  * @swagger
  * /api/anime/banner-anime:
@@ -98,5 +94,9 @@ router.get('/:id', animeController.getAnimeDetail);
  *         description: Lỗi server
  */
 router.get('/banner-anime', animeController.getBannerAnime);
+
+// Lấy chi tiết phim hoạt hình (đặt cuối cùng để tránh conflict với routes khác)
+// GET /api/anime/:id
+router.get('/:id', animeController.getAnimeDetail);
 
 module.exports = router; 

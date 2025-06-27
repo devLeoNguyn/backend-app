@@ -484,34 +484,41 @@ const getBannerAnime = async (req, res) => {
     try {
         const { bannerLimit = 5, limit = 10, days = 30, showAll = false } = req.query;
 
-        // Lấy phim hoạt hình mới nhất
+        // Tìm genre hoạt hình
+        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        if (!animeGenre) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy thể loại hoạt hình'
+            });
+        }
+
+        // Lấy phim hoạt hình mới nhất (đơn giản hóa query)
         const query = {
-            movie_type: { $in: ['anime', 'hoat-hinh'] },
-            is_active: true,
-            release_date: {
-                $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-            }
+            genres: animeGenre._id,
+            release_status: 'released'
         };
 
         const newAnime = await Movie.find(query)
-            .sort({ release_date: -1, created_at: -1 })
-            .limit(showAll ? 0 : Math.max(bannerLimit, limit));
+            .populate('genres', 'genre_name')
+            .sort({ createdAt: -1 })
+            .limit(showAll ? 20 : Math.max(bannerLimit, limit));
 
         // Xử lý phim cho banner
         const bannerAnime = newAnime.slice(0, bannerLimit).map(anime => ({
-            movieId: anime._id,
+            _id: anime._id,
             title: anime.movie_title || '',
             poster: anime.poster_path || '',
             description: anime.description || '',
             releaseYear: anime.release_year,
             movieType: anime.movie_type || '',
             producer: anime.producer || '',
-            genres: anime.genres || []
+            genres: anime.genres.map(g => g.genre_name)
         }));
 
         // Xử lý phim cho grid
         const gridAnime = newAnime.slice(0, limit).map(anime => ({
-            movieId: anime._id,
+            _id: anime._id,
             title: anime.movie_title || '',
             poster: anime.poster_path || '',
             movieType: anime.movie_type || '',
