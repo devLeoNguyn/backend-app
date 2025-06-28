@@ -505,25 +505,31 @@ const getBannerAnime = async (req, res) => {
             .limit(showAll ? 20 : Math.max(bannerLimit, limit));
 
         // Xử lý phim cho banner
-        const bannerAnime = newAnime.slice(0, bannerLimit).map(anime => ({
-            _id: anime._id,
-            title: anime.movie_title || '',
-            poster: anime.poster_path || '',
-            description: anime.description || '',
-            releaseYear: anime.release_year,
-            movieType: anime.movie_type || '',
-            producer: anime.producer || '',
-            genres: anime.genres.map(g => g.genre_name)
-        }));
+        const bannerAnime = newAnime
+            .filter(anime => anime._id) // Chỉ lấy anime có _id hợp lệ
+            .slice(0, bannerLimit)
+            .map(anime => ({
+                movieId: anime._id.toString(), // Đảm bảo movieId là string
+                title: anime.movie_title || '',
+                poster: anime.poster_path || '',
+                description: anime.description || '',
+                releaseYear: anime.release_year,
+                movieType: anime.movie_type || '',
+                producer: anime.producer || '',
+                genres: anime.genres.map(g => g.genre_name)
+            }));
 
         // Xử lý phim cho grid
-        const gridAnime = newAnime.slice(0, limit).map(anime => ({
-            _id: anime._id,
-            title: anime.movie_title || '',
-            poster: anime.poster_path || '',
-            movieType: anime.movie_type || '',
-            producer: anime.producer || ''
-        }));
+        const gridAnime = newAnime
+            .filter(anime => anime._id) // Chỉ lấy anime có _id hợp lệ
+            .slice(0, limit)
+            .map(anime => ({
+                movieId: anime._id.toString(), // Đảm bảo movieId là string
+                title: anime.movie_title || '',
+                poster: anime.poster_path || '',
+                movieType: anime.movie_type || '',
+                producer: anime.producer || ''
+            }));
 
         res.json({
             status: 'success',
