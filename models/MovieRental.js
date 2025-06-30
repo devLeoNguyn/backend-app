@@ -140,7 +140,7 @@ movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) 
     if (rentalType) query.rentalType = rentalType;
     
     return this.find(query)
-        .populate('movieId', 'title poster duration type')
+        .populate('movieId', 'movie_title poster_path movie_type producer price total_episodes')
         .populate('paymentId', 'amount orderCode paymentTime')
         .sort({ createdAt: -1 })
         .skip(skip)
