@@ -1,0 +1,638 @@
+openapi: 3.0.0
+info:
+  title: 'Movie Backend Admin API'
+  description: "API documentation cho Admin Dashboard của ứng dụng Movie Backend\n\n**🔐 ADMIN ONLY APIs:**\n\nTất cả endpoints trong file này chỉ dành cho Admin Dashboard và yêu cầu quyền admin.\n\n**📋 CHỨC NĂNG ADMIN:**\n- ✅ **Quản lý thể loại:** CRUD operations cho genres\n- ✅ **Upload media:** Upload video/image lên Cloudflare\n- ✅ **Thống kê rental:** Doanh thu, phim phổ biến\n- ✅ **Quản lý cron jobs:** Start/stop background tasks\n- ✅ **Video management:** Check status, troubleshoot\n- ✅ **User analytics:** Interaction summaries\n\n**🚨 AUTHENTICATION:**\nTất cả APIs yêu cầu admin authentication (không sử dụng userId như Frontend)\n\n**🛠️ ADMIN DASHBOARD INTEGRATION:**\n- React Admin hoặc custom admin panel\n- Full CRUD operations\n- Analytics và reporting\n- Media management tools\n"
+  version: 1.0.0
+  contact:
+    email: admin@movieapp.com
+servers:
+  - url: 'http://localhost:3003'
+    description: 'Development server'
+  - url: 'https://backend-app-lou3.onrender.com'
+    description: 'Production server'
+
+tags:
+  - name: Admin Genre Management
+    description: 'Quản lý thể loại phim - CRUD operations'
+  - name: Admin Upload Management  
+    description: 'Upload và quản lý media files (video/image)'
+  - name: Admin Rental Management
+    description: 'Thống kê và quản lý rental system'
+  - name: Admin Video Management
+    description: 'Quản lý video streaming và troubleshooting'
+  - name: Admin Analytics
+    description: 'Thống kê và báo cáo chi tiết'
+
+paths:
+  # ============================================================================
+  # ADMIN GENRE MANAGEMENT
+  # ============================================================================
+  /api/genres:
+    get:
+      tags:
+        - Admin Genre Management
+      summary: 'Lấy danh sách thể loại (Admin Dashboard)'
+      description: "API dành cho Admin Dashboard để quản lý thể loại.\n\n**Admin Features:**\n- Xem tất cả genres (bao gồm inactive)\n- Hiển thị số lượng phim thuộc mỗi genre\n- Quản lý parent-child relationships\n- Sắp xếp theo sort_order\n"
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, parent, active, children]
+            default: all
+          description: 'Loại thể loại cần lấy'
+        - name: parent_id
+          in: query
+          required: false  
+          schema:
+            type: string
+          description: 'ID thể loại cha (chỉ dùng khi type=children)'
+        - name: include_stats
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: 'Bao gồm thống kê số lượng phim'
+      responses:
+        '200':
+          description: 'Lấy danh sách thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: 
+                    type: object
+                    properties:
+                      genres:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminGenre'
+                      total: {type: integer, example: 25}
+                      stats:
+                        type: object
+                        properties:
+                          total_genres: {type: integer, example: 25}
+                          active_genres: {type: integer, example: 20}
+                          parent_genres: {type: integer, example: 8}
+                          child_genres: {type: integer, example: 17}
+
+  /api/genres/{id}:
+    put:
+      tags:
+        - Admin Genre Management
+      summary: 'Cập nhật thể loại (Admin)'
+      description: 'Cập nhật thông tin của một thể loại'
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: 'ID thể loại'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                genre_name:
+                  type: string
+                  example: 'Hành động'
+                description:
+                  type: string
+                  example: 'Phim hành động gay cấn'
+                poster:
+                  type: string
+                  example: 'https://example.com/poster.jpg'
+                sort_order:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: 'Cập nhật thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  message: {type: string, example: 'Đã cập nhật thể loại thành công'}
+                  data: {type: object, properties: {genre: {$ref: '#/components/schemas/Genre'}}}
+
+    delete:
+      tags:
+        - Admin Genre Management
+      summary: 'Xóa thể loại (Admin)'
+      description: 'Xóa một thể loại'
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: 'ID thể loại'
+      responses:
+        '200':
+          description: 'Xóa thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  message: {type: string, example: 'Đã xóa thể loại thành công'}
+        '400':
+          description: 'Không thể xóa vì còn phim sử dụng thể loại này'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/genres/{id}/status:
+    put:
+      tags:
+        - Admin Genre Management
+      summary: 'Cập nhật trạng thái thể loại (Admin)'
+      description: "Cập nhật trạng thái của thể loại (activate/deactivate/toggle)."
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: 'ID thể loại'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [activate, deactivate]
+                  example: activate
+      responses:
+        '200':
+          description: 'Cập nhật thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  message: {type: string, example: 'Đã cập nhật trạng thái thể loại thành công'}
+                  data: {type: object, properties: {genre: {$ref: '#/components/schemas/Genre'}}}
+
+  # ============================================================================
+  # ADMIN UPLOAD MANAGEMENT  
+  # ============================================================================
+  /api/upload/image:
+    post:
+      tags:
+        - Admin Upload Management
+      summary: '🖼️ Upload Image to Cloudflare Images (Admin)'
+      description: 'Upload ảnh lên Cloudflare Images với auto-optimization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 'Image file (JPEG/PNG/GIF/WebP, max 5MB)'
+                folder:
+                  type: string
+                  default: general
+                  description: 'Folder name for organization'
+                variant:
+                  type: string
+                  enum: [avatar, thumbnail, medium, public]
+                  default: public
+                  description: 'Image variant for optimization'
+      responses:
+        '200':
+          description: 'Image uploaded successfully'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudflareImageResponse'
+        '400':
+          description: 'File không hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/upload/video:
+    post:
+      tags:
+        - Admin Upload Management
+      summary: '🎬 Upload Video to Cloudflare Stream (Admin)'
+      description: 'Upload video lên Cloudflare Stream với auto-processing'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, episodeId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 'Video file (MP4/AVI/MOV/WebM/MKV/FLV, max 500MB)'
+                episodeId:
+                  type: string
+                  description: 'Episode ID để liên kết video'
+                movieTitle:
+                  type: string
+                  description: 'Tên phim (optional)'
+                episodeTitle:
+                  type: string
+                  description: 'Tên tập phim (optional)'
+      responses:
+        '200':
+          description: 'Video uploaded và đang xử lý'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudflareVideoUploadResponse'
+        '400':
+          description: 'File không hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # ADMIN VIDEO MANAGEMENT
+  # ============================================================================
+  /api/video-url/{videoId}/status:
+    get:
+      tags:
+        - Admin Video Management
+      summary: '📊 Check Video Status (Admin)'
+      description: 'Kiểm tra trạng thái video và khả năng truy cập'
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 675a1234567890abcdef1234
+      responses:
+        '200':
+          description: 'Thông tin trạng thái video'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {videoId: {type: string}, streamUid: {type: string}, available: {type: boolean}, accessible: {type: boolean}, message: {type: string}}}
+        '404':
+          description: 'Video không tồn tại'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================================
+  # ADMIN RENTAL MANAGEMENT
+  # ============================================================================
+  /api/rentals/stats/revenue:
+    get:
+      tags:
+        - Admin Rental Management
+      summary: '📊 Thống kê doanh thu (Admin)'
+      description: "Lấy thống kê doanh thu theo khoảng thời gian."
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: '2024-01-01'
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: '2024-12-31'
+      responses:
+        '200':
+          description: 'Lấy thống kê doanh thu thành công'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueStatsResponse'
+
+  /api/rentals/stats/popular:
+    get:
+      tags:
+        - Admin Rental Management
+      summary: '🔥 Phim được thuê nhiều nhất (Admin)'
+      description: "Lấy danh sách phim được thuê nhiều nhất."
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: 'Lấy danh sách phim phổ biến thành công'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopularRentalsResponse'
+
+  /api/rentals/cron/status:
+    get:
+      tags:
+        - Admin Rental Management
+      summary: '⚙️ Trạng thái cron jobs (Admin)'
+      description: "Lấy trạng thái tất cả cron jobs."
+      responses:
+        '200':
+          description: 'Lấy trạng thái cron jobs thành công'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronStatusResponse'
+
+  /api/rentals/cron/manual-check:
+    post:
+      tags:
+        - Admin Rental Management
+      summary: '🔄 Chạy manual check (Admin)'
+      description: "Chạy manual check rental expiration ngay lập tức."
+      responses:
+        '200':
+          description: 'Manual check hoàn thành'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualCheckResponse'
+
+  /api/rentals/cron/{action}/{jobName}:
+    put:
+      tags:
+        - Admin Rental Management
+      summary: '🎛️ Control cron job (Admin)'
+      description: "Start/Stop một cron job cụ thể."
+      parameters:
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [start, stop]
+        - name: jobName
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [expiredRentalsCheck, expiringNotifications, cleanupOldRentals, dailyStatsGeneration]
+      responses:
+        '200':
+          description: 'Control cron job thành công'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # ============================================================================
+  # ADMIN ANALYTICS
+  # ============================================================================
+  /api/users/{userId}/interactions/summary:
+    get:
+      tags:
+        - Admin Analytics
+      summary: '📊 Tổng kết tương tác người dùng (Admin)'
+      description: "Lấy thống kê tổng quan về hoạt động tương tác của user."
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 683d7b63d0ee4aeb15a11369
+          description: 'ID của user cần lấy thống kê'
+      responses:
+        '200':
+          description: 'Lấy thống kê thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {userId: {type: string, example: 683d7b63d0ee4aeb15a11369}, userName: {type: string, example: 'Nguyễn Văn A'}, stats: {type: object, properties: {totalRatings: {type: integer, example: 25, description: 'Tổng số lượt đánh giá'}, totalLikes: {type: integer, example: 18, description: 'Tổng số lượt thích'}, totalFavorites: {type: integer, example: 12, description: 'Tổng số phim yêu thích'}, totalWatchingRecords: {type: integer, example: 45, description: 'Tổng số tập đã xem'}, completedEpisodes: {type: integer, example: 32, description: 'Tổng số tập đã hoàn thành'}, totalWatchTime: {type: integer, example: 64800, description: 'Tổng thời gian xem (giây)'}, totalWatchTimeFormatted: {type: string, example: '18h 0m', description: 'Thời gian xem formatted'}, avgWatchPercentage: {type: integer, example: 78, description: 'Phần trăm xem trung bình'}}}, recentActivity: {type: array, items: {type: object, properties: {_id: {type: string, example: rating_id}, movieId: {type: string, example: movie_id}, movieTitle: {type: string, example: Spider-Man}, movieType: {type: string, example: 'Phim lẻ'}, poster: {type: string, example: 'https://example.com/poster.jpg'}, action: {type: string, enum: [commented, liked], example: liked}, comment: {type: string, example: 'Phim hay quá!', description: 'Comment của user (có thể null)'}, isLike: {type: boolean, example: true}, createdAt: {type: string, format: date-time, example: '2024-01-15T10:30:00Z'}}}}}}
+        '404':
+          description: 'Không tìm thấy user'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # ============================================================================
+    # ADMIN GENRE SCHEMAS
+    # ============================================================================
+    AdminGenre:
+      type: object
+      properties:
+        _id: {type: string}
+        genre_name: {type: string}
+        description: {type: string}
+        poster: {type: string}
+        parent_genre: {type: string, nullable: true}
+        is_parent: {type: boolean}
+        is_active: {type: boolean}
+        sort_order: {type: integer}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        # Admin-specific fields
+        movie_count: {type: integer, description: 'Số lượng phim thuộc thể loại'}
+        children_count: {type: integer, description: 'Số lượng thể loại con'}
+        last_used: {type: string, format: date-time, nullable: true}
+
+    Genre:
+      type: object
+      properties:
+        _id: 
+          type: string
+          example: 683d7b63d0ee4aeb15a11369
+        genre_name: 
+          type: string
+          example: 'Hành động'
+        description: 
+          type: string
+          example: 'Phim hành động gay cấn'
+        poster: 
+          type: string
+          example: 'https://example.com/poster.jpg'
+        parent_genre: 
+          type: string
+          nullable: true
+          example: '683d7b63d0ee4aeb15a11369'
+        is_parent: 
+          type: boolean
+          example: true
+        is_active: 
+          type: boolean
+          example: true
+        sort_order: 
+          type: integer
+          example: 1
+        created_at: 
+          type: string
+          format: date-time
+        updated_at: 
+          type: string
+          format: date-time
+
+    # ============================================================================
+    # ADMIN UPLOAD SCHEMAS
+    # ============================================================================
+    CloudflareImageResponse:
+      type: object
+      properties:
+        status: {type: string, example: success}
+        message: {type: string, example: 'Ảnh đã được upload thành công lên Cloudflare Images'}
+        data:
+          type: object
+          properties:
+            id: {type: string, example: '2cdc28f0-017a-49c4-9ed7-87056c83901f'}
+            filename: {type: string, example: 'avatar.jpg'}
+            uploaded: {type: string, format: date-time}
+            urls:
+              type: object
+              properties:
+                original: {type: string}
+                avatar: {type: string}
+                thumbnail: {type: string}
+                medium: {type: string}
+            fileSize: {type: number, example: 1024000}
+            dimensions: 
+              type: object
+              properties:
+                width: {type: integer}
+                height: {type: integer}
+
+    CloudflareVideoUploadResponse:
+      type: object
+      properties:
+        status: {type: string, example: success}
+        message: {type: string, example: 'Video đã được upload thành công lên Cloudflare Stream'}
+        data:
+          type: object
+          properties:
+            episodeId: {type: string}
+            streamUid: {type: string}
+            uploadStatus: {type: string, enum: [ready, inprogress, error]}
+            playback: {type: object, nullable: true}
+            thumbnail: {type: string, nullable: true}
+            processingStatus: {type: string}
+            fileSize: {type: number}
+            duration: {type: number, nullable: true}
+            uploadProgress: {type: number}
+
+    # ============================================================================
+    # ADMIN ANALYTICS SCHEMAS  
+    # ============================================================================
+    RevenueStatsResponse:
+      type: object
+      properties:
+        success: {type: boolean, example: true}
+        message: {type: string, example: 'Lấy thống kê doanh thu thành công'}
+        data:
+          type: object
+          properties:
+            summary:
+              type: object
+              properties:
+                totalRevenue: {type: number, example: 5420000}
+                totalRentals: {type: number, example: 287}
+                averageRevenuePerRental: {type: number, example: 18884}
+            dailyStats:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: {type: string, format: date, example: '2024-01-15'}
+                  revenue: {type: number, example: 125000}
+                  rentals: {type: number, example: 8}
+
+    PopularRentalsResponse:
+      type: object
+      properties:
+        success: {type: boolean, example: true}
+        message: {type: string, example: 'Lấy danh sách phim phổ biến thành công'}
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              movieId: {type: string}
+              title: {type: string}
+              poster: {type: string}
+              totalRentals: {type: number}
+              revenue: {type: number}
+
+    CronStatusResponse:
+      type: object
+      properties:
+        success: {type: boolean, example: true}
+        message: {type: string, example: 'Lấy trạng thái cron jobs thành công'}
+        data:
+          type: object
+          properties:
+            expiredRentalsCheck:
+              type: object
+              properties:
+                running: {type: boolean, example: false}
+                scheduled: {type: boolean, example: false}
+
+    ManualCheckResponse:
+      type: object
+      properties:
+        success: {type: boolean, example: true}
+        message: {type: string, example: 'Manual check hoàn thành'}
+        data:
+          type: object
+          properties:
+            success: {type: boolean, example: true}
+            expiredCount: {type: number, example: 3}
+            expiringCount: {type: number, example: 5}
+
+    # ============================================================================
+    # COMMON SCHEMAS
+    # ============================================================================
+    ErrorResponse:
+      type: object
+      properties:
+        status: {type: string, example: error}
+        message: {type: string}
+        error_code: {type: string, nullable: true}
+        details: {type: object, nullable: true}
+
+    SuccessResponse:
+      type: object
+      properties:
+        status: {type: string, example: success}
+        message: {type: string} 
