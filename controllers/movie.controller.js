@@ -609,6 +609,50 @@ const getMoviesByGenre = async (req, res) => {
     }
 };
 
+// �� Lấy danh sách phim liên quan dựa trên thể loại
+const getRelatedMovies = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Lấy phim gốc
+        const movie = await Movie.findById(id).populate('genres');
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+        // Lấy genreIds từ query (có thể là 1 hoặc nhiều id, phân tách bằng dấu phẩy)
+        let { genreIds } = req.query;
+        let genresToSearch;
+        if (genreIds) {
+            // Nếu truyền genreIds, chuyển thành mảng ObjectId
+            genresToSearch = genreIds.split(',').map(id => id.trim());
+        } else {
+            // Nếu không truyền, lấy toàn bộ genres của phim gốc
+            genresToSearch = movie.genres.map(g => g._id);
+        }
+        // Lấy các phim cùng thể loại, loại trừ chính nó
+        const relatedMovies = await Movie.find({
+            _id: { $ne: id },
+            genres: { $in: genresToSearch }
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .limit(8)
+        .populate('genres', 'genre_name');
+
+        res.json({
+            status: 'success',
+            data: relatedMovies
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+            error: error.message
+        });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -620,5 +664,6 @@ module.exports = {
     getMovieStats,
     getMovieDetailWithInteractions,
     searchMovies,
-    getMoviesByGenre
+    getMoviesByGenre,
+    getRelatedMovies
 };

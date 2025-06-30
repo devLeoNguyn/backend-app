@@ -10,7 +10,8 @@ const {
     getMovieStats,
     searchMovies,
     getMovieDetailWithInteractions,
-    getMoviesByGenre
+    getMoviesByGenre,
+    getRelatedMovies
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
@@ -45,5 +46,7 @@ router.put('/:id', updateMovie);
 
 // Xóa phim - userId từ body
 router.delete('/:id', deleteMovie);
+
+router.get('/:id/related', getRelatedMovies);
 
 module.exports = router;
