@@ -210,7 +210,7 @@ class RentalService {
                 success: true,
                 data: {
                     rental: await MovieRental.findById(rental._id)
-                        .populate('movieId', 'title poster duration')
+                        .populate('movieId', 'movie_title poster_path duration movie_type')
                         .populate('paymentId', 'amount orderCode'),
                     message: `Thuê phim thành công! Bạn có thể xem phim trong ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
                 }

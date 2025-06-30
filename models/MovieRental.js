@@ -110,14 +110,14 @@ movieRentalSchema.statics.findActiveRental = function(userId, movieId) {
         status: 'active',
         startTime: { $lte: new Date() },
         endTime: { $gte: new Date() }
-    }).populate('movieId', 'title poster price').populate('paymentId', 'amount orderCode');
+    }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
 };
 
 movieRentalSchema.statics.findExpiredRentals = function() {
     return this.find({
         status: 'active',
         endTime: { $lt: new Date() }
-    }).populate('userId', 'name email').populate('movieId', 'title');
+    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
 };
 
 movieRentalSchema.statics.findExpiringSoon = function() {
@@ -128,7 +128,7 @@ movieRentalSchema.statics.findExpiringSoon = function() {
         status: 'active',
         endTime: { $gte: now, $lte: twoHoursFromNow },
         notificationSent: false
-    }).populate('userId', 'name email').populate('movieId', 'title');
+    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
 };
 
 movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) {
@@ -140,7 +140,7 @@ movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) 
     if (rentalType) query.rentalType = rentalType;
     
     return this.find(query)
-        .populate('movieId', 'movie_title poster_path movie_type producer price total_episodes')
+        .populate('movieId', 'movie_title poster_path duration movie_type')
         .populate('paymentId', 'amount orderCode paymentTime')
         .sort({ createdAt: -1 })
         .skip(skip)
