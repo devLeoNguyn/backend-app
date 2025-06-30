@@ -505,7 +505,7 @@ const getBannerAnime = async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(showAll ? 20 : Math.max(bannerLimit, limit));
 
-        // Xử lý phim cho banner
+npm         // Xử lý phim cho banner
         const bannerAnime = newAnime
             .filter(anime => anime._id)
             .slice(0, bannerLimit)
