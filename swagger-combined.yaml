@@ -11,6 +11,162 @@ servers:
     description: 'Production server'
 
 paths:
+  /api/movies/sports:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách tất cả phim thể thao'
+      description: |
+        Lấy danh sách tất cả phim thể thao bao gồm bóng đá và NBA.
+        - Lọc theo movie_type = "Thể thao"
+        - Trả về thông tin đầy đủ của mỗi phim
+      responses:
+        '200':
+          description: 'Lấy danh sách phim thể thao thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e8d7c88e880e0198759d0"
+                        movie_title:
+                          type: string
+                          example: "Ngoại Hạng Anh: Chelsea vs Leicester City"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "Premier League"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
+  /api/movies/nba-list:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách phim NBA'
+      description: |
+        Lấy danh sách các trận NBA.
+        - Lọc theo producer có chứa "NBA"
+        - Chỉ trả về các trận NBA
+      responses:
+        '200':
+          description: 'Lấy danh sách phim NBA thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e898088e880e0198759a0"
+                        movie_title:
+                          type: string
+                          example: "NBA Playoffs 2025: Celtics vs Knicks"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "NBA"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
+  /api/movies/football-list:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách phim bóng đá'
+      description: |
+        Lấy danh sách các trận bóng đá.
+        - Lọc theo producer có chứa "VPF"
+        - Chỉ trả về các trận V.League 1 và V.League 2
+      responses:
+        '200':
+          description: 'Lấy danh sách phim bóng đá thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e90fd88e880e019875a00"
+                        movie_title:
+                          type: string
+                          example: "Trường Tươi Bình Phước vs Hòa Bình FC - V.League 2 2024/25"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "VPF - Vietnam Professional Football"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
   /api/movies/{id}/related:
     get:
       tags:
