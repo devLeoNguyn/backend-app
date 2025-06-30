@@ -10,11 +10,12 @@ const {
     getMovieStats,
     searchMovies,
     getMovieDetailWithInteractions,
-    getMoviesByGenre,
+    // getMoviesByGenre,
 
     getSportsMovies,
     getNbaMovies,
-    getFootballMovies
+    getFootballMovies,
+    getRelatedMovies
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
