@@ -609,6 +609,7 @@ const getMoviesByGenre = async (req, res) => {
     }
 };
 
+
 // 🎽 Lấy toàn bộ phim thể thao
 const getSportsMovies = async (req, res) => {
     try {
@@ -620,6 +621,7 @@ const getSportsMovies = async (req, res) => {
             data: sportsMovies
         });
     } catch (error) {
+
         res.status(500).json({
             status: 'error',
             message: 'Lỗi server',
@@ -685,4 +687,5 @@ module.exports = {
     getSportsMovies,
     getNbaMovies,
     getFootballMovies
+
 };

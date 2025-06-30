@@ -305,7 +305,7 @@ const getTrendingAnime = async (req, res) => {
 const getAllAnime = async (req, res) => {
     try {
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ _id: "6847d080101e640d01a0c37f" });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -485,7 +485,7 @@ const getBannerAnime = async (req, res) => {
         const { bannerLimit = 5, limit = 10, days = 30, showAll = false } = req.query;
 
         // Tìm genre hoạt hình
-        const animeGenre = await Genre.findOne({ genre_name: /hoạt hình/i });
+        const animeGenre = await Genre.findOne({ _id: "6847d080101e640d01a0c37f" });
         if (!animeGenre) {
             return res.status(404).json({
                 status: 'error',
@@ -493,42 +493,43 @@ const getBannerAnime = async (req, res) => {
             });
         }
 
-        // Lấy phim hoạt hình mới nhất (đơn giản hóa query)
-        const query = {
+        // Query cơ bản cho tất cả anime
+        const baseQuery = { 
             genres: animeGenre._id,
             release_status: 'released'
         };
 
-        const newAnime = await Movie.find(query)
+        // Lấy phim hoạt hình mới nhất
+        const newAnime = await Movie.find(baseQuery)
             .populate('genres', 'genre_name')
             .sort({ createdAt: -1 })
             .limit(showAll ? 20 : Math.max(bannerLimit, limit));
 
         // Xử lý phim cho banner
         const bannerAnime = newAnime
-            .filter(anime => anime._id) // Chỉ lấy anime có _id hợp lệ
+            .filter(anime => anime._id)
             .slice(0, bannerLimit)
             .map(anime => ({
-                movieId: anime._id.toString(), // Đảm bảo movieId là string
-                title: anime.movie_title || '',
-                poster: anime.poster_path || '',
-                description: anime.description || '',
+                movieId: anime._id.toString(),
+                title: anime.movie_title,
+                poster: anime.poster_path,
+                description: anime.description,
                 releaseYear: anime.release_year,
-                movieType: anime.movie_type || '',
-                producer: anime.producer || '',
+                movieType: anime.movie_type,
+                producer: anime.producer,
                 genres: anime.genres.map(g => g.genre_name)
             }));
 
         // Xử lý phim cho grid
         const gridAnime = newAnime
-            .filter(anime => anime._id) // Chỉ lấy anime có _id hợp lệ
+            .filter(anime => anime._id)
             .slice(0, limit)
             .map(anime => ({
-                movieId: anime._id.toString(), // Đảm bảo movieId là string
-                title: anime.movie_title || '',
-                poster: anime.poster_path || '',
-                movieType: anime.movie_type || '',
-                producer: anime.producer || ''
+                movieId: anime._id.toString(),
+                title: anime.movie_title,
+                poster: anime.poster_path,
+                movieType: anime.movie_type,
+                producer: anime.producer
             }));
 
         res.json({

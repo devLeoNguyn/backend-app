@@ -11,6 +11,7 @@ const {
     searchMovies,
     getMovieDetailWithInteractions,
     getMoviesByGenre,
+
     getSportsMovies,
     getNbaMovies,
     getFootballMovies
@@ -56,5 +57,7 @@ router.put('/:id', updateMovie);
 
 // Xóa phim - userId từ body
 router.delete('/:id', deleteMovie);
+
+router.get('/:id/related', getRelatedMovies);
 
 module.exports = router;

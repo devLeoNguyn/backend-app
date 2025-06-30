@@ -72,7 +72,7 @@ app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Swagger Documentation
-const swaggerPath = path.join(__dirname, 'swagger.yaml');
+const swaggerPath = path.join(__dirname, 'swagger-combined.yaml');
 const swaggerDocument = YAML.load(swaggerPath);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,

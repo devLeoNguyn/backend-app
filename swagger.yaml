@@ -1,10 +1,10 @@
 openapi: 3.0.0
 info:
-  title: 'Movie Backend API'
-  description: "API documentation cho ứng dụng Movie Backend\n\n**🎯 NÚT \"XEM TẤT CẢ\" - HƯỚNG DẪN FRONTEND:**\n\n**📱 Cách triển khai nút \"Xem tất cả\" cho các section:**\n```javascript\n// 1. Hiển thị section ban đầu (8-10 phim)\nfetch('/api/home/trending')\n\n// 2. Khi user click \"Xem tất cả\" → hiển thị tối đa 20 phim  \nfetch('/api/home/trending?showAll=true')\n\n// 3. Áp dụng cho tất cả sections:\n// - /api/home/trending?showAll=true\n// - /api/home/top-rated?showAll=true  \n// - /api/home/anime?showAll=true\n// - /api/home/vietnamese?showAll=true\n// - /api/home/sports?showAll=true\n// - /api/home/coming-soon?showAll=true\n// - /api/series/trending?showAll=true\n// - /api/series/vietnamese?showAll=true\n// - /api/series/anime?showAll=true\n// - /api/series/korean?showAll=true\n```\n\n**🚀 CẬP NHẬT API CONSISTENCY v1.3.0:**\n- ✅ **Tối ưu hóa API:** Loại bỏ duplicate endpoints  \n- ✅ **Nhất quán dữ liệu:** 1 API duy nhất cho màn hình chi tiết phim\n- ❌ **Đã XÓA:** `/api/users/{userId}/interactions/movie/{movieId}` (trùng lặp)\n- ✅ **SỬ DỤNG:** `/api/movies/{id}/detail-with-interactions?userId={userId}` cho màn hình detail\n\n**🔄 PHIÊN BẢN ĐÃ CẬP NHẬT:**\n- ❌ Đã bỏ JWT tokens  \n- ❌ Đã bỏ authentication middleware\n- ✅ Sử dụng userId đơn giản\n- ✅ Default limit 20 cho tất cả sections\n\n**📋 FLOW AUTH MỚI (1 màn hình duy nhất):**\n1. **Màn hình nhập SĐT:** User nhập số điện thoại\n2. **Hệ thống check:** \n   - Nếu SĐT đã đăng ký → Gửi OTP đăng nhập → Verify → Vào trang chủ\n   - Nếu SĐT chưa đăng ký → Gửi OTP đăng ký → Verify → Nhập thông tin → Vào trang chủ\n3. **Lưu userId:** Store trong AsyncStorage/localStorage để dùng cho các API khác\n\n**📱 CÁC BƯỚC THỰC HIỆN:**\n1. Gọi `/api/auth/send-otp` với số điện thoại\n2. Gọi `/api/auth/verify-otp` để xác thực\n3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`\n4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ\n\n**📁 CLOUDFLARE IMAGES CONFIGURATION:**\n      - **Account ID:** 8396e0173865666f8dae8dd32565efca\n  - **Avatar variant:** 150x150px optimized\n  - **Image delivery:** Global CDN with auto WebP conversion\n- **Supported formats:** JPEG, PNG, GIF\n- **Max file size:** 2MB\n- **Auto cleanup:** Old avatars deleted when uploading new ones\n\n**🎯 PROFILE UPDATE API:**\n- **Endpoint:** PUT `/api/users/profile?userId={id}`\n- **Content-Type:** multipart/form-data\n- **Fields:** full_name, gender, avatar (file)\n- **Integration:** Direct S3 upload + MongoDB update\n\n**🎬 MOVIE DETAIL SCREEN WORKFLOW:**\n```javascript\n// 1. Load movie detail (API chính thức duy nhất)\nGET /api/movies/{id}/detail-with-interactions?userId={userId}\n// → Trả về: movie info + user interactions + UI tabs config\n\n// 2. User actions (realtime updates)\nPUT /api/ratings/movies/{id}/like        // Toggle like\nPUT /api/favorites/movies/{id}           // Toggle favorite  \nPUT /api/watching/progress/{episodeId}   // Update progress\n\n// 3. Video streaming\nGET /api/video-url/{episodeId}          // Get stream URLs\n```\n\n**❌ DEPRECATED:** `/api/users/{userId}/interactions/movie/{movieId}` (removed - duplicate functionality)\n"
-  version: 1.3.0
+  title: 'Movie Backend Frontend API'
+  description: "API documentation cho Frontend của ứng dụng Movie Backend\n\n**🎯 FRONTEND ONLY APIs:**\n\nFile này chỉ chứa các APIs dành cho Frontend. Các APIs dành cho Admin đã được tách sang `admin-swagger.yaml`.\n\n**📱 Cách triển khai nút \"Xem tất cả\" cho các section:**\n```javascript\n// 1. Hiển thị section ban đầu (8-10 phim)\nfetch('/api/home/trending')\n\n// 2. Khi user click \"Xem tất cả\" → hiển thị tối đa 20 phim  \nfetch('/api/home/trending?showAll=true')\n\n// 3. Áp dụng cho tất cả sections:\n// - /api/home/trending?showAll=true\n// - /api/home/top-rated?showAll=true  \n// - /api/home/anime?showAll=true\n// - /api/home/vietnamese?showAll=true\n// - /api/home/sports?showAll=true\n// - /api/home/coming-soon?showAll=true\n// - /api/series/trending?showAll=true\n// - /api/series/vietnamese?showAll=true\n// - /api/series/anime?showAll=true\n// - /api/series/korean?showAll=true\n```\n\n**🚀 CẬP NHẬT API CONSISTENCY v1.4.0:**\n- ✅ **Tách Admin APIs:** Tất cả APIs quản lý được tách sang `admin-swagger.yaml`\n- ✅ **Frontend Focus:** File này chỉ tập trung vào Frontend development\n- ✅ **Tối ưu hóa API:** Loại bỏ duplicate endpoints  \n- ✅ **Nhất quán dữ liệu:** 1 API duy nhất cho màn hình chi tiết phim\n- ❌ **Đã XÓA:** `/api/users/{userId}/interactions/movie/{movieId}` (trùng lặp)\n- ✅ **SỬ DỤNG:** `/api/movies/{id}/detail-with-interactions?userId={userId}` cho màn hình detail\n\n**📋 ADMIN APIs ĐÃ TÁCH:**\n- Genre CRUD operations → `admin-swagger.yaml`\n- Upload image/video management → `admin-swagger.yaml`\n- Rental statistics & analytics → `admin-swagger.yaml`\n- Cron job management → `admin-swagger.yaml`\n- User analytics & reports → `admin-swagger.yaml`\n\n**🔄 AUTHENTICATION:**\n- ❌ Đã bỏ JWT tokens  \n- ❌ Đã bỏ authentication middleware\n- ✅ Sử dụng userId đơn giản\n- ✅ Default limit 20 cho tất cả sections\n\n**📋 FLOW AUTH (1 màn hình duy nhất):**\n1. **Màn hình nhập SĐT:** User nhập số điện thoại\n2. **Hệ thống check:** \n   - Nếu SĐT đã đăng ký → Gửi OTP đăng nhập → Verify → Vào trang chủ\n   - Nếu SĐT chưa đăng ký → Gửi OTP đăng ký → Verify → Nhập thông tin → Vào trang chủ\n3. **Lưu userId:** Store trong AsyncStorage/localStorage để dùng cho các API khác\n\n**📱 CÁC BƯỚC THỰC HIỆN:**\n1. Gọi `/api/auth/send-otp` với số điện thoại\n2. Gọi `/api/auth/verify-otp` để xác thực\n3. Nếu response có `needsRegistration: true` → Gọi `/api/auth/complete-registration`\n4. Nếu response có `needsRegistration: false` → Đăng nhập thành công, vào trang chủ\n\n**🎬 MOVIE DETAIL SCREEN WORKFLOW:**\n```javascript\n// 1. Load movie detail (API chính thức duy nhất)\nGET /api/movies/{id}/detail-with-interactions?userId={userId}\n// → Trả về: movie info + user interactions + UI tabs config\n\n// 2. User actions (realtime updates)\nPUT /api/ratings/movies/{id}/like        // Toggle like\nPUT /api/favorites/movies/{id}           // Toggle favorite  \nPUT /api/watching/progress/{episodeId}   // Update progress\n\n// 3. Video streaming\nGET /api/video-url/{episodeId}          // Get stream URLs\n```\n\n**❌ DEPRECATED:** `/api/users/{userId}/interactions/movie/{movieId}` (removed - duplicate functionality)\n"
+  version: 1.4.0
   contact:
-    email: your-email@example.com
+    email: frontend-team@movieapp.com
 servers:
   -
     url: 'http://localhost:3003'
@@ -14,44 +14,47 @@ servers:
     description: 'Production server'
 tags:
   -
+    name: Anime
+    description: 'Các API liên quan đến anime/hoạt hình (/api/anime) - Frontend, bao gồm banner, series, movies, trending, categories'
+  -
     name: Authentication
     description: 'Các API liên quan đến xác thực người dùng (/api/auth) - Trả về userId'
   -
     name: User
-    description: "Các API liên quan đến thông tin người dùng (/api/users) - Cần userId\n\n**🚨 IMPORTANT CHANGE:** Đã XÓA `/api/users/{userId}/interactions/movie/{movieId}` \n→ Sử dụng `/api/movies/{id}/detail-with-interactions?userId={userId}` thay thế\n"
+    description: "Các API liên quan đến thông tin người dùng (/api/users) - Cần userId (Frontend)\n\n**🚨 IMPORTANT CHANGE:** Đã XÓA `/api/users/{userId}/interactions/movie/{movieId}` \n→ Sử dụng `/api/movies/{id}/detail-with-interactions?userId={userId}` thay thế\n\n**📋 ADMIN APIs đã tách:** Các API quản lý user dành cho Admin được tách sang `admin-swagger.yaml`\n"
   -
     name: Movie
-    description: 'Các API liên quan đến phim (/api/movies)'
+    description: 'Các API liên quan đến phim (/api/movies) - Frontend only'
   -
     name: Episode
-    description: 'Các API liên quan đến tập phim (/api/episodes)'
+    description: 'Các API liên quan đến tập phim (/api/episodes) - Frontend only'
   -
     name: Favorite
-    description: 'Các API liên quan đến danh sách yêu thích (/api/favorites) - Cần userId'
+    description: 'Các API liên quan đến danh sách yêu thích (/api/favorites) - Frontend, cần userId'
   -
     name: Payment
-    description: 'Các API liên quan đến thanh toán (/api/payments) - Cần userId'
+    description: 'Các API liên quan đến thanh toán (/api/payments) - Frontend, cần userId'
   -
     name: Rental
-    description: 'Các API liên quan đến thuê phim (/api/rentals) - Cần userId, PayOS integration'
+    description: 'Các API liên quan đến thuê phim (/api/rentals) - Frontend, cần userId, PayOS integration\n\n**📋 ADMIN APIs đã tách:** Stats và cron management APIs được tách sang `admin-swagger.yaml`'
   -
     name: Rating
-    description: 'Các API liên quan đến đánh giá (/api/ratings) - Cần userId'
+    description: 'Các API liên quan đến đánh giá (/api/ratings) - Frontend, cần userId'
   -
     name: Genre
-    description: 'Các API liên quan đến thể loại phim (/api/genres)'
+    description: 'Các API liên quan đến thể loại phim (/api/genres) - Frontend\n\n**📋 ADMIN APIs đã tách:** CRUD operations cho genres được tách sang `admin-swagger.yaml`'
   -
     name: Home
-    description: 'Các API trang chủ (/api/home) - Banner, phim mới, đề xuất'
+    description: 'Các API trang chủ (/api/home) - Banner, phim mới, đề xuất (Frontend)'
   -
     name: Series
-    description: 'Các API cho phim bộ/series (/api/series) - Banner, trending, phân loại theo quốc gia'
+    description: 'Các API cho phim bộ/series (/api/series) - Banner, trending, phân loại theo quốc gia (Frontend)'
   -
     name: 'Video Player'
-    description: 'Các API cho màn hình phát video (/api/video-url, /api/watching, /api/episodes) - Stream URLs, progress tracking, interactions'
+    description: 'Các API cho màn hình phát video (/api/video-url, /api/watching, /api/episodes) - Stream URLs, progress tracking, interactions (Frontend)'
   -
-    name: Episode
-    description: 'Các API cho tập phim (/api/episodes) - Chi tiết tập phim'
+    name: 'Movie Interactions'
+    description: 'Các API tương tác với phim - Like, favorite, comment (Frontend)'
 paths:
   /api/auth/send-otp:
     post:
@@ -766,12 +769,268 @@ paths:
               example:
                 status: error
                 message: 'Lỗi khi lấy phim sắp chiếu'
+  /api/anime:
+    get:
+      tags:
+        - Anime
+      summary: '🌸 Lấy tất cả anime (Frontend)'
+      description: "**🎯 API TỔNG HỢP ANIME**\n\nLấy danh sách anime với nhiều loại khác nhau\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "**👀 XEM TẤT CẢ ANIME**\n\n- `false`: Hiển thị mặc định\n- `true`: Hiển thị tất cả anime"
+          example: false
+      responses:
+        '200':
+          description: '✅ Lấy anime thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {title: {type: string, example: 'Tất cả Anime'}, type: {type: string, example: grid}, movies: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}}}
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/anime/series:
+    get:
+      tags:
+        - Anime
+      summary: '📺 Lấy anime phim bộ (Frontend)'
+      description: "**🎯 API ANIME PHIM BỘ**\n\nLấy danh sách anime dạng series/phim bộ\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: 'Số trang'
+          example: 1
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: 'Số lượng anime mỗi trang'
+          example: 10
+        -
+          name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "**👀 XEM TẤT CẢ ANIME SERIES**"
+          example: false
+      responses:
+        '200':
+          description: '✅ Lấy anime series thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/anime/movies:
+    get:
+      tags:
+        - Anime
+      summary: '🎬 Lấy anime phim lẻ (Frontend)'
+      description: "**🎯 API ANIME PHIM LẺ**\n\nLấy danh sách anime dạng movies/phim lẻ\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: 'Số trang'
+          example: 1
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 13
+          description: 'Số lượng anime mỗi trang'
+          example: 13
+        -
+          name: price_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - free
+              - paid
+          description: 'Filter theo loại giá'
+          example: free
+        -
+          name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "**👀 XEM TẤT CẢ ANIME MOVIES**"
+          example: false
+      responses:
+        '200':
+          description: '✅ Lấy anime movies thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/anime/trending:
+    get:
+      tags:
+        - Anime
+      summary: '🔥 Lấy anime trending (Frontend)'
+      description: "**🎯 API ANIME HOT NHẤT**\n\nLấy danh sách anime đang thịnh hành\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - series
+              - movies
+              - all
+            default: series
+          description: 'Loại anime trending'
+          example: series
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: 'Số lượng anime trending'
+          example: 10
+        -
+          name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "**👀 XEM TẤT CẢ ANIME TRENDING**"
+          example: false
+      responses:
+        '200':
+          description: '✅ Lấy anime trending thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  '/api/anime/{id}':
+    get:
+      tags:
+        - Anime
+      summary: '📖 Chi tiết anime (Frontend)'
+      description: "**🎯 API CHI TIẾT ANIME**\n\nLấy thông tin chi tiết của một anime\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'ID của anime'
+          example: 683fb76c88e880e019875aca
+      responses:
+        '200':
+          description: '✅ Lấy chi tiết anime thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {$ref: '#/components/schemas/MovieDetailResponse'}
+        '404':
+          description: '❌ Không tìm thấy anime'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/anime/categories:
+    get:
+      tags:
+        - Anime
+      summary: '📂 Lấy danh mục anime (Frontend)'
+      description: "**🎯 API DANH MỤC ANIME**\n\nLấy danh sách các danh mục/thể loại anime\n\n**🔓 Public API** (không cần đăng nhập)"
+      responses:
+        '200':
+          description: '✅ Lấy danh mục anime thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: array, items: {$ref: '#/components/schemas/Genre'}}
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/anime/banner-anime:
     get:
       tags:
         - Anime
-      summary: 'Banner phim hoạt hình'
-      description: "API lấy banner và danh sách phim hoạt hình"
+      summary: '🎬 Banner phim hoạt hình (Frontend)'
+      description: "**🎯 API BANNER ANIME**\n\nLấy banner và danh sách phim hoạt hình cho màn hình chính\n\n**🔓 Public API** (không cần đăng nhập)"
       parameters:
         - name: bannerLimit
           in: query
@@ -785,26 +1044,40 @@ paths:
             type: integer
             default: 6
           description: 'Số phim grid'
+        -
+          name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 30
+          description: 'Lấy anime mới trong X ngày'
+          example: 30
+        -
+          name: showAll
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: "**👀 XEM TẤT CẢ BANNER ANIME**"
+          example: false
       responses:
         '200':
-          description: 'Thành công'
+          description: '✅ Lấy banner anime thành công'
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    example: success
-                  data:
-                    type: object
-                    properties:
-                      banner:
-                        type: array
-                      grid:
-                        type: array
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {banner: {type: object, properties: {title: {type: string, example: 'Anime mới ra mắt'}, type: {type: string, example: banner_list}, movies: {type: array, items: {$ref: '#/components/schemas/BannerMovie'}}}}, recommended: {type: object, properties: {title: {type: string, example: 'Anime dành cho bạn'}, type: {type: string, example: grid}, movies: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}}}}}
         '500':
           description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/series/banner-series:
     get:
       tags:
@@ -1005,6 +1278,43 @@ paths:
                   showAll: false
                   total: 8
                   movies: [{movieId: 683fb123456789abcdef1234, title: 'Hometown''s Embrace', poster: 'https://imagedelivery.net/8396e0173865666f8dae8dd32565efca/hometown-embrace/medium', movieType: 'Phim bộ', producer: 'KBS Drama'}]
+  '/api/series/{id}':
+    get:
+      tags:
+        - Series
+      summary: '📖 Chi tiết phim bộ (Frontend)'
+      description: "**🎯 API CHI TIẾT PHIM BỘ**\n\nLấy thông tin chi tiết của một phim bộ\n\n**🔓 Public API** (không cần đăng nhập)\n\n**🎬 Use Cases:**\n- Màn hình chi tiết phim bộ\n- Thông tin episodes\n- Cast & crew info"
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'ID của phim bộ'
+          example: 683fb76c88e880e019875aca
+      responses:
+        '200':
+          description: '✅ Lấy chi tiết phim bộ thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {$ref: '#/components/schemas/MovieDetailResponse'}
+        '404':
+          description: '❌ Không tìm thấy phim bộ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   '/api/movies/{id}/detail-with-interactions':
     get:
       tags:
@@ -1196,109 +1506,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  '/api/genres/{id}':
-    put:
-      tags:
-        - Genre
-      summary: 'Cập nhật thể loại (Admin)'
-      description: 'Cập nhật thông tin của một thể loại'
-      parameters:
-        -
-          in: query
-          name: id
-          required: true
-          schema:
-            type: string
-          description: 'ID thể loại'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                genre_name:
-                  type: string
-                  example: 'Hành động'
-                description:
-                  type: string
-                  example: 'Phim hành động gay cấn'
-                poster:
-                  type: string
-                  example: 'https://example.com/poster.jpg'
-                sort_order:
-                  type: integer
-                  example: 1
-      responses:
-        '200':
-          description: 'Cập nhật thành công'
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: {type: string, example: success}
-                  message: {type: string, example: 'Đã cập nhật thể loại thành công'}
-                  data: {type: object, properties: {genre: {$ref: '#/components/schemas/Genre'}}}
-    delete:
-      tags:
-        - Genre
-      summary: 'Xóa thể loại (Admin)'
-      description: 'Xóa một thể loại'
-      parameters:
-        -
-          in: query
-          name: id
-          required: true
-          schema:
-            type: string
-          description: 'ID thể loại'
-      responses:
-        '200':
-          description: 'Xóa thành công'
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: {type: string, example: success}
-                  message: {type: string, example: 'Đã xóa thể loại thành công'}
-  '/api/genres/{id}/status':
-    put:
-      tags:
-        - Genre
-      summary: 'Cập nhật trạng thái thể loại (Admin)'
-      description: "Cập nhật trạng thái của thể loại (activate/deactivate/toggle).\n\n**Lưu ý:**\n- Nếu không truyền action → Toggle trạng thái\n- Nếu truyền action → Set trạng thái theo action\n"
-      parameters:
-        -
-          in: query
-          name: id
-          required: true
-          schema:
-            type: string
-          description: 'ID thể loại'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                action:
-                  type: string
-                  enum: [activate, deactivate]
-                  example: activate
-      responses:
-        '200':
-          description: 'Cập nhật thành công'
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: {type: string, example: success}
-                  message: {type: string, example: 'Đã cập nhật trạng thái thể loại thành công'}
-                  data: {type: object, properties: {genre: {$ref: '#/components/schemas/Genre'}}}
+
   '/api/ratings/movies/{movie_id}/like':
     put:
       tags:
@@ -1627,6 +1835,149 @@ paths:
               example:
                 status: error
                 message: 'Lỗi server khi tìm kiếm phim'
+  '/api/movies/{id}/stats':
+    get:
+      tags:
+        - Movie
+      summary: '📊 Lấy thống kê phim (Frontend)'
+      description: "**🎯 API THỐNG KÊ PHIM**\n\nLấy các số liệu thống kê của phim (like, view, rating)\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'ID của phim'
+          example: 675a1234567890abcdef1234
+      responses:
+        '200':
+          description: '✅ Lấy thống kê phim thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {likeCount: {type: integer, example: 892}, viewCount: {type: integer, example: 15420}, averageRating: {type: number, format: float, example: 4.6}, totalRating: {type: integer, example: 1250}}}
+        '404':
+          description: '❌ Không tìm thấy phim'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  '/api/movies/{id}/related':
+    get:
+      tags:
+        - Movie
+      summary: '🔗 Lấy phim liên quan (Frontend)'
+      description: "**🎯 API PHIM LIÊN QUAN**\n\nLấy danh sách phim liên quan dựa theo thể loại, diễn viên, đạo diễn\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'ID của phim gốc'
+          example: 675a1234567890abcdef1234
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            minimum: 1
+            maximum: 20
+          description: 'Số lượng phim liên quan'
+          example: 5
+      responses:
+        '200':
+          description: '✅ Lấy phim liên quan thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: array, items: {$ref: '#/components/schemas/GridMovie'}}
+        '404':
+          description: '❌ Không tìm thấy phim'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  '/api/ratings/movies/{movieId}/comments':
+    get:
+      tags:
+        - 'Movie Interactions'
+      summary: '💬 Lấy danh sách bình luận phim (Frontend)'
+      description: "**🎯 API DANH SÁCH BÌNH LUẬN**\n\nLấy danh sách bình luận của phim với pagination\n\n**🔓 Public API** (không cần đăng nhập)"
+      parameters:
+        -
+          name: movieId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'ID của phim'
+          example: 675a1234567890abcdef1234
+        -
+          name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: 'Số trang'
+          example: 1
+        -
+          name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+          description: 'Số bình luận mỗi trang'
+          example: 10
+      responses:
+        '200':
+          description: '✅ Lấy bình luận thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: success}
+                  data: {type: object, properties: {comments: {type: array, items: {type: object, properties: {_id: {type: string}, user: {type: object, properties: {name: {type: string}, email: {type: string}, avatar: {type: string}}}, comment: {type: string}, isLike: {type: boolean}, createdAt: {type: string, format: date-time}}}}, pagination: {type: object, properties: {page: {type: integer}, limit: {type: integer}, total: {type: integer}, hasMore: {type: boolean}}}}}
+        '404':
+          description: '❌ Không tìm thấy phim'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   '/api/video-url/{videoId}':
     get:
       tags:
@@ -1752,91 +2103,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/upload/image:
-    post:
-      tags:
-        - Upload
-      summary: '🖼️ Upload Image to Cloudflare Images (Admin)'
-      operationId: uploadImage
-      description: 'Upload ảnh lên Cloudflare Images với auto-optimization'
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: 'Image file (JPEG/PNG/GIF/WebP, max 5MB)'
-                folder:
-                  type: string
-                  default: general
-                  description: 'Folder name for organization'
-                variant:
-                  type: string
-                  enum: [avatar, thumbnail, medium, public]
-                  default: public
-                  description: 'Image variant for optimization'
-      responses:
-        '200':
-          description: 'Image uploaded successfully'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudflareImageResponse'
-        '400':
-          description: 'File không hợp lệ'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/upload/video:
-    post:
-      tags:
-        - Upload
-      summary: '🎬 Upload Video to Cloudflare Stream (Admin)'
-      operationId: uploadVideo
-      description: 'Upload video lên Cloudflare Stream với auto-processing'
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - file
-                - episodeId
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: 'Video file (MP4/AVI/MOV/WebM/MKV/FLV, max 500MB)'
-                episodeId:
-                  type: string
-                  description: 'Episode ID để liên kết video'
-                movieTitle:
-                  type: string
-                  description: 'Tên phim (optional)'
-                episodeTitle:
-                  type: string
-                  description: 'Tên tập phim (optional)'
-      responses:
-        '200':
-          description: 'Video uploaded và đang xử lý'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudflareVideoUploadResponse'
-        '400':
-          description: 'File không hợp lệ'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+
   '/api/watching/progress/{episodeId}':
     get:
       tags:
@@ -1847,7 +2114,7 @@ paths:
       parameters:
         -
           name: episodeId
-          in: query
+          in: path
           required: true
           schema:
             type: string
@@ -1876,6 +2143,56 @@ paths:
                   last_watched: {type: string, format: date-time}
         '404':
           description: 'Không tìm thấy progress'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - 'Video Player'
+      summary: '💾 API cập nhật tiến độ xem (Frontend)'
+      operationId: updateWatchingProgress
+      description: 'Cập nhật tiến độ xem hiện tại của user'
+      parameters:
+        -
+          name: episodeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 675a1234567890abcdef1234
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - currentTime
+                - duration
+              properties:
+                userId:
+                  type: string
+                  description: 'User ID'
+                currentTime:
+                  type: number
+                  description: 'Vị trí hiện tại (giây)'
+                duration:
+                  type: number
+                  description: 'Tổng thời lượng video (giây)'
+                completed:
+                  type: boolean
+                  description: 'Đã xem xong hay chưa'
+      responses:
+        '200':
+          description: 'Cập nhật progress thành công'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: 'Dữ liệu không hợp lệ'
           content:
             application/json:
               schema:
@@ -2172,116 +2489,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
-  /api/rentals/stats/revenue:
-    get:
-      tags:
-        - Rental
-      summary: '📊 Thống kê doanh thu (Admin)'
-      description: "**📊 Lấy thống kê doanh thu theo khoảng thời gian.**\n"
-      parameters:
-        -
-          name: startDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-          example: '2024-01-01'
-        -
-          name: endDate
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-          example: '2024-12-31'
-      responses:
-        '200':
-          description: 'Lấy thống kê doanh thu thành công'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RevenueStatsResponse'
-  /api/rentals/stats/popular:
-    get:
-      tags:
-        - Rental
-      summary: '🔥 Phim được thuê nhiều nhất (Admin)'
-      description: "**🔥 Lấy danh sách phim được thuê nhiều nhất.**\n"
-      parameters:
-        -
-          name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: 'Lấy danh sách phim phổ biến thành công'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PopularRentalsResponse'
-  /api/rentals/cron/status:
-    get:
-      tags:
-        - Rental
-      summary: '⚙️ Trạng thái cron jobs (Admin)'
-      description: "**⚙️ Lấy trạng thái tất cả cron jobs.**\n"
-      responses:
-        '200':
-          description: 'Lấy trạng thái cron jobs thành công'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CronStatusResponse'
-  /api/rentals/cron/manual-check:
-    post:
-      tags:
-        - Rental
-      summary: '🔄 Chạy manual check (Admin)'
-      description: "**🔄 Chạy manual check rental expiration ngay lập tức.**\n"
-      responses:
-        '200':
-          description: 'Manual check hoàn thành'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ManualCheckResponse'
-  '/api/rentals/cron/{action}/{jobName}':
-    put:
-      tags:
-        - Rental
-      summary: '🎛️ Control cron job (Admin)'
-      description: "**🎛️ Start/Stop một cron job cụ thể.**\n\n**Available jobs:**\n- `expiredRentalsCheck`\n- `expiringNotifications`\n- `cleanupOldRentals`\n- `dailyStatsGeneration`\n"
-      parameters:
-        -
-          name: action
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - start
-              - stop
-        -
-          name: jobName
-          in: query
-          required: true
-          schema:
-            type: string
-            enum:
-              - expiredRentalsCheck
-              - expiringNotifications
-              - cleanupOldRentals
-              - dailyStatsGeneration
-      responses:
-        '200':
-          description: 'Control cron job thành công'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+
   /api/rentals/webhook/payment-success:
     post:
       tags:
