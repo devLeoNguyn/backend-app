@@ -609,6 +609,30 @@ const getMoviesByGenre = async (req, res) => {
     }
 };
 
+// 🔗 API lấy linking chia sẻ phim
+const getMovieLinking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Kiểm tra phim có tồn tại không
+        const movie = await Movie.findById(id).select('_id movie_title');
+        if (!movie) {
+            return res.status(404).json({ status: 'error', message: 'Không tìm thấy phim' });
+        }
+        // Tạo linking (bạn thay domain theo ý muốn)
+        const linking = `https://tenmiencuaban.com/movies/${movie._id}`;
+        res.json({
+            status: 'success',
+            data: {
+                movie_id: movie._id,
+                movie_title: movie.movie_title,
+                linking
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -620,5 +644,6 @@ module.exports = {
     getMovieStats,
     getMovieDetailWithInteractions,
     searchMovies,
-    getMoviesByGenre
+    getMoviesByGenre,
+    getMovieLinking
 };

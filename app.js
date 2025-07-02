@@ -50,9 +50,11 @@ const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const animeRoutes = require('./routes/anime.routes');
+const savedMovieRoutes = require('./routes/savedMovie.routes');
 
 
 // Đăng ký routes
+app.use('/api/saved', savedMovieRoutes);
 app.use('/', indexRouter);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
