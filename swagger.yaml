@@ -1518,6 +1518,7 @@ paths:
           name: movie_id
           in: query
           required: true
+
           schema:
             type: string
           example: 675a1234567890abcdef1234

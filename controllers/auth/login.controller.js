@@ -1,5 +1,6 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
+const bcrypt = require('bcrypt');
 
 // Đăng nhập bằng OTP - Simple version (chỉ trả về userId)
 exports.loginWithOTP = async (req, res) => {
@@ -103,6 +104,65 @@ exports.requestLoginOTP = async (req, res) => {
         res.status(400).json({
             status: 'error',
             message: error.message
+        });
+    }
+};
+
+// Traditional login với email/password cho admin panel
+exports.traditionalLogin = async (req, res) => {
+    try {
+        const { email, password, phone } = req.body;
+        
+        if (!password || (!email && !phone)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email/Phone và password là bắt buộc'
+            });
+        }
+
+        // Tìm user bằng email hoặc phone
+        const query = email ? { email } : { phone };
+        const user = await User.findOne(query);
+        
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Tài khoản không tồn tại'
+            });
+        }
+
+        // Kiểm tra password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Mật khẩu không đúng'
+            });
+        }
+
+        // Trả về user info (compatible với admin frontend)
+        res.json({
+            success: true,
+            message: 'Đăng nhập thành công',
+            data: {
+                user: {
+                    _id: user._id,
+                    full_name: user.full_name,
+                    email: user.email,
+                    phone: user.phone,
+                    role: user.role,
+                    avatar: user.avatar,
+                    is_phone_verified: user.is_phone_verified,
+                    createdAt: user.createdAt
+                },
+                token: 'dummy-token-for-now' // Simple token for admin frontend
+            }
+        });
+    } catch (error) {
+        console.error('Traditional login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi server khi đăng nhập'
         });
     }
 }; 
