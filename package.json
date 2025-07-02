@@ -5,6 +5,10 @@
   "scripts": {
     "start": "node ./bin/www",
     "dev": "nodemon ./bin/www",
+    "build-admin": "cd admin-frontend && npm run build",
+    "dev-admin": "concurrently \"npm run dev\" \"cd admin-frontend && npm run dev\"",
+    "start-with-admin": "npm run build-admin && npm start",
+    "create-admin": "node scripts/create-admin.js",
     "seed": "node scripts/seedTestData.js",
     "clean": "node scripts/cleanTestData.js",
     "reseed": "npm run clean && npm run seed",
@@ -37,8 +41,12 @@
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
     "sharp": "^0.34.2",
+    "socket.io": "^4.8.1",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }

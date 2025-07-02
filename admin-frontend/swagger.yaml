@@ -32,7 +32,7 @@ paths:
       tags:
         - Admin Genre Management
       summary: 'Lấy danh sách thể loại (Admin Dashboard)'
-      description: "API dành cho Admin Dashboard để quản lý thể loại.\n\n**Admin Features:**\n- Xem tất cả genres (bao gồm inactive)\n- Hiển thị số lượng phim thuộc mỗi genre\n- Quản lý parent-child relationships\n- Sắp xếp theo sort_order\n"
+      description: "API dành cho Admin Dashboard để quản lý thể loại.\n\n**✅ STATUS: IMPLEMENTED & TESTED**\n\n**Admin Features:**\n- Xem tất cả genres (bao gồm inactive)\n- Hiển thị số lượng phim thuộc mỗi genre\n- Quản lý parent-child relationships\n- Sắp xếp theo sort_order\n\n**Test Results:**\n- ✅ API hoạt động tốt\n- ✅ Admin UI đã được cập nhật với thông tin đầy đủ\n- ✅ Hiển thị genres với field genre_name\n"
       parameters:
         - name: type
           in: query
@@ -315,7 +315,7 @@ paths:
       tags:
         - Admin Rental Management
       summary: '📊 Thống kê doanh thu (Admin)'
-      description: "Lấy thống kê doanh thu theo khoảng thời gian."
+      description: "Lấy thống kê doanh thu theo khoảng thời gian. **✅ ĐÃ TEST THÀNH CÔNG**"
       parameters:
         - name: startDate
           in: query
@@ -338,6 +338,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RevenueStatsResponse'
+              example:
+                success: true
+                message: "Lấy thống kê revenue thành công"
+                data:
+                  summary:
+                    totalRevenue: 616500
+                    totalRentals: 34
+                    averageRevenuePerRental: 18132
+                  dailyStats: []
 
   /api/rentals/stats/popular:
     get:

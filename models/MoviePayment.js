@@ -71,8 +71,6 @@ const moviePaymentSchema = new mongoose.Schema({
     timestamps: true
 });
 
-
-
 // Virtual fields for rental status
 moviePaymentSchema.virtual('is_48h_rental_active').get(function() {
     if (!this.rental_48h_start_time || !this.rental_48h_expiration_time) {
@@ -113,5 +111,41 @@ moviePaymentSchema.pre('save', function(next) {
     }
     next();
 });
+
+// Indexes
+moviePaymentSchema.index({ userId: 1 });
+moviePaymentSchema.index({ movieId: 1 });
+moviePaymentSchema.index({ status: 1 });
+moviePaymentSchema.index({ orderCode: 1 }, { unique: true });
+
+// Static methods
+moviePaymentSchema.statics.getRevenueStats = async function(startDate, endDate) {
+    const stats = await this.aggregate([
+        {
+            $match: {
+                status: 'SUCCESS',
+                paymentTime: { 
+                    $gte: new Date(startDate), 
+                    $lte: new Date(endDate) 
+                }
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    date: { $dateToString: { format: "%Y-%m-%d", date: "$paymentTime" } },
+                    rentalType: '$rentalType'
+                },
+                totalRevenue: { $sum: '$amount' },
+                totalRentals: { $sum: 1 }
+            }
+        },
+        {
+            $sort: { '_id.date': 1 }
+        }
+    ]);
+
+    return stats;
+};
 
 module.exports = mongoose.model('MoviePayment', moviePaymentSchema); 
