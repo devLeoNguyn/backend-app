@@ -5,7 +5,10 @@ const {
     addToFavorites,
     getFavorites,
     removeFromFavorites,
-    checkFavorite
+    checkFavorite,
+    addToWatchLater,
+    getWatchLater,
+    removeFromWatchLater
 } = require('../controllers/favorite.controller');
 
 // ==============================================
@@ -24,6 +27,11 @@ router.post('/', addToFavorites);
 
 // Lấy danh sách phim yêu thích (userId từ query)
 router.get('/', getFavorites);
+
+// Danh sách phim xem sau
+router.post('/watch-later', addToWatchLater); // Thêm phim vào xem sau
+router.get('/watch-later', getWatchLater);    // Lấy danh sách xem sau
+router.delete('/watch-later', removeFromWatchLater); // Xóa phim khỏi xem sau
 
 // Xóa phim khỏi danh sách yêu thích (userId từ body)
 router.delete('/:movie_id', removeFromFavorites);

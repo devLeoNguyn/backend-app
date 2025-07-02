@@ -306,4 +306,48 @@ exports.checkFavorite = async (req, res) => {
             message: error.message
         });
     }
+};
+
+// Thêm phim vào danh sách 'xem sau' (watch later) - tạo bản ghi Favorite riêng
+exports.addToWatchLater = async (req, res) => {
+    try {
+        const { userId, movieId } = req.body;
+        if (!userId || !movieId) return res.status(400).json({ status: 'error', message: 'userId và movieId là bắt buộc' });
+        // Tạo bản ghi Favorite mới cho phim xem sau
+        const exists = await Favorite.findOne({ user_id: userId, movie_id: movieId });
+        if (exists) {
+            return res.status(400).json({ status: 'error', message: 'Phim đã có trong danh sách xem sau hoặc yêu thích' });
+        }
+        const doc = await Favorite.create({ user_id: userId, movie_id: movieId });
+        res.json({ status: 'success', data: doc });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+};
+
+// Lấy toàn bộ danh sách phim 'xem sau' của user (lấy tất cả bản ghi Favorite của user)
+exports.getWatchLater = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.status(400).json({ status: 'error', message: 'userId là bắt buộc' });
+        const list = await Favorite.find({ user_id: userId }).populate('movie_id');
+        res.json({ status: 'success', data: list });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+};
+
+// Xóa phim khỏi danh sách 'xem sau' (xóa bản ghi Favorite theo user_id và movie_id)
+exports.removeFromWatchLater = async (req, res) => {
+    try {
+        const { userId, movieId } = req.body;
+        if (!userId || !movieId) return res.status(400).json({ status: 'error', message: 'userId và movieId là bắt buộc' });
+        const result = await Favorite.findOneAndDelete({ user_id: userId, movie_id: movieId });
+        if (!result) {
+            return res.status(404).json({ status: 'error', message: 'Không tìm thấy phim trong danh sách xem sau' });
+        }
+        res.json({ status: 'success', message: 'Đã xóa phim khỏi danh sách xem sau' });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
 }; 
