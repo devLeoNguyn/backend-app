@@ -6,6 +6,7 @@ const Genre = require('../models/Genre');
 const Rating = require('../models/Rating');
 const Watching = require('../models/Watching');
 const mongoose = require('mongoose');
+const MovieRental = require('../models/MovieRental');
 
 // Import movie service for centralized movie operations
 const movieService = require('../services/movie.service');
@@ -221,7 +222,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Check rental access for paid movies
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (!movie.is_free && userId) {
-                const MovieRental = require('../models/MovieRental');
                 const userRental = await MovieRental.findActiveRental(userId, id);
                 hasRentalAccess = !!userRental;
             }
@@ -262,7 +262,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Check if user has rental access to override locked episodes
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (userId && !movie.is_free) {
-                const MovieRental = require('../models/MovieRental');
                 const userRental = await MovieRental.findActiveRental(userId, id);
                 hasRentalAccess = !!userRental;
             }
@@ -299,7 +298,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
 
         // Check user-specific data if userId provided
         if (userId) {
-            const Rating = require('../models/Rating');
             const Favorite = require('../models/Favorite');
             const Watching = require('../models/Watching');
 
@@ -633,6 +631,56 @@ const getMovieLinking = async (req, res) => {
     }
 };
 
+// Tìm kiếm phim đã đăng kí (đã thuê) của user
+const searchRegisteredMovies = async (req, res) => {
+    try {
+        const { userId, q } = req.query;
+        if (!userId) return res.status(400).json({ status: 'error', message: 'userId là bắt buộc' });
+        // Lấy tất cả rental của user, populate movieId
+        const rentals = await MovieRental.find({ userId }).populate('movieId');
+        // Lọc theo tên phim nếu có q
+        let movies = rentals.map(r => r.movieId).filter(Boolean);
+        if (q) {
+            const qLower = q.toLowerCase();
+            movies = movies.filter(m =>
+                (m.title && m.title.toLowerCase().includes(qLower)) ||
+                (m.movie_title && m.movie_title.toLowerCase().includes(qLower))
+            );
+        }
+        res.json({ status: 'success', data: movies });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+};
+
+const removeVietnameseTones = (str) => {
+    return str
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+};
+
+// Tìm kiếm phim thể thao
+const searchSportsMovies = async (req, res) => {
+    try {
+        const { q } = req.query;
+        // Lấy tất cả phim thể thao
+        let movies = await Movie.find({ movie_type: { $regex: /^thể thao$/i } });
+        if (q) {
+            const qLower = removeVietnameseTones(q.toLowerCase());
+            movies = movies.filter(m => {
+                const fields = [m.title, m.movie_title, m.description, m.producer, ...(Array.isArray(m.genres) ? m.genres : [])];
+                return fields.some(val =>
+                    val && removeVietnameseTones(String(val).toLowerCase()).includes(qLower)
+                );
+            });
+        }
+        res.json({ status: 'success', data: movies });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -645,5 +693,7 @@ module.exports = {
     getMovieDetailWithInteractions,
     searchMovies,
     getMoviesByGenre,
-    getMovieLinking
+    getMovieLinking,
+    searchRegisteredMovies,
+    searchSportsMovies
 };
