@@ -1,261 +1,491 @@
-const mongoose = require('mongoose');
+const MovieRental = require('../models/MovieRental');
+const MoviePayment = require('../models/MoviePayment');
+const Movie = require('../models/Movie');
+const User = require('../models/User');
+const payOS = require('../utils/payos.util');
 
-const movieRentalSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-        index: true
-    },
-    movieId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Movie',
-        required: true,
-        index: true
-    },
-    paymentId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'MoviePayment',
-        required: true
-    },
-    rentalType: {
-        type: String,
-        enum: ['48h', '30d'],
-        required: true
-    },
-    startTime: {
-        type: Date,
-        required: true,
-        default: Date.now
-    },
-    endTime: {
-        type: Date,
-        required: true
-    },
-    status: {
-        type: String,
-        enum: ['active', 'expired', 'cancelled'],
-        default: 'active',
-        index: true
-    },
-    notificationSent: {
-        type: Boolean,
-        default: false
-    },
-    accessCount: {
-        type: Number,
-        default: 0
-    },
-    lastAccessTime: {
-        type: Date
-    }
-}, {
-    timestamps: true
-});
-
-// Compound indexes for better performance
-movieRentalSchema.index({ userId: 1, movieId: 1 });
-movieRentalSchema.index({ status: 1, endTime: 1 });
-movieRentalSchema.index({ endTime: 1, notificationSent: 1 });
-
-// Virtual field to check if rental is currently active
-movieRentalSchema.virtual('isActive').get(function() {
-    const now = new Date();
-    return this.status === 'active' && now >= this.startTime && now <= this.endTime;
-});
-
-// Virtual field to get remaining time in milliseconds
-movieRentalSchema.virtual('remainingTime').get(function() {
-    const now = new Date();
-    if (this.status !== 'active' || now > this.endTime) {
-        return 0;
-    }
-    return Math.max(0, this.endTime.getTime() - now.getTime());
-});
-
-// Virtual field to check if rental is expiring soon (within 2 hours)
-movieRentalSchema.virtual('isExpiringSoon').get(function() {
-    const now = new Date();
-    const twoHoursFromNow = new Date(now.getTime() + (2 * 60 * 60 * 1000));
-    return this.status === 'active' && this.endTime <= twoHoursFromNow && this.endTime > now;
-});
-
-// Methods
-movieRentalSchema.methods.recordAccess = function() {
-    this.accessCount += 1;
-    this.lastAccessTime = new Date();
-    return this.save();
-};
-
-movieRentalSchema.methods.cancel = function() {
-    this.status = 'cancelled';
-    return this.save();
-};
-
-movieRentalSchema.methods.expire = function() {
-    this.status = 'expired';
-    return this.save();
-};
-
-movieRentalSchema.methods.markNotificationSent = function() {
-    this.notificationSent = true;
-    return this.save();
-};
-
-// Static methods
-movieRentalSchema.statics.findActiveRental = function(userId, movieId) {
-    return this.findOne({
-        userId,
-        movieId,
-        status: 'active',
-        startTime: { $lte: new Date() },
-        endTime: { $gte: new Date() }
-    }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
-};
-
-movieRentalSchema.statics.findExpiredRentals = function() {
-    return this.find({
-        status: 'active',
-        endTime: { $lt: new Date() }
-    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
-};
-
-movieRentalSchema.statics.findExpiringSoon = function() {
-    const now = new Date();
-    const twoHoursFromNow = new Date(now.getTime() + (2 * 60 * 60 * 1000));
+class RentalService {
     
-    return this.find({
-        status: 'active',
-        endTime: { $gte: now, $lte: twoHoursFromNow },
-        notificationSent: false
-    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
-};
-
-movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) {
-    const { page = 1, limit = 10, status, rentalType, searchTitle } = options;
-    const skip = (page - 1) * limit;
-    
-    // Base query with userId
-    const query = { userId };
-    if (status) query.status = status;
-    if (rentalType) query.rentalType = rentalType;
-
-    // Pipeline for aggregation
-    const pipeline = [
-        { $match: query },
-        {
-            $lookup: {
-                from: 'movies',
-                localField: 'movieId',
-                foreignField: '_id',
-                as: 'movie'
+    /**
+     * Tạo order thuê phim
+     */
+    async createRentalOrder(userId, movieId, rentalType) {
+        try {
+            // Kiểm tra user tồn tại
+            const user = await User.findById(userId);
+            if (!user) {
+                throw new Error('User không tồn tại');
             }
-        },
-        { $unwind: '$movie' },
-        {
-            $lookup: {
-                from: 'moviepayments',
-                localField: 'paymentId',
-                foreignField: '_id',
-                as: 'payment'
-            }
-        },
-        { $unwind: '$payment' }
-    ];
 
-    // Add title search if provided
-    if (searchTitle) {
-        pipeline.push({
-            $match: {
-                'movie.movie_title': { $regex: searchTitle, $options: 'i' }
+            // Kiểm tra movie tồn tại
+            const movie = await Movie.findById(movieId);
+            if (!movie) {
+                throw new Error('Movie không tồn tại');
             }
-        });
+
+            // Kiểm tra xem user đã thuê phim này chưa (và còn hạn)
+            const existingRental = await MovieRental.findActiveRental(userId, movieId);
+            if (existingRental) {
+                const remainingHours = Math.ceil(existingRental.remainingTime / (1000 * 60 * 60));
+                throw new Error(`Bạn đã thuê phim này rồi. Còn lại ${remainingHours} giờ.`);
+            }
+
+            // Tính giá thuê
+            const rentalPrices = {
+                '48h': Math.round(movie.price * 0.3), // 30% giá phim
+                '30d': Math.round(movie.price * 0.5)   // 50% giá phim
+            };
+
+            const amount = rentalPrices[rentalType];
+            if (!amount) {
+                throw new Error('Loại thuê không hợp lệ');
+            }
+
+            // Tạo order code unique
+            const orderCode = Date.now();
+            
+            // Tạo PayOS order
+            const description = `Thuê phim ${rentalType}: ${movie.title}`;
+            const payosBody = {
+                orderCode,
+                amount,
+                description,
+                returnUrl: process.env.PAYOS_RETURN_URL || 'https://your-app.com/payment/success',
+                cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://your-app.com/payment/cancel',
+                items: [
+                    {
+                        name: `Thuê phim: ${movie.title}`,
+                        quantity: 1,
+                        price: amount
+                    }
+                ]
+            };
+
+            const paymentLinkRes = await payOS.createPaymentLink(payosBody);
+
+            // Lưu thông tin payment với rentalType
+            const payment = new MoviePayment({
+                orderCode,
+                userId,
+                movieId,
+                amount,
+                description,
+                status: 'PENDING',
+                rentalType, // Lưu rentalType vào payment
+                payosData: {
+                    bin: paymentLinkRes.bin,
+                    checkoutUrl: paymentLinkRes.checkoutUrl,
+                    accountNumber: paymentLinkRes.accountNumber,
+                    accountName: paymentLinkRes.accountName,
+                    qrCode: paymentLinkRes.qrCode
+                }
+            });
+
+            await payment.save();
+
+            return {
+                success: true,
+                data: {
+                    orderCode,
+                    checkoutUrl: paymentLinkRes.checkoutUrl,
+                    amount,
+                    rentalType,
+                    movieTitle: movie.title,
+                    qrCode: paymentLinkRes.qrCode,
+                    paymentInfo: {
+                        bin: paymentLinkRes.bin,
+                        accountNumber: paymentLinkRes.accountNumber,
+                        accountName: paymentLinkRes.accountName
+                    }
+                }
+            };
+
+        } catch (error) {
+            console.error('Error creating rental order:', error);
+            throw error;
+        }
     }
 
-    // Add sorting, pagination and projection
-    pipeline.push(
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-            $project: {
-                _id: 1,
-                userId: 1,
-                movieId: '$movie._id',
-                movie: {
-                    _id: '$movie._id',
-                    title: '$movie.movie_title',
-                    poster: '$movie.poster',
-                    duration: '$movie.duration',
-                    type: '$movie.movie_type'
-                },
-                payment: {
-                    amount: '$payment.amount',
-                    orderCode: '$payment.orderCode',
-                    paymentTime: '$payment.paymentTime'
-                },
-                rentalType: 1,
-                startTime: 1,
-                endTime: 1,
-                status: 1,
-                accessCount: 1,
-                lastAccessTime: 1,
-                createdAt: 1,
-                updatedAt: 1
+    /**
+     * Kiểm tra trạng thái thanh toán mà không confirm
+     */
+    async checkPaymentStatus(orderCode, userId) {
+        try {
+            // Tìm payment
+            const payment = await MoviePayment.findOne({ orderCode });
+
+            if (!payment) {
+                return { isPaid: false, status: 'NOT_FOUND' };
             }
+
+            // Kiểm tra quyền
+            if (payment.userId.toString() !== userId) {
+                return { isPaid: false, status: 'UNAUTHORIZED' };
+            }
+
+            // Nếu đã SUCCESS thì return true luôn
+            if (payment.status === 'SUCCESS') {
+                return { isPaid: true, status: 'SUCCESS' };
+            }
+
+            // Nếu PENDING thì check với PayOS
+            if (payment.status === 'PENDING') {
+                try {
+                    const payosOrder = await payOS.getPaymentLinkInformation(orderCode);
+                    
+                    if (payosOrder.status === 'PAID') {
+                        return { isPaid: true, status: 'PAID' };
+                    } else {
+                        return { isPaid: false, status: payosOrder.status || 'PENDING' };
+                    }
+                } catch (payosError) {
+                    console.log('PayOS check error:', payosError.message);
+                    return { isPaid: false, status: 'PENDING' };
+                }
+            }
+
+            return { isPaid: false, status: payment.status };
+
+        } catch (error) {
+            console.error('Error checking payment status:', error);
+            return { isPaid: false, status: 'ERROR' };
         }
-    );
-
-    return this.aggregate(pipeline);
-
-};
-
-movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {
-    return this.aggregate([
-        {
-            $match: {
-                status: { $in: ['active', 'expired'] },
-                createdAt: { $gte: startDate, $lte: endDate }
-            }
-        },
-        {
-            $lookup: {
-                from: 'moviepayments',
-                localField: 'paymentId',
-                foreignField: '_id',
-                as: 'payment'
-            }
-        },
-        {
-            $unwind: '$payment'
-        },
-        {
-            $group: {
-                _id: {
-                    date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-                    rentalType: '$rentalType'
-                },
-                totalRevenue: { $sum: '$payment.amount' },
-                totalRentals: { $sum: 1 }
-            }
-        },
-        {
-            $sort: { '_id.date': 1 }
-        }
-    ]);
-};
-
-// Pre-save middleware
-movieRentalSchema.pre('save', function(next) {
-    if (this.isNew && !this.endTime) {
-        const duration = this.rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-        this.endTime = new Date(this.startTime.getTime() + duration);
     }
-    next();
-});
 
-// Add virtual fields to JSON output
-movieRentalSchema.set('toJSON', { virtuals: true });
-movieRentalSchema.set('toObject', { virtuals: true });
+    /**
+     * Xác nhận thanh toán và kích hoạt rental
+     */
+    async confirmRentalPayment(orderCode, userId) {
+        try {
+            // Tìm payment
+            const payment = await MoviePayment.findOne({ orderCode })
+                .populate('movieId', 'title poster');
 
-module.exports = mongoose.model('MovieRental', movieRentalSchema); 
+            if (!payment) {
+                throw new Error('Không tìm thấy đơn hàng');
+            }
+
+            // Kiểm tra quyền
+            if (payment.userId.toString() !== userId) {
+                throw new Error('Unauthorized');
+            }
+
+            // Kiểm tra trạng thái từ PayOS
+            const payosOrder = await payOS.getPaymentLinkInformation(orderCode);
+            
+            if (payosOrder.status !== 'PAID') {
+                throw new Error('Đơn hàng chưa được thanh toán');
+            }
+
+            // Cập nhật payment status
+            payment.status = 'SUCCESS';
+            payment.paymentTime = new Date();
+            payment.paymentMethod = payosOrder.paymentMethod || 'BANK_TRANSFER';
+            await payment.save();
+
+            // Lấy rentalType từ payment (đã lưu khi tạo order)
+            const rentalType = payment.rentalType;
+            if (!rentalType) {
+                throw new Error('Không tìm thấy thông tin loại thuê');
+            }
+
+            // Tính endTime dựa trên rentalType
+            const startTime = new Date();
+            const duration = rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+            const endTime = new Date(startTime.getTime() + duration);
+
+            // Tạo rental record
+            const rental = new MovieRental({
+                userId: payment.userId,
+                movieId: payment.movieId._id,
+                paymentId: payment._id,
+                rentalType,
+                startTime,
+                endTime
+            });
+
+            await rental.save();
+
+            return {
+                success: true,
+                data: {
+                    rental: await MovieRental.findById(rental._id)
+                        .populate('movieId', 'movie_title poster_path duration movie_type')
+                        .populate('paymentId', 'amount orderCode'),
+                    message: `Thuê phim thành công! Bạn có thể xem phim trong ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
+                }
+            };
+
+        } catch (error) {
+            console.error('Error confirming rental payment:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Kiểm tra quyền xem phim
+     */
+    async checkRentalAccess(userId, movieId) {
+        const startTime = Date.now();
+        
+        try {
+            console.log(`[DEBUG] Checking rental access - userId: ${userId}, movieId: ${movieId}, startTime: ${startTime}`);
+            
+            // Optimize: Check rental first (more likely to exist), skip movie verification for performance
+            // Movie existence is already verified when rental was created
+            const dbQueryStart = Date.now();
+            const rental = await MovieRental.findActiveRental(userId, movieId);
+            const dbQueryEnd = Date.now();
+            
+            console.log(`[DEBUG] Database query time: ${dbQueryEnd - dbQueryStart}ms`);
+            console.log(`[DEBUG] Active rental found:`, rental);
+            
+            if (!rental) {
+                const endTime = Date.now();
+                console.log(`[DEBUG] No rental found - Total time: ${endTime - startTime}ms`);
+                return {
+                    hasAccess: false,
+                    message: 'Bạn chưa thuê phim này hoặc đã hết hạn'
+                };
+            }
+
+            // Record access (async without waiting to improve performance)
+            const recordAccessStart = Date.now();
+            rental.recordAccess().catch(err => {
+                console.error('Error recording access (non-blocking):', err);
+            });
+            const recordAccessEnd = Date.now();
+            console.log(`[DEBUG] Record access time: ${recordAccessEnd - recordAccessStart}ms`);
+
+            const remainingTime = rental.remainingTime;
+            const remainingHours = Math.ceil(remainingTime / (1000 * 60 * 60));
+            const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+
+            const endTime = Date.now();
+            console.log(`[DEBUG] Access granted - Remaining time: ${remainingTime}ms, Hours: ${remainingHours}, Days: ${remainingDays}`);
+            console.log(`[DEBUG] Total checkRentalAccess time: ${endTime - startTime}ms`);
+
+            return {
+                hasAccess: true,
+                rental: rental,
+                remainingTime,
+                remainingHours,
+                remainingDays,
+                message: rental.rentalType === '48h' 
+                    ? `Còn lại ${remainingHours} giờ`
+                    : `Còn lại ${remainingDays} ngày`
+            };
+
+        } catch (error) {
+            console.error('Error checking rental access:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Lấy lịch sử thuê phim của user
+     */
+    async getUserRentalHistory(userId, options = {}) {
+        try {
+            const rentals = await MovieRental.getUserRentalHistory(userId, options);
+            
+            // Đếm tổng số records để pagination
+            const query = { userId };
+            if (options.status) query.status = options.status;
+            if (options.rentalType) query.rentalType = options.rentalType;
+            
+            const total = await MovieRental.countDocuments(query);
+            const totalPages = Math.ceil(total / (options.limit || 10));
+
+            return {
+                success: true,
+                data: {
+                    rentals,
+                    pagination: {
+                        currentPage: options.page || 1,
+                        totalPages,
+                        total,
+                        hasNext: (options.page || 1) < totalPages,
+                        hasPrev: (options.page || 1) > 1
+                    }
+                }
+            };
+
+        } catch (error) {
+            console.error('Error getting rental history:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Hủy rental (nếu chưa hết hạn)
+     */
+    async cancelRental(userId, rentalId) {
+        try {
+            const rental = await MovieRental.findById(rentalId)
+                .populate('movieId', 'title')
+                .populate('paymentId', 'amount orderCode');
+
+            if (!rental) {
+                throw new Error('Không tìm thấy rental');
+            }
+
+            if (rental.userId.toString() !== userId) {
+                throw new Error('Unauthorized');
+            }
+
+            if (rental.status !== 'active') {
+                throw new Error('Rental đã bị hủy hoặc hết hạn');
+            }
+
+            await rental.cancel();
+
+            return {
+                success: true,
+                message: 'Hủy thuê phim thành công',
+                data: rental
+            };
+
+        } catch (error) {
+            console.error('Error canceling rental:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Lấy thống kê revenue (admin)
+     */
+    async getRevenueStats(startDate, endDate) {
+        try {
+            const stats = await MoviePayment.getRevenueStats(startDate, endDate);
+            
+            let totalRevenue = 0;
+            let totalRentals = 0;
+            const dailyStats = {};
+
+            stats.forEach(stat => {
+                totalRevenue += stat.totalRevenue;
+                totalRentals += stat.totalRentals;
+                
+                const date = stat._id.date;
+                if (!dailyStats[date]) {
+                    dailyStats[date] = {
+                        date,
+                        '48h': { revenue: 0, count: 0 },
+                        '30d': { revenue: 0, count: 0 },
+                        total: { revenue: 0, count: 0 }
+                    };
+                }
+                
+                const rentalType = stat._id.rentalType;
+                dailyStats[date][rentalType] = {
+                    revenue: stat.totalRevenue,
+                    count: stat.totalRentals
+                };
+                
+                dailyStats[date].total.revenue += stat.totalRevenue;
+                dailyStats[date].total.count += stat.totalRentals;
+            });
+
+            // Convert dailyStats object to sorted array
+            const sortedDailyStats = Object.values(dailyStats).sort((a, b) => 
+                new Date(a.date) - new Date(b.date)
+            );
+
+            return {
+                success: true,
+                data: {
+                    summary: {
+                        totalRevenue,
+                        totalRentals,
+                        averageRevenuePerRental: totalRentals > 0 ? Math.round(totalRevenue / totalRentals) : 0
+                    },
+                    dailyStats: sortedDailyStats
+                }
+            };
+
+        } catch (error) {
+            console.error('Error getting revenue stats:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Lấy danh sách phim được thuê nhiều nhất
+     */
+    async getPopularRentals(limit = 10) {
+        try {
+            const popular = await MovieRental.aggregate([
+                {
+                    $match: {
+                        status: { $in: ['active', 'expired'] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$movieId',
+                        totalRentals: { $sum: 1 },
+                        totalAccess: { $sum: '$accessCount' },
+                        revenue48h: {
+                            $sum: {
+                                $cond: [{ $eq: ['$rentalType', '48h'] }, 1, 0]
+                            }
+                        },
+                        revenue30d: {
+                            $sum: {
+                                $cond: [{ $eq: ['$rentalType', '30d'] }, 1, 0]
+                            }
+                        }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'movies',
+                        localField: '_id',
+                        foreignField: '_id',
+                        as: 'movie'
+                    }
+                },
+                {
+                    $unwind: '$movie'
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        movieTitle: '$movie.title',
+                        moviePoster: '$movie.poster',
+                        moviePrice: '$movie.price',
+                        totalRentals: 1,
+                        totalAccess: 1,
+                        revenue48h: 1,
+                        revenue30d: 1,
+                        averageAccessPerRental: {
+                            $cond: [
+                                { $gt: ['$totalRentals', 0] },
+                                { $divide: ['$totalAccess', '$totalRentals'] },
+                                0
+                            ]
+                        }
+                    }
+                },
+                {
+                    $sort: { totalRentals: -1 }
+                },
+                {
+                    $limit: limit
+                }
+            ]);
+
+            return {
+                success: true,
+                data: popular
+            };
+
+        } catch (error) {
+            console.error('Error getting popular rentals:', error);
+            throw error;
+        }
+    }
+}
+
+module.exports = new RentalService(); 

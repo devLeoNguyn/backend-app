@@ -10,13 +10,7 @@ const {
     getMovieStats,
     searchMovies,
     getMovieDetailWithInteractions,
-    getMoviesByGenre,
     getMovieLinking,
-    searchRegisteredMovies,
- 
-
-    // getMoviesByGenre,
-
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
@@ -25,7 +19,7 @@ const {
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
-router.get('/registered', searchRegisteredMovies);
+// router.get('/registered', searchRegisteredMovies);
 
 
 

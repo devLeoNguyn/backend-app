@@ -631,34 +631,12 @@ const getMovieLinking = async (req, res) => {
     }
 };
 
-// Tìm kiếm phim đã đăng kí (đã thuê) của user
-const searchRegisteredMovies = async (req, res) => {
-    try {
-        const { userId, q } = req.query;
-        if (!userId) return res.status(400).json({ status: 'error', message: 'userId là bắt buộc' });
-        // Lấy tất cả rental của user, populate movieId
-        const rentals = await MovieRental.find({ userId }).populate('movieId');
-        // Lọc theo tên phim nếu có q
-        let movies = rentals.map(r => r.movieId).filter(Boolean);
-        if (q) {
-            const qLower = q.toLowerCase();
-            movies = movies.filter(m =>
-                (m.title && m.title.toLowerCase().includes(qLower)) ||
-                (m.movie_title && m.movie_title.toLowerCase().includes(qLower))
-            );
-        }
-        res.json({ status: 'success', data: movies });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
-};
 
-const removeVietnameseTones = (str) => {
-    return str
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .replace(/đ/g, 'd').replace(/Đ/g, 'D');
-};
+
+// 🎽 Lấy danh sách phim thể thao
+
+
+// 🎽 Lấy danh sách phim thể thao
 
 
 
@@ -797,7 +775,7 @@ module.exports = {
     searchMovies,
     getMoviesByGenre,
     getMovieLinking,
-    searchRegisteredMovies,
+    // searchRegisteredMovies,
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
