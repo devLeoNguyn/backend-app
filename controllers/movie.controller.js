@@ -805,10 +805,7 @@ module.exports = {
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
-    getRelatedMovies
-
+    getRelatedMovies,
     getMovieLinking,
-  
-    // searchRegisteredMovies,        
-    
+    searchRegisteredMovies
 };
