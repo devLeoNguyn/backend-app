@@ -1,8 +1,6 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-app-lou3.onrender.com';
+export const API_BASE_URL = 'https://backend-app-lou3.onrender.com';
 
-export const WS_BASE_URL = process.env.NODE_ENV === 'production'
-    ? 'wss://backend-app-lou3.onrender.com'
-    : 'ws://localhost:3003';
+export const WS_BASE_URL = 'wss://backend-app-lou3.onrender.com';
 
 export const API_ENDPOINTS = {
     // Admin specific endpoints
