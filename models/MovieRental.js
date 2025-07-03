@@ -110,14 +110,14 @@ movieRentalSchema.statics.findActiveRental = function(userId, movieId) {
         status: 'active',
         startTime: { $lte: new Date() },
         endTime: { $gte: new Date() }
-    }).populate('movieId', 'title poster price').populate('paymentId', 'amount orderCode');
+    }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
 };
 
 movieRentalSchema.statics.findExpiredRentals = function() {
     return this.find({
         status: 'active',
         endTime: { $lt: new Date() }
-    }).populate('userId', 'name email').populate('movieId', 'title');
+    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
 };
 
 movieRentalSchema.statics.findExpiringSoon = function() {
@@ -128,7 +128,7 @@ movieRentalSchema.statics.findExpiringSoon = function() {
         status: 'active',
         endTime: { $gte: now, $lte: twoHoursFromNow },
         notificationSent: false
-    }).populate('userId', 'name email').populate('movieId', 'title');
+    }).populate('userId', 'name email').populate('movieId', 'movie_title poster_path');
 };
 
 movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) {
@@ -140,73 +140,14 @@ movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) 
     if (status) query.status = status;
     if (rentalType) query.rentalType = rentalType;
 
-    // Pipeline for aggregation
-    const pipeline = [
-        { $match: query },
-        {
-            $lookup: {
-                from: 'movies',
-                localField: 'movieId',
-                foreignField: '_id',
-                as: 'movie'
-            }
-        },
-        { $unwind: '$movie' },
-        {
-            $lookup: {
-                from: 'moviepayments',
-                localField: 'paymentId',
-                foreignField: '_id',
-                as: 'payment'
-            }
-        },
-        { $unwind: '$payment' }
-    ];
+    
+    return this.find(query)
+        .populate('movieId', 'movie_title poster_path duration movie_type')
+        .populate('paymentId', 'amount orderCode paymentTime')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
-    // Add title search if provided
-    if (searchTitle) {
-        pipeline.push({
-            $match: {
-                'movie.movie_title': { $regex: searchTitle, $options: 'i' }
-            }
-        });
-    }
-
-    // Add sorting, pagination and projection
-    pipeline.push(
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-            $project: {
-                _id: 1,
-                userId: 1,
-                movieId: '$movie._id',
-                movie: {
-                    _id: '$movie._id',
-                    title: '$movie.movie_title',
-                    poster: '$movie.poster',
-                    duration: '$movie.duration',
-                    type: '$movie.movie_type'
-                },
-                payment: {
-                    amount: '$payment.amount',
-                    orderCode: '$payment.orderCode',
-                    paymentTime: '$payment.paymentTime'
-                },
-                rentalType: 1,
-                startTime: 1,
-                endTime: 1,
-                status: 1,
-                accessCount: 1,
-                lastAccessTime: 1,
-                createdAt: 1,
-                updatedAt: 1
-            }
-        }
-    );
-
-    return this.aggregate(pipeline);
 };
 
 movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {

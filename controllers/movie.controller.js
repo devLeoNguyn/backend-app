@@ -607,6 +607,7 @@ const getMoviesByGenre = async (req, res) => {
     }
 };
 
+
 // 🔗 API lấy linking chia sẻ phim
 const getMovieLinking = async (req, res) => {
     try {
@@ -631,6 +632,7 @@ const getMovieLinking = async (req, res) => {
     }
 };
 
+
 // 🎽 Lấy toàn bộ phim thể thao
 const getSportsMovies = async (req, res) => {
     try {
@@ -642,6 +644,7 @@ const getSportsMovies = async (req, res) => {
             data: sportsMovies
         });
     } catch (error) {
+
         res.status(500).json({
             status: 'error',
             message: 'Lỗi server',
@@ -693,6 +696,67 @@ const getFootballMovies = async (req, res) => {
 };
 
 
+// �� Lấy danh sách phim liên quan
+const getRelatedMovies = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Lấy phim gốc và populate đầy đủ thông tin genres
+        const movie = await Movie.findById(id).populate({
+            path: 'genres',
+            populate: {
+                path: 'parent_genre'
+            }
+        });
+
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Lấy genreIds từ query (có thể là 1 hoặc nhiều id, phân tách bằng dấu phẩy)
+        let { genreIds, useParentGenres = 'true' } = req.query;
+        console.log(genreIds);
+        let genresToSearch;
+
+        if (genreIds) {
+            // Nếu truyền genreIds, chuyển thành mảng ObjectId
+            genresToSearch = genreIds.split(',').map(id => id.trim());
+        } else {
+            // Mặc định sẽ lấy thể loại cha của các thể loại của phim
+            if (useParentGenres === 'true') {
+                genresToSearch = movie.genres
+                    .map(g => g.parent_genre ? g.parent_genre._id : g._id)
+                    .filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+            } else {
+                genresToSearch = movie.genres.map(g => g._id);
+            }
+        }
+
+        // Lấy các phim cùng thể loại, loại trừ chính nó
+        const relatedMovies = await Movie.find({
+            _id: { $ne: id },
+             genres: { $in: genresToSearch }
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .limit(8)
+        .populate('genres', 'genre_name parent_genre');
+
+        res.json({
+            status: 'success',
+            data: relatedMovies
+        });
+    } catch (error) {
+        console.error('Error in getRelatedMovies:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+        });
+    }
+};
+
+
 // Tìm kiếm phim đã đăng kí (đã thuê) của user
 const searchRegisteredMovies = async (req, res) => {
     try {
@@ -724,6 +788,7 @@ const removeVietnameseTones = (str) => {
 
 
 
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -736,10 +801,14 @@ module.exports = {
     getMovieDetailWithInteractions,
     searchMovies,
     getMoviesByGenre,
-    getMovieLinking,
+
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
+    getRelatedMovies
+
+    getMovieLinking,
+  
     // searchRegisteredMovies,        
     
 };
