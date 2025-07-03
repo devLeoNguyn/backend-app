@@ -631,6 +631,68 @@ const getMovieLinking = async (req, res) => {
     }
 };
 
+// 🎽 Lấy toàn bộ phim thể thao
+const getSportsMovies = async (req, res) => {
+    try {
+        const sportsMovies = await Movie.find({ movie_type: { $regex: /^Thể thao$/i } })
+            .select('movie_title poster_path movie_type producer genres')
+            .populate('genres', 'genre_name');
+        res.json({
+            status: 'success',
+            data: sportsMovies
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+            error: error.message
+        });
+    }
+};
+
+// 🏀 Lấy danh sách phim NBA (dựa vào từ khóa 'nba')
+const getNbaMovies = async (req, res) => {
+    try {
+        const nbaMovies = await Movie.find({
+            $or: [
+                { movie_title: { $regex: /nba/i } },
+                { description: { $regex: /nba/i } },
+                { producer: { $regex: /nba/i } }
+            ]
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .populate('genres', 'genre_name');
+        res.json({ status: 'success', data: nbaMovies });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
+// ⚽ Lấy danh sách phim bóng đá (không chứa từ nba, ưu tiên có từ bóng đá, football, soccer)
+const getFootballMovies = async (req, res) => {
+    try {
+        const ID_GENRE_HOAT_HINH = '683d7c44d0ee4aeb15a11382';
+        const footballMovies = await Movie.find({
+            $and: [
+                {
+                    $or: [
+                        { movie_title: { $regex: /bóng đá|football|soccer/i } },
+                        { description: { $regex: /bóng đá|football|soccer/i } },
+                        { producer: { $regex: /bóng đá|football|soccer/i } }
+                    ]
+                },
+                { genres: { $nin: [ID_GENRE_HOAT_HINH] } }
+            ]
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .populate('genres', 'genre_name');
+        res.json({ status: 'success', data: footballMovies });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
+
 // Tìm kiếm phim đã đăng kí (đã thuê) của user
 const searchRegisteredMovies = async (req, res) => {
     try {
@@ -675,6 +737,9 @@ module.exports = {
     searchMovies,
     getMoviesByGenre,
     getMovieLinking,
-    searchRegisteredMovies,
+    getSportsMovies,
+    getNbaMovies,
+    getFootballMovies,
+    // searchRegisteredMovies,        
     
 };

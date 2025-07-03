@@ -12,14 +12,21 @@ const {
     getMovieDetailWithInteractions,
     getMoviesByGenre,
     getMovieLinking,
-    searchRegisteredMovies,
+    getSportsMovies,
+    getNbaMovies,
+    getFootballMovies,
  
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
-router.get('/registered', searchRegisteredMovies);
+// router.get('/registered', searchRegisteredMovies);
 
-
+// Lấy toàn bộ phim thể thao - đặt trước các route có :id
+router.get('/sports', getSportsMovies);
+// Lấy danh sách phim NBA
+router.get('/nba-list', getNbaMovies);
+// Lấy danh sách phim bóng đá
+router.get('/football-list', getFootballMovies);
 
 // Lấy danh sách phim mới - ai cũng xem được
 router.get('/new-week', getNewWeekMovies);
