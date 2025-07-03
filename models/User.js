@@ -28,13 +28,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null // URL của avatar (fallback placeholder luôn hoạt động)
   },
+  password: {
+    type: String,
+    default: null // Optional for OTP users, required for ADMIN
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
   },
-
-
   is_phone_verified: {
     type: Boolean,
     default: false

@@ -5,16 +5,9 @@
   "scripts": {
     "start": "node ./bin/www",
     "dev": "nodemon ./bin/www",
-    "seed": "node scripts/seedTestData.js",
-    "clean": "node scripts/cleanTestData.js",
-    "reseed": "npm run clean && npm run seed",
-    "generate-test": "node scripts/generate-test-data.js",
-    "clean-test": "node scripts/clean-test-data.js",
-    "regenerate-test": "npm run clean-test && npm run generate-test",
-    "test-interactions": "node scripts/test-user-interactions.js",
-    "fix-series": "node scripts/fix-series-episodes.js",
-    "validate-data": "node scripts/fix-series-episodes.js",
-    "fix-swagger": "node scripts/fix-swagger.js"
+    "build-admin": "cd admin-frontend && npm run build",
+    "dev-admin": "concurrently \"npm run dev\" \"cd admin-frontend && npm run dev\"",
+    "start-with-admin": "npm run build-admin && npm start"
   },
   "dependencies": {
     "@payos/node": "^1.0.10",
@@ -37,8 +30,12 @@
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
     "sharp": "^0.34.2",
+    "socket.io": "^4.8.1",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }

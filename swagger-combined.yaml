@@ -1,0 +1,289 @@
+openapi: 3.0.0
+info:
+  title: Movie App API Documentation
+  version: 1.0.0
+  description: Combined API documentation for Movie App
+
+servers:
+  - url: 'http://localhost:3003'
+    description: 'Development server'
+  - url: 'https://backend-app-lou3.onrender.com'
+    description: 'Production server'
+
+paths:
+  /api/movies/sports:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách tất cả phim thể thao'
+      description: |
+        Lấy danh sách tất cả phim thể thao bao gồm bóng đá và NBA.
+        - Lọc theo movie_type = "Thể thao"
+        - Trả về thông tin đầy đủ của mỗi phim
+      responses:
+        '200':
+          description: 'Lấy danh sách phim thể thao thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e8d7c88e880e0198759d0"
+                        movie_title:
+                          type: string
+                          example: "Ngoại Hạng Anh: Chelsea vs Leicester City"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "Premier League"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
+  /api/movies/nba-list:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách phim NBA'
+      description: |
+        Lấy danh sách các trận NBA.
+        - Lọc theo producer có chứa "NBA"
+        - Chỉ trả về các trận NBA
+      responses:
+        '200':
+          description: 'Lấy danh sách phim NBA thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e898088e880e0198759a0"
+                        movie_title:
+                          type: string
+                          example: "NBA Playoffs 2025: Celtics vs Knicks"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "NBA"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
+  /api/movies/football-list:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách phim bóng đá'
+      description: |
+        Lấy danh sách các trận bóng đá.
+        - Lọc theo producer có chứa "VPF"
+        - Chỉ trả về các trận V.League 1 và V.League 2
+      responses:
+        '200':
+          description: 'Lấy danh sách phim bóng đá thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683e90fd88e880e019875a00"
+                        movie_title:
+                          type: string
+                          example: "Trường Tươi Bình Phước vs Hòa Bình FC - V.League 2 2024/25"
+                        movie_type:
+                          type: string
+                          example: "Thể thao"
+                        poster_path:
+                          type: string
+                          example: "https://imagedelivery.net/..."
+                        producer:
+                          type: string
+                          example: "VPF - Vietnam Professional Football"
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              genre_name:
+                                type: string
+                              id:
+                                type: string
+
+  /api/movies/{id}/related:
+    get:
+      tags:
+        - Movie
+      summary: 'Lấy danh sách phim liên quan dựa trên thể loại cha'
+      description: |
+        Lấy danh sách phim có cùng thể loại cha với phim được chọn.
+        - Mặc định sẽ lấy phim cùng thể loại cha của phim gốc
+        - Có thể tắt tính năng lấy theo thể loại cha bằng useParentGenres=false
+        - Có thể chỉ định thể loại cụ thể qua query parameter genreIds
+        - Trả về tối đa 8 phim liên quan
+      parameters:
+        - in: path
+          name: id
+          description: 'ID của phim cần lấy phim liên quan'
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: genreIds
+          description: 'ID của các thể loại muốn lọc, phân cách bằng dấu phẩy (ví dụ: id1,id2,id3)'
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: useParentGenres
+          description: 'Có sử dụng thể loại cha để tìm phim liên quan không (mặc định: true)'
+          required: false
+          schema:
+            type: string
+            enum: ['true', 'false']
+            default: 'true'
+      responses:
+        '200':
+          description: 'Lấy danh sách phim liên quan thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: '6847d080101e640d01a0c37f'
+                        movie_title:
+                          type: string
+                          example: 'Blue Lock'
+                        poster_path:
+                          type: string
+                          example: 'https://example.com/poster.jpg'
+                        movie_type:
+                          type: string
+                          enum: ['Phim lẻ', 'Phim bộ']
+                          example: 'Phim bộ'
+                        producer:
+                          type: string
+                          example: 'Studio XYZ'
+                        genres:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                                example: '6847d080101e640d01a0c37f'
+                              genre_name:
+                                type: string
+                                example: 'Hoạt hình'
+                              parent_genre:
+                                type: object
+                                properties:
+                                  _id:
+                                    type: string
+                                    example: '6847d080101e640d01a0c37e'
+                                  genre_name:
+                                    type: string
+                                    example: 'Phim Châu Á'
+        '404':
+          description: 'Không tìm thấy phim'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: 'Không tìm thấy phim'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: 'Lỗi server'
+                  error:
+                    type: string
+                    example: 'Internal server error'
+
+components:
+  schemas: {}
+
+tags:
+  - name: Movie
+    description: Movie management APIs 

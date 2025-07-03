@@ -662,6 +662,128 @@ const removeVietnameseTones = (str) => {
 
 
 
+// 🎽 Lấy toàn bộ phim thể thao
+const getSportsMovies = async (req, res) => {
+    try {
+        const sportsMovies = await Movie.find({ movie_type: { $regex: /^Thể thao$/i } })
+            .select('movie_title poster_path movie_type producer genres')
+            .populate('genres', 'genre_name');
+        res.json({
+            status: 'success',
+            data: sportsMovies
+        });
+    } catch (error) {
+
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+            error: error.message
+        });
+    }
+};
+
+// 🏀 Lấy danh sách phim NBA (dựa vào từ khóa 'nba')
+const getNbaMovies = async (req, res) => {
+    try {
+        const nbaMovies = await Movie.find({
+            $or: [
+                { movie_title: { $regex: /nba/i } },
+                { description: { $regex: /nba/i } },
+                { producer: { $regex: /nba/i } }
+            ]
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .populate('genres', 'genre_name');
+        res.json({ status: 'success', data: nbaMovies });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
+// ⚽ Lấy danh sách phim bóng đá (không chứa từ nba, ưu tiên có từ bóng đá, football, soccer)
+const getFootballMovies = async (req, res) => {
+    try {
+        const ID_GENRE_HOAT_HINH = '683d7c44d0ee4aeb15a11382';
+        const footballMovies = await Movie.find({
+            $and: [
+                {
+                    $or: [
+                        { movie_title: { $regex: /bóng đá|football|soccer/i } },
+                        { description: { $regex: /bóng đá|football|soccer/i } },
+                        { producer: { $regex: /bóng đá|football|soccer/i } }
+                    ]
+                },
+                { genres: { $nin: [ID_GENRE_HOAT_HINH] } }
+            ]
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .populate('genres', 'genre_name');
+        res.json({ status: 'success', data: footballMovies });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
+// �� Lấy danh sách phim liên quan
+const getRelatedMovies = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Lấy phim gốc và populate đầy đủ thông tin genres
+        const movie = await Movie.findById(id).populate({
+            path: 'genres',
+            populate: {
+                path: 'parent_genre'
+            }
+        });
+
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Lấy genreIds từ query (có thể là 1 hoặc nhiều id, phân tách bằng dấu phẩy)
+        let { genreIds, useParentGenres = 'true' } = req.query;
+        console.log(genreIds);
+        let genresToSearch;
+
+        if (genreIds) {
+            // Nếu truyền genreIds, chuyển thành mảng ObjectId
+            genresToSearch = genreIds.split(',').map(id => id.trim());
+        } else {
+            // Mặc định sẽ lấy thể loại cha của các thể loại của phim
+            if (useParentGenres === 'true') {
+                genresToSearch = movie.genres
+                    .map(g => g.parent_genre ? g.parent_genre._id : g._id)
+                    .filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+            } else {
+                genresToSearch = movie.genres.map(g => g._id);
+            }
+        }
+
+        // Lấy các phim cùng thể loại, loại trừ chính nó
+        const relatedMovies = await Movie.find({
+            _id: { $ne: id },
+             genres: { $in: genresToSearch }
+        })
+        .select('movie_title poster_path movie_type producer genres')
+        .limit(8)
+        .populate('genres', 'genre_name parent_genre');
+
+        res.json({
+            status: 'success',
+            data: relatedMovies
+        });
+    } catch (error) {
+        console.error('Error in getRelatedMovies:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi server',
+        });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -676,5 +798,8 @@ module.exports = {
     getMoviesByGenre,
     getMovieLinking,
     searchRegisteredMovies,
-    
+    getSportsMovies,
+    getNbaMovies,
+    getFootballMovies,
+    getRelatedMovies
 };

@@ -210,7 +210,7 @@ class RentalService {
                 success: true,
                 data: {
                     rental: await MovieRental.findById(rental._id)
-                        .populate('movieId', 'title poster duration')
+                        .populate('movieId', 'movie_title poster_path duration movie_type')
                         .populate('paymentId', 'amount orderCode'),
                     message: `Thuê phim thành công! Bạn có thể xem phim trong ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
                 }
@@ -382,7 +382,7 @@ class RentalService {
      */
     async getRevenueStats(startDate, endDate) {
         try {
-            const stats = await MovieRental.getRevenueStats(startDate, endDate);
+            const stats = await MoviePayment.getRevenueStats(startDate, endDate);
             
             let totalRevenue = 0;
             let totalRentals = 0;
@@ -392,23 +392,30 @@ class RentalService {
                 totalRevenue += stat.totalRevenue;
                 totalRentals += stat.totalRentals;
                 
-                if (!dailyStats[stat._id.date]) {
-                    dailyStats[stat._id.date] = {
-                        date: stat._id.date,
+                const date = stat._id.date;
+                if (!dailyStats[date]) {
+                    dailyStats[date] = {
+                        date,
                         '48h': { revenue: 0, count: 0 },
                         '30d': { revenue: 0, count: 0 },
                         total: { revenue: 0, count: 0 }
                     };
                 }
                 
-                dailyStats[stat._id.date][stat._id.rentalType] = {
+                const rentalType = stat._id.rentalType;
+                dailyStats[date][rentalType] = {
                     revenue: stat.totalRevenue,
                     count: stat.totalRentals
                 };
                 
-                dailyStats[stat._id.date].total.revenue += stat.totalRevenue;
-                dailyStats[stat._id.date].total.count += stat.totalRentals;
+                dailyStats[date].total.revenue += stat.totalRevenue;
+                dailyStats[date].total.count += stat.totalRentals;
             });
+
+            // Convert dailyStats object to sorted array
+            const sortedDailyStats = Object.values(dailyStats).sort((a, b) => 
+                new Date(a.date) - new Date(b.date)
+            );
 
             return {
                 success: true,
@@ -416,9 +423,9 @@ class RentalService {
                     summary: {
                         totalRevenue,
                         totalRentals,
-                        averageRevenuePerRental: totalRentals > 0 ? totalRevenue / totalRentals : 0
+                        averageRevenuePerRental: totalRentals > 0 ? Math.round(totalRevenue / totalRentals) : 0
                     },
-                    dailyStats: Object.values(dailyStats)
+                    dailyStats: sortedDailyStats
                 }
             };
 

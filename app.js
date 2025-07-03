@@ -71,14 +71,28 @@ app.use('/api/series', seriesRoutes);
 app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 
+// Admin routes
+const adminRoutes = require('./routes/admin.routes');
+app.use('/api/admin', adminRoutes);
+
+// Serve admin frontend static files
+app.use('/admin', express.static(path.join(__dirname, 'admin-dist')));
+
 // Swagger Documentation
-const swaggerPath = path.join(__dirname, 'swagger.yaml');
+const swaggerPath = path.join(__dirname, 'swagger-combined.yaml');
 const swaggerDocument = YAML.load(swaggerPath);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: "Movie App API Documentation"
 }));
+
+// SPA fallback for admin in production
+if (process.env.NODE_ENV === 'production') {
+    app.get('/admin/*', (req, res) => {
+        res.sendFile(path.join(__dirname, 'admin-dist', 'index.html'));
+    });
+}
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
