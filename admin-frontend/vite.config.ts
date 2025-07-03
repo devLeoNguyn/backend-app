@@ -7,19 +7,22 @@ export default defineConfig({
   base: '/admin/',
   server: {
     port: 3003,
-    proxy: process.env.NODE_ENV === 'development' ? {
+    proxy: {
       '/api': {
-        target: 'http://localhost:3003',
+        target: 'https://backend-app-lou3.onrender.com',
         changeOrigin: true
       },
       '/socket.io': {
-        target: 'http://localhost:3003',
+        target: 'https://backend-app-lou3.onrender.com',
         ws: true
       }
-    } : undefined
+    }
   },
   build: {
     outDir: '../admin-dist',
     emptyOutDir: true,
+  },
+  define: {
+    'process.env.NODE_ENV': '"production"'
   }
 })
