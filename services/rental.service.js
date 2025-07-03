@@ -294,7 +294,32 @@ class RentalService {
             if (options.status) query.status = options.status;
             if (options.rentalType) query.rentalType = options.rentalType;
             
-            const total = await MovieRental.countDocuments(query);
+            let countPipeline = [
+                { $match: query },
+                {
+                    $lookup: {
+                        from: 'movies',
+                        localField: 'movieId',
+                        foreignField: '_id',
+                        as: 'movie'
+                    }
+                },
+                { $unwind: '$movie' }
+            ];
+
+            // Add title search to count if provided
+            if (options.searchTitle) {
+                countPipeline.push({
+                    $match: {
+                        'movie.movie_title': { $regex: options.searchTitle, $options: 'i' }
+                    }
+                });
+            }
+
+            countPipeline.push({ $count: 'total' });
+            
+            const totalResult = await MovieRental.aggregate(countPipeline);
+            const total = totalResult[0]?.total || 0;
             const totalPages = Math.ceil(total / (options.limit || 10));
 
             return {

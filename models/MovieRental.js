@@ -132,19 +132,81 @@ movieRentalSchema.statics.findExpiringSoon = function() {
 };
 
 movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) {
-    const { page = 1, limit = 10, status, rentalType } = options;
+    const { page = 1, limit = 10, status, rentalType, searchTitle } = options;
     const skip = (page - 1) * limit;
     
+    // Base query with userId
     const query = { userId };
     if (status) query.status = status;
     if (rentalType) query.rentalType = rentalType;
-    
-    return this.find(query)
-        .populate('movieId', 'title poster duration type')
-        .populate('paymentId', 'amount orderCode paymentTime')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
+
+    // Pipeline for aggregation
+    const pipeline = [
+        { $match: query },
+        {
+            $lookup: {
+                from: 'movies',
+                localField: 'movieId',
+                foreignField: '_id',
+                as: 'movie'
+            }
+        },
+        { $unwind: '$movie' },
+        {
+            $lookup: {
+                from: 'moviepayments',
+                localField: 'paymentId',
+                foreignField: '_id',
+                as: 'payment'
+            }
+        },
+        { $unwind: '$payment' }
+    ];
+
+    // Add title search if provided
+    if (searchTitle) {
+        pipeline.push({
+            $match: {
+                'movie.movie_title': { $regex: searchTitle, $options: 'i' }
+            }
+        });
+    }
+
+    // Add sorting, pagination and projection
+    pipeline.push(
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+            $project: {
+                _id: 1,
+                userId: 1,
+                movieId: '$movie._id',
+                movie: {
+                    _id: '$movie._id',
+                    title: '$movie.movie_title',
+                    poster: '$movie.poster',
+                    duration: '$movie.duration',
+                    type: '$movie.movie_type'
+                },
+                payment: {
+                    amount: '$payment.amount',
+                    orderCode: '$payment.orderCode',
+                    paymentTime: '$payment.paymentTime'
+                },
+                rentalType: 1,
+                startTime: 1,
+                endTime: 1,
+                status: 1,
+                accessCount: 1,
+                lastAccessTime: 1,
+                createdAt: 1,
+                updatedAt: 1
+            }
+        }
+    );
+
+    return this.aggregate(pipeline);
 };
 
 movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {
