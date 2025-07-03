@@ -6,23 +6,14 @@ export default defineConfig({
   plugins: [react()],
   base: '/admin/',
   server: {
-    port: 3003,
-    proxy: {
-      '/api': {
-        target: 'https://backend-app-lou3.onrender.com',
-        changeOrigin: true
-      },
-      '/socket.io': {
-        target: 'https://backend-app-lou3.onrender.com',
-        ws: true
-      }
-    }
+    port: 3003
   },
   build: {
     outDir: '../admin-dist',
     emptyOutDir: true,
   },
   define: {
-    'process.env.NODE_ENV': '"production"'
+    'process.env.NODE_ENV': '"production"',
+    'process.env.VITE_API_URL': '"https://backend-app-lou3.onrender.com"'
   }
 })
