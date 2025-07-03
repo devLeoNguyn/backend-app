@@ -132,12 +132,14 @@ movieRentalSchema.statics.findExpiringSoon = function() {
 };
 
 movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) {
-    const { page = 1, limit = 10, status, rentalType } = options;
+    const { page = 1, limit = 10, status, rentalType, searchTitle } = options;
     const skip = (page - 1) * limit;
     
+    // Base query with userId
     const query = { userId };
     if (status) query.status = status;
     if (rentalType) query.rentalType = rentalType;
+
     
     return this.find(query)
         .populate('movieId', 'movie_title poster_path duration movie_type')
@@ -145,6 +147,7 @@ movieRentalSchema.statics.getUserRentalHistory = function(userId, options = {}) 
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
+
 };
 
 movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {

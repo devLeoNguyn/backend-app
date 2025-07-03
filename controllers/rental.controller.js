@@ -150,10 +150,16 @@ class RentalController {
     /**
      * GET /api/rentals/history
      * Lấy lịch sử thuê phim của user
+     * @query userId - ID của user
+     * @query page - Số trang (default: 1)
+     * @query limit - Số lượng kết quả mỗi trang (default: 10)
+     * @query status - Lọc theo trạng thái rental
+     * @query rentalType - Lọc theo loại thuê (48h/30d)
+     * @query searchTitle - Tìm kiếm theo tên phim
      */
     async getUserRentalHistory(req, res) {
         try {
-            const { userId, page = 1, limit = 10, status, rentalType } = req.query;
+            const { userId, page = 1, limit = 10, status, rentalType, searchTitle } = req.query;
 
             if (!userId) {
                 return res.status(400).json({
@@ -166,7 +172,8 @@ class RentalController {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 status,
-                rentalType
+                rentalType,
+                searchTitle
             };
 
             const result = await rentalService.getUserRentalHistory(userId, options);

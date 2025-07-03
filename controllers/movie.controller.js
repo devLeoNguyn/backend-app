@@ -6,6 +6,7 @@ const Genre = require('../models/Genre');
 const Rating = require('../models/Rating');
 const Watching = require('../models/Watching');
 const mongoose = require('mongoose');
+const MovieRental = require('../models/MovieRental');
 
 // Import movie service for centralized movie operations
 const movieService = require('../services/movie.service');
@@ -221,7 +222,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Check rental access for paid movies
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (!movie.is_free && userId) {
-                const MovieRental = require('../models/MovieRental');
                 const userRental = await MovieRental.findActiveRental(userId, id);
                 hasRentalAccess = !!userRental;
             }
@@ -262,7 +262,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Check if user has rental access to override locked episodes
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (userId && !movie.is_free) {
-                const MovieRental = require('../models/MovieRental');
                 const userRental = await MovieRental.findActiveRental(userId, id);
                 hasRentalAccess = !!userRental;
             }
@@ -299,7 +298,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
 
         // Check user-specific data if userId provided
         if (userId) {
-            const Rating = require('../models/Rating');
             const Favorite = require('../models/Favorite');
             const Watching = require('../models/Watching');
 
@@ -610,6 +608,31 @@ const getMoviesByGenre = async (req, res) => {
 };
 
 
+// 🔗 API lấy linking chia sẻ phim
+const getMovieLinking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Kiểm tra phim có tồn tại không
+        const movie = await Movie.findById(id).select('_id movie_title');
+        if (!movie) {
+            return res.status(404).json({ status: 'error', message: 'Không tìm thấy phim' });
+        }
+        // Tạo linking (bạn thay domain theo ý muốn)
+        const linking = `https://tenmiencuaban.com/movies/${movie._id}`;
+        res.json({
+            status: 'success',
+            data: {
+                movie_id: movie._id,
+                movie_title: movie.movie_title,
+                linking
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
+    }
+};
+
+
 // 🎽 Lấy toàn bộ phim thể thao
 const getSportsMovies = async (req, res) => {
     try {
@@ -672,6 +695,7 @@ const getFootballMovies = async (req, res) => {
     }
 };
 
+
 // �� Lấy danh sách phim liên quan
 const getRelatedMovies = async (req, res) => {
     try {
@@ -732,6 +756,39 @@ const getRelatedMovies = async (req, res) => {
     }
 };
 
+
+// Tìm kiếm phim đã đăng kí (đã thuê) của user
+const searchRegisteredMovies = async (req, res) => {
+    try {
+        const { userId, q } = req.query;
+        if (!userId) return res.status(400).json({ status: 'error', message: 'userId là bắt buộc' });
+        // Lấy tất cả rental của user, populate movieId
+        const rentals = await MovieRental.find({ userId }).populate('movieId');
+        // Lọc theo tên phim nếu có q
+        let movies = rentals.map(r => r.movieId).filter(Boolean);
+        if (q) {
+            const qLower = q.toLowerCase();
+            movies = movies.filter(m =>
+                (m.title && m.title.toLowerCase().includes(qLower)) ||
+                (m.movie_title && m.movie_title.toLowerCase().includes(qLower))
+            );
+        }
+        res.json({ status: 'success', data: movies });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+};
+
+const removeVietnameseTones = (str) => {
+    return str
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+};
+
+
+
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -744,8 +801,14 @@ module.exports = {
     getMovieDetailWithInteractions,
     searchMovies,
     getMoviesByGenre,
+
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
     getRelatedMovies
+
+    getMovieLinking,
+  
+    // searchRegisteredMovies,        
+    
 };

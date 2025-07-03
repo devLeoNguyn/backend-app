@@ -51,7 +51,6 @@ const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const animeRoutes = require('./routes/anime.routes');
 
-
 // Đăng ký routes
 app.use('/', indexRouter);
 app.use('/api/auth', authRoutes);
@@ -59,6 +58,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/favorite', favoriteRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/ratings', ratingRoutes);
