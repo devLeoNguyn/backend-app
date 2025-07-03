@@ -13,13 +13,13 @@ const {
     getMoviesByGenre,
     getMovieLinking,
     searchRegisteredMovies,
-    searchSportsMovies
+ 
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
 router.get('/registered', searchRegisteredMovies);
-// Tìm kiếm phim thể thao
-router.get('/sports-search', searchSportsMovies);
+
+
 
 // Lấy danh sách phim mới - ai cũng xem được
 router.get('/new-week', getNewWeekMovies);

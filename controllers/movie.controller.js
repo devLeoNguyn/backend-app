@@ -660,26 +660,7 @@ const removeVietnameseTones = (str) => {
         .replace(/đ/g, 'd').replace(/Đ/g, 'D');
 };
 
-// Tìm kiếm phim thể thao
-const searchSportsMovies = async (req, res) => {
-    try {
-        const { q } = req.query;
-        // Lấy tất cả phim thể thao
-        let movies = await Movie.find({ movie_type: { $regex: /^thể thao$/i } });
-        if (q) {
-            const qLower = removeVietnameseTones(q.toLowerCase());
-            movies = movies.filter(m => {
-                const fields = [m.title, m.movie_title, m.description, m.producer, ...(Array.isArray(m.genres) ? m.genres : [])];
-                return fields.some(val =>
-                    val && removeVietnameseTones(String(val).toLowerCase()).includes(qLower)
-                );
-            });
-        }
-        res.json({ status: 'success', data: movies });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
-};
+
 
 // Export all controller functions
 module.exports = {
@@ -695,5 +676,5 @@ module.exports = {
     getMoviesByGenre,
     getMovieLinking,
     searchRegisteredMovies,
-    searchSportsMovies
+    
 };
