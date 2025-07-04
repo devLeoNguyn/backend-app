@@ -11,11 +11,12 @@ const {
     searchMovies,
     getMovieDetailWithInteractions,
     getMoviesByGenre,
-    getMovieLinking,
     getSportsMovies,
     getNbaMovies,
     getFootballMovies,
-    getRelatedMovies
+    getRelatedMovies,
+    generateShareLink,
+    getMovieRedirect
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
@@ -44,11 +45,14 @@ router.get('/:id', getMovieById);
 // Get movie stats (likes, views, comments) - Public
 router.get('/:movie_id/stats', getMovieStats);
 
-// Linking chia sẻ phim
-router.get('/:id/linking', getMovieLinking);
-
 // Get related movies
 router.get('/:id/related', getRelatedMovies);
+
+// Share movie
+router.get('/share/:movieId', generateShareLink);
+
+// Web URL redirect
+router.get('/movie/:movieId', getMovieRedirect);
 
 // === ADMIN ROUTES (Cần userId) ===
 
