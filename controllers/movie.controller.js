@@ -338,7 +338,6 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 })
                 .populate('user_id', 'name email')
                 .sort({ updatedAt: -1 })
-                .limit(10)
             ]);
 
             // Add user-specific interaction data
@@ -422,8 +421,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 comment: { $exists: true, $ne: '' } 
             })
             .populate('user_id', 'name email')
-            .sort({ updatedAt: -1 })
-            .limit(10);
+            .sort({ updatedAt: -1 });
 
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
@@ -696,7 +694,7 @@ const getFootballMovies = async (req, res) => {
 };
 
 
-// �� Lấy danh sách phim liên quan
+// 🎭 Lấy danh sách phim liên quan
 const getRelatedMovies = async (req, res) => {
     try {
         const { id } = req.params;

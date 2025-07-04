@@ -23,7 +23,15 @@ const ratingSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Tạo compound index để đảm bảo một user chỉ có thể đánh giá một bộ phim một lần
-ratingSchema.index({ user_id: 1, movie_id: 1 }, { unique: true });
+// XÓA index unique nếu còn tồn tại (chạy 1 lần khi server start)
+const mongooseInstance = require('mongoose');
+mongooseInstance.connection.on('open', async () => {
+  try {
+    await mongooseInstance.connection.collection('ratings').dropIndex('user_id_1_movie_id_1');
+    console.log('Dropped unique index user_id_1_movie_id_1 on ratings');
+  } catch (err) {
+    // Không sao nếu index không tồn tại
+  }
+});
 
 module.exports = mongoose.model('Rating', ratingSchema); 

@@ -369,24 +369,20 @@ exports.addComment = async (req, res) => {
     try {
         const { movie_id } = req.params;
         const { comment, userId } = req.body;
-        
         if (!userId) {
             return res.status(400).json({
                 status: 'error',
                 message: 'userId là bắt buộc'
             });
         }
-        
-        const user_id = userId;
-
         if (!comment || comment.trim().length === 0) {
             return res.status(400).json({
                 status: 'error',
                 message: 'Bình luận không được để trống'
             });
         }
-
         // Check if movie exists
+        const Movie = require('../models/Movie');
         const movie = await Movie.findById(movie_id);
         if (!movie) {
             return res.status(404).json({
@@ -394,81 +390,43 @@ exports.addComment = async (req, res) => {
                 message: 'Không tìm thấy phim'
             });
         }
-
-        // 🆕 FIX: Check if user exists
+        // Check if user exists
         const User = require('../models/User');
-        const user = await User.findById(user_id);
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Không tìm thấy người dùng'
             });
         }
-
-        // Create or update rating with comment
-        let rating = await Rating.findOne({ user_id, movie_id });
-        let isUpdate = !!rating;
-        
-        if (rating) {
-            rating.comment = comment.trim();
-            await rating.save();
-        } else {
-            rating = await Rating.create({
-                user_id,
-                movie_id,
-                is_like: true,
-                comment: comment.trim()
-            });
-        }
-
-        // 🆕 FIX: Safely populate user data with error handling
-        try {
-            await rating.populate('user_id', 'name email');
-        } catch (populateError) {
-            console.error('Error populating user data:', populateError);
-            // Fallback: use the user data we already have
-            rating.user_id = user;
-        }
-
-        // 🆕 FIX: Safe access to user properties
-        const userData = rating.user_id || user;
-        if (!userData) {
-            return res.status(500).json({
-                status: 'error',
-                message: 'Lỗi không thể lấy thông tin người dùng'
-            });
-        }
-
-        const message = isUpdate ? 'Đã cập nhật bình luận thành công' : 'Đã thêm bình luận thành công';
-
+        // LUÔN TẠO MỚI bình luận (không update, không kiểm tra tồn tại)
+        const newRating = await Rating.create({
+            user_id: userId,
+            movie_id,
+            is_like: false,
+            comment: comment.trim()
+        });
+        await newRating.populate('user_id', 'name email');
+        // Console log rõ ràng khi user bình luận
+        console.log(`[COMMENT] User ${userId} bình luận phim ${movie_id}: "${comment.trim()}" | _id: ${newRating._id} | createdAt: ${newRating.createdAt}`);
         res.json({
             status: 'success',
-            message,
+            message: 'Đã thêm bình luận thành công',
             data: {
-                movieId: movie_id,
-                rating: {
-                    _id: rating._id,
+                comment: {
+                    _id: newRating._id,
                     user: {
-                        _id: userData._id,
-                        name: userData.name || 'Unknown User',
-                        email: userData.email || 'unknown@email.com'
+                        _id: newRating.user_id._id,
+                        name: newRating.user_id.name || 'Unknown User',
+                        email: newRating.user_id.email || 'unknown@email.com'
                     },
-                    comment: rating.comment,
-                    isLike: rating.is_like,
-                    createdAt: rating.createdAt,
-                    updatedAt: rating.updatedAt
+                    comment: newRating.comment,
+                    createdAt: newRating.createdAt,
+                    updatedAt: newRating.updatedAt
                 }
             }
         });
-
     } catch (error) {
-        if (error.code === 11000) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Bạn đã đánh giá phim này rồi'
-            });
-        }
-        
         console.error('Error in addComment:', error);
         res.status(500).json({
             status: 'error',
@@ -481,9 +439,9 @@ exports.addComment = async (req, res) => {
 exports.getComments = async (req, res) => {
     try {
         const { movie_id } = req.params;
-        const { page = 1, limit = 10, sort = 'newest' } = req.query;
-
+        const { page = 1, limit = 10, sort = 'newest', userId } = req.query;
         // Check if movie exists
+        const Movie = require('../models/Movie');
         const movie = await Movie.findById(movie_id);
         if (!movie) {
             return res.status(404).json({
@@ -491,40 +449,26 @@ exports.getComments = async (req, res) => {
                 message: 'Không tìm thấy phim'
             });
         }
-
-        // Calculate skip for pagination
         const skip = (page - 1) * limit;
-
-        // Determine sort option
-        let sortOption = { createdAt: -1 }; // Default newest
-        if (sort === 'oldest') {
-            sortOption = { createdAt: 1 };
-        } else if (sort === 'most_liked') {
-            sortOption = { createdAt: -1 }; // Can be enhanced with like_count in future
-        }
-
-        // Get comments with pagination
-        const comments = await Rating.find({ 
-            movie_id, 
-            comment: { $exists: true, $ne: '' } 
-        })
+        let sortOption = { createdAt: -1 };
+        if (sort === 'oldest') sortOption = { createdAt: 1 };
+        // Lọc theo user nếu có userId
+        let filter = { movie_id, comment: { $exists: true, $ne: '' } };
+        if (userId) filter.user_id = userId;
+        // Lấy bình luận với phân trang
+        const comments = await Rating.find(filter)
             .populate('user_id', 'name email')
             .sort(sortOption)
             .skip(skip)
             .limit(parseInt(limit));
-
-        const total = await Rating.countDocuments({ 
-            movie_id, 
-            comment: { $exists: true, $ne: '' } 
-        });
-
+        // Console log rõ ràng khi lấy danh sách comment
+        console.log(`[COMMENT-GET] Lấy ${comments.length} comment cho phim ${movie_id}${userId ? ` của user ${userId}` : ''}. Các _id: [${comments.map(c => c._id).join(', ')}]`);
+        const total = await Rating.countDocuments(filter);
         const totalPages = Math.ceil(total / limit);
-
         res.json({
             status: 'success',
             data: {
                 comments: comments.map(rating => {
-                    // 🆕 FIX: Safe access to user properties
                     const user = rating.user_id || {};
                     return {
                         _id: rating._id,
@@ -548,7 +492,6 @@ exports.getComments = async (req, res) => {
                 }
             }
         });
-
     } catch (error) {
         console.error('Error in getComments:', error);
         res.status(500).json({
