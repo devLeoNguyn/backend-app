@@ -192,7 +192,7 @@ exports.getFavorites = async (req, res) => {
         const favorites = await Favorite.find({ user_id })
             .populate({
                 path: 'movie_id',
-                select: 'movie_title description production_time producer movie_type price is_free price_display'
+                select: 'movie_title description production_time producer movie_type price is_free price_display, poster_path genre'
             })
             .sort({ added_at: -1 })
             .skip(skip)
@@ -213,6 +213,8 @@ exports.getFavorites = async (req, res) => {
             price: fav.movie_id.price,
             is_free: fav.movie_id.is_free,
             price_display: fav.movie_id.price_display,
+            poster_path: fav.movie_id.poster_path,
+            genre: fav.movie_id.genre,
             added_at: fav.added_at
         }));
 
