@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{movie.title}} - Tech5 Movies</title>
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="{{movie.title}} - Tech5 Movies">
+    <meta property="og:description" content="{{movie.description}}">
+    <meta property="og:image" content="{{movie.posterUrl}}">
+    <meta property="og:url" content="{{baseUrl}}/movie/{{movie._id}}">
+    <meta property="og:type" content="video.movie">
+    
+    <!-- App Deep Linking -->
+    <meta name="apple-itunes-app" content="app-id=com.tech5.movies,app-argument=tech5://movie/{{movie._id}}">
+    <meta name="google-play-app" content="app-id=com.tech5.movies">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .poster {
+            max-width: 200px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            background: #007AFF;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+        .fallback-text {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {{#if movie.posterUrl}}
+        <img src="{{movie.posterUrl}}" alt="{{movie.title}}" class="poster">
+        {{/if}}
+        <h1>{{movie.title}}</h1>
+        <p>{{movie.description}}</p>
+        <a href="#" class="btn" id="openApp">Mở trong ứng dụng</a>
+        <p class="fallback-text">Nếu ứng dụng không mở, hãy cài đặt Tech5 Movies từ App Store hoặc Google Play</p>
+    </div>
+    
+    <script>
+        document.getElementById('openApp').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Try to open in Expo Go
+            const expoUrl = 'exp://192.168.5.146:8082/--/movie/{{movie._id}}';
+            window.location.href = expoUrl;
+            
+            // If Expo Go doesn't open after a delay, try deep link
+            setTimeout(function() {
+                const deepLink = 'tech5://movie/{{movie._id}}';
+                window.location.href = deepLink;
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

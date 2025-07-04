@@ -19,8 +19,19 @@ const mongoose = require('mongoose');
 const { testCloudflareConnection } = require('./utils/cloudflare.config');
 const cloudflareStreamService = require('./services/cloudflare-stream.service');
 
-// Enable CORS
-app.use(cors());
+// CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:8082',
+    'http://localhost:19006',
+    'exp://192.168.5.146:8082',
+    'http://192.168.5.146:8082',
+    'https://backend-app-lou3.onrender.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -93,6 +104,9 @@ if (process.env.NODE_ENV === 'production') {
         res.sendFile(path.join(__dirname, 'admin-dist', 'index.html'));
     });
 }
+
+// Web URL redirect route (root level)
+app.get('/movie/:movieId', require('./controllers/movie.controller').getMovieRedirect);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

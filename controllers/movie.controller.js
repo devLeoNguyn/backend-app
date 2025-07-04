@@ -605,32 +605,6 @@ const getMoviesByGenre = async (req, res) => {
     }
 };
 
-
-// 🔗 API lấy linking chia sẻ phim
-const getMovieLinking = async (req, res) => {
-    try {
-        const { id } = req.params;
-        // Kiểm tra phim có tồn tại không
-        const movie = await Movie.findById(id).select('_id movie_title');
-        if (!movie) {
-            return res.status(404).json({ status: 'error', message: 'Không tìm thấy phim' });
-        }
-        // Tạo linking (bạn thay domain theo ý muốn)
-        const linking = `https://tenmiencuaban.com/movies/${movie._id}`;
-        res.json({
-            status: 'success',
-            data: {
-                movie_id: movie._id,
-                movie_title: movie.movie_title,
-                linking
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Lỗi server', error: error.message });
-    }
-};
-
-
 // 🎽 Lấy toàn bộ phim thể thao
 const getSportsMovies = async (req, res) => {
     try {
@@ -784,8 +758,73 @@ const removeVietnameseTones = (str) => {
         .replace(/đ/g, 'd').replace(/Đ/g, 'D');
 };
 
+/**
+ * Generate share link for a movie (Development Mode)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const generateShareLink = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const movie = await Movie.findById(movieId);
+    
+    if (!movie) {
+      return res.status(404).json({
+        success: false,
+        message: 'Movie not found'
+      });
+    }
 
+    // Generate share URL with metadata
+    const shareUrl = `https://backend-app-lou3.onrender.com/movie/${movieId}`;
+    
+    res.json({
+      success: true,
+      data: {
+        shareUrl,
+        title: movie.title,
+        description: movie.description,
+        thumbnailUrl: movie.posterUrl
+      }
+    });
+  } catch (error) {
+    console.error('Error generating share link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
 
+const getMovieRedirect = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const movie = await Movie.findById(movieId);
+    
+    if (!movie) {
+      return res.status(404).render('error', {
+        message: 'Movie not found',
+        error: { status: 404 }
+      });
+    }
+
+    // Get base URL from request or environment variable
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://backend-app-lou3.onrender.com'
+      : `http://${req.get('host')}`;
+
+    res.render('movie-redirect', { 
+      movie,
+      baseUrl
+    });
+  } catch (error) {
+    console.error('Error rendering redirect page:', error);
+    res.status(500).render('error', {
+      message: 'Internal server error',
+      error: { status: 500 }
+    });
+  }
+};
 
 // Export all controller functions
 module.exports = {
@@ -804,6 +843,7 @@ module.exports = {
     getNbaMovies,
     getFootballMovies,
     getRelatedMovies,
-    getMovieLinking,
-    searchRegisteredMovies
+    searchRegisteredMovies,
+    generateShareLink,
+    getMovieRedirect
 };
