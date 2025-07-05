@@ -24,8 +24,8 @@ app.use(cors({
   origin: [
     'http://localhost:8082',
     'http://localhost:19006',
-    'exp://192.168.5.146:8082',
-    'http://192.168.5.146:8082',
+    'exp://192.168.5.139:8082',
+    'http://192.168.5.139:8082',
     'https://backend-app-lou3.onrender.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
