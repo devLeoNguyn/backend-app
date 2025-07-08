@@ -402,18 +402,21 @@ const searchMovies = async (query, options = {}) => {
             limit = 10,
             genre,
             movie_type,
-            price_type
+            price_type,
+            searchByTitle = false
         } = options;
 
         const skip = (page - 1) * limit;
 
         // Build search criteria
         const searchCriteria = {
-            $or: [
-                { movie_title: { $regex: query, $options: 'i' } },
-                { description: { $regex: query, $options: 'i' } },
-                { producer: { $regex: query, $options: 'i' } }
-            ]
+            $or: searchByTitle 
+                ? [{ movie_title: { $regex: query, $options: 'i' } }]
+                : [
+                    { movie_title: { $regex: query, $options: 'i' } },
+                    { description: { $regex: query, $options: 'i' } },
+                    { producer: { $regex: query, $options: 'i' } }
+                ]
         };
 
         // Add filters
