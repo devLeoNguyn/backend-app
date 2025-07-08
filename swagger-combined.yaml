@@ -281,6 +281,122 @@ paths:
                     type: string
                     example: 'Internal server error'
 
+  /api/movies/search-registered:
+    get:
+      tags:
+        - Movie
+      summary: 'Tìm kiếm phim đã thuê của user'
+      description: |
+        Tìm kiếm phim trong danh sách phim đã thuê của user.
+        - Yêu cầu userId để xác định user
+        - Có thể tìm kiếm theo tên phim với tham số q
+        - Trả về danh sách phim đã thuê phù hợp với từ khóa tìm kiếm
+      parameters:
+        - in: query
+          name: userId
+          description: 'ID của user cần tìm phim đã thuê'
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: q
+          description: 'Từ khóa tìm kiếm theo tên phim'
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Tìm kiếm thành công'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: "683d8ef0602b36157f1c7ae5"
+                        movie_title:
+                          type: string
+                          example: "Spider Man: Far from home"
+                        description:
+                          type: string
+                        production_time:
+                          type: string
+                          format: date-time
+                        poster_path:
+                          type: string
+                        genres:
+                          type: array
+                          items:
+                            type: string
+                        producer:
+                          type: string
+                        movie_type:
+                          type: string
+                        price:
+                          type: number
+                        total_episodes:
+                          type: number
+                        is_featured:
+                          type: boolean
+                        release_status:
+                          type: string
+                        is_free:
+                          type: boolean
+                        view_count:
+                          type: number
+                        rating_stats:
+                          type: object
+                          properties:
+                            total_ratings:
+                              type: number
+                            total_likes:
+                              type: number
+                            total_dislikes:
+                              type: number
+                            like_percentage:
+                              type: number
+                            rating_score:
+                              type: number
+                        favorite_count:
+                          type: number
+                        price_display:
+                          type: string
+        '400':
+          description: 'Thiếu userId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: 'userId là bắt buộc'
+        '500':
+          description: 'Lỗi server'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: 'Lỗi server'
+
 components:
   schemas: {}
 

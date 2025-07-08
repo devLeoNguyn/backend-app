@@ -16,7 +16,8 @@ const {
     getFootballMovies,
     getRelatedMovies,
     generateShareLink,
-    getMovieRedirect
+    getMovieRedirect,
+    searchRegisteredMovies
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
@@ -35,6 +36,9 @@ router.get('/new-week', getNewWeekMovies);
 
 // Tìm kiếm phim
 router.get('/search', searchMovies);
+
+// Tìm kiếm phim đã thuê
+router.get('/search-registered', searchRegisteredMovies);
 
 // Get movie detail with all interactions - Public/Protected (MUST BE BEFORE /:id)
 router.get('/:id/detail-with-interactions', getMovieDetailWithInteractions);
