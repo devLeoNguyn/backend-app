@@ -119,6 +119,13 @@ router.get('/history', validateUserId, rentalController.getUserRentalHistory);
  */
 router.put('/:rentalId/cancel', validateRentalId, rentalController.cancelRental);
 
+/**
+ * @route POST /api/rentals/activate
+ * @desc Kích hoạt rental khi user play video lần đầu
+ * @access Public
+ */
+router.post('/activate', rentalController.activateRentalWhenPlay);
+
 // ===========================================
 // STATISTICS ENDPOINTS (Admin)
 // ===========================================

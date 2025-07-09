@@ -25,17 +25,18 @@ const movieRentalSchema = new mongoose.Schema({
     },
     startTime: {
         type: Date,
-        required: true,
-        default: Date.now
+        required: function() { return this.status !== 'pending'; },
+        default: null
     },
     endTime: {
         type: Date,
-        required: true
+        required: function() { return this.status !== 'pending'; },
+        default: null
     },
     status: {
         type: String,
-        enum: ['active', 'expired', 'cancelled'],
-        default: 'active',
+        enum: ['pending', 'active', 'expired', 'cancelled'],
+        default: 'pending',
         index: true
     },
     notificationSent: {
@@ -187,7 +188,8 @@ movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {
 
 // Pre-save middleware
 movieRentalSchema.pre('save', function(next) {
-    if (this.isNew && !this.endTime) {
+    // Chỉ set endTime khi chuyển sang active và startTime vừa được set
+    if (this.status === 'active' && this.isModified('startTime') && !this.endTime && this.startTime) {
         const duration = this.rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
         this.endTime = new Date(this.startTime.getTime() + duration);
     }

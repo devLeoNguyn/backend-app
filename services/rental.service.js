@@ -511,6 +511,20 @@ class RentalService {
             throw error;
         }
     }
+
+    /**
+     * Kích hoạt rental khi user play video lần đầu
+     */
+    async activateRentalWhenPlay(userId, movieId) {
+        const rental = await MovieRental.findOne({ userId, movieId, status: 'pending' });
+        if (rental) {
+            rental.startTime = new Date();
+            rental.status = 'active';
+            await rental.save(); // endTime sẽ tự động set nhờ middleware
+            return rental;
+        }
+        return null;
+    }
 }
 
 module.exports = new RentalService(); 
