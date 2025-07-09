@@ -189,19 +189,14 @@ class RentalService {
                 throw new Error('Không tìm thấy thông tin loại thuê');
             }
 
-            // Tính endTime dựa trên rentalType
-            const startTime = new Date();
-            const duration = rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
-            const endTime = new Date(startTime.getTime() + duration);
-
-            // Tạo rental record
+            // Tạo rental record với status 'paid' - thời gian sẽ được tính khi user nhấn "xem ngay"
             const rental = new MovieRental({
                 userId: payment.userId,
                 movieId: payment.movieId._id,
                 paymentId: payment._id,
                 rentalType,
-                startTime,
-                endTime
+                status: 'paid'
+                // startTime và endTime sẽ được set khi activate rental
             });
 
             await rental.save();
@@ -212,7 +207,7 @@ class RentalService {
                     rental: await MovieRental.findById(rental._id)
                         .populate('movieId', 'movie_title poster_path duration movie_type')
                         .populate('paymentId', 'amount orderCode'),
-                    message: `Thuê phim thành công! Bạn có thể xem phim trong ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
+                    message: `Thanh toán thành công! Nhấn "Xem ngay" để bắt đầu thuê phim ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
                 }
             };
 
@@ -230,15 +225,63 @@ class RentalService {
         
         try {
             console.log(`[DEBUG] Checking rental access - userId: ${userId}, movieId: ${movieId}, startTime: ${startTime}`);
+            console.log(`[DEBUG] UserID type: ${typeof userId}, MovieID type: ${typeof movieId}`);
+            
+            // Convert to ObjectId if needed (critical fix)
+            const mongoose = require('mongoose');
+            const userObjectId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+            const movieObjectId = mongoose.Types.ObjectId.isValid(movieId) ? new mongoose.Types.ObjectId(movieId) : movieId;
+            
+            console.log(`[DEBUG] Converted IDs - userObjectId: ${userObjectId}, movieObjectId: ${movieObjectId}`);
+            console.log(`[DEBUG] Converted types - userObjectId: ${typeof userObjectId}, movieObjectId: ${typeof movieObjectId}`);
+            
+            // Debug: Check if there are any rentals for this user-movie combination
+            const allRentals = await MovieRental.find({ userId: userObjectId, movieId: movieObjectId });
+            console.log(`[DEBUG] All rentals for user-movie:`, allRentals.map(r => ({
+                id: r._id,
+                status: r.status,
+                startTime: r.startTime,
+                endTime: r.endTime,
+                createdAt: r.createdAt
+            })));
+            
+            // Also check with findOne query similar to findRentalAccess
+            const testQuery = {
+                userId: userObjectId,
+                movieId: movieObjectId,
+                status: { $in: ['paid', 'active'] },
+                $or: [
+                    { status: 'paid' },
+                    { 
+                        status: 'active',
+                        startTime: { $lte: new Date() },
+                        endTime: { $gte: new Date() }
+                    }
+                ]
+            };
+            console.log(`[DEBUG] Test query:`, JSON.stringify(testQuery, null, 2));
+            
+            const testResult = await MovieRental.findOne(testQuery);
+            console.log(`[DEBUG] Test query result:`, testResult ? {
+                id: testResult._id,
+                status: testResult.status,
+                startTime: testResult.startTime,
+                endTime: testResult.endTime
+            } : null);
             
             // Optimize: Check rental first (more likely to exist), skip movie verification for performance
             // Movie existence is already verified when rental was created
             const dbQueryStart = Date.now();
-            const rental = await MovieRental.findActiveRental(userId, movieId);
+            const rental = await MovieRental.findRentalAccess(userObjectId, movieObjectId);
             const dbQueryEnd = Date.now();
             
             console.log(`[DEBUG] Database query time: ${dbQueryEnd - dbQueryStart}ms`);
-            console.log(`[DEBUG] Active rental found:`, rental);
+            console.log(`[DEBUG] Active rental found:`, rental ? {
+                id: rental._id,
+                status: rental.status,
+                startTime: rental.startTime,
+                endTime: rental.endTime
+            } : null);
             
             if (!rental) {
                 const endTime = Date.now();
@@ -249,7 +292,19 @@ class RentalService {
                 };
             }
 
-            // Record access (async without waiting to improve performance)
+            // Check if rental is paid but not activated yet
+            if (rental.status === 'paid') {
+                const endTime = Date.now();
+                console.log(`[DEBUG] Paid rental found, needs activation - Total time: ${endTime - startTime}ms`);
+                return {
+                    hasAccess: true,
+                    needsActivation: true,
+                    rental: rental,
+                    message: 'Nhấn "Xem ngay" để bắt đầu xem phim'
+                };
+            }
+
+            // For active rentals, record access (async without waiting to improve performance)
             const recordAccessStart = Date.now();
             rental.recordAccess().catch(err => {
                 console.error('Error recording access (non-blocking):', err);
@@ -267,6 +322,7 @@ class RentalService {
 
             return {
                 hasAccess: true,
+                needsActivation: false,
                 rental: rental,
                 remainingTime,
                 remainingHours,
@@ -508,6 +564,44 @@ class RentalService {
 
         } catch (error) {
             console.error('Error getting popular rentals:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Kích hoạt rental khi user nhấn "xem ngay"
+     */
+    async activateRental(userId, movieId) {
+        try {
+            // Tìm rental với status 'paid' hoặc 'pending' (backward compatibility)
+            const rental = await MovieRental.findOne({ 
+                userId, 
+                movieId, 
+                status: { $in: ['paid', 'pending'] }
+            });
+            
+            if (!rental) {
+                throw new Error('Không tìm thấy rental cần kích hoạt');
+            }
+
+            // Sử dụng method activate() từ model
+            await rental.activate();
+            
+            // Return rental với populate data
+            const activatedRental = await MovieRental.findById(rental._id)
+                .populate('movieId', 'movie_title poster_path duration movie_type')
+                .populate('paymentId', 'amount orderCode');
+
+            return {
+                success: true,
+                data: {
+                    rental: activatedRental,
+                    message: `Kích hoạt thành công! Bạn có thể xem phim trong ${rental.rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
+                }
+            };
+
+        } catch (error) {
+            console.error('Error activating rental:', error);
             throw error;
         }
     }

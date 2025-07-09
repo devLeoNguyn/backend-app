@@ -22,18 +22,14 @@ const cloudflareStreamService = require('./services/cloudflare-stream.service');
 // CORS configuration
 app.use(cors({
   origin: [
-    'http://localhost:8082',
-    'http://localhost:19006',
-    'exp://192.168.5.139:8082',
-    'http://192.168.5.139:8082',
-    'https://backend-app-lou3.onrender.com'
+    'https://backend-app-lou3.onrender.com' // Production URL
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
-// view engine setup
+// view engine setup  
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'hbs');
 
