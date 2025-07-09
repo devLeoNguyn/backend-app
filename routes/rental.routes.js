@@ -2,6 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { body, param, query } = require('express-validator');
 const rentalController = require('../controllers/rental.controller');
+const { validationResult } = require('express-validator');
+
+// Middleware to handle validation errors
+const handleValidationErrors = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        console.log('❌ [Validation] Errors found:', errors.array());
+        return res.status(400).json({
+            success: false,
+            message: 'Dữ liệu không hợp lệ',
+            errors: errors.array()
+        });
+    }
+    console.log('✅ [Validation] All validations passed');
+    next();
+};
 
 // Validation middleware
 const validateCreateRental = [
@@ -39,16 +55,28 @@ const validateMovieId = [
     param('movieId')
         .notEmpty()
         .withMessage('movieId là bắt buộc')
-        .isMongoId()
-        .withMessage('movieId phải là ObjectId hợp lệ')
+        .custom((value) => {
+            console.log('🔍 [Validation] movieId:', value, 'type:', typeof value);
+            // More flexible validation - allow any string for now to debug
+            if (!value || value === 'undefined') {
+                throw new Error('movieId không hợp lệ');
+            }
+            return true;
+        })
 ];
 
 const validateUserId = [
     query('userId')
         .notEmpty()
         .withMessage('userId là bắt buộc')
-        .isMongoId()
-        .withMessage('userId phải là ObjectId hợp lệ')
+        .custom((value) => {
+            console.log('🔍 [Validation] userId:', value, 'type:', typeof value);
+            // More flexible validation - allow any string for now to debug
+            if (!value || value === 'undefined') {
+                throw new Error('userId không hợp lệ');
+            }
+            return true;
+        })
 ];
 
 const validateRentalId = [
@@ -77,6 +105,20 @@ const validateDateRange = [
 // ===========================================
 
 /**
+ * @route GET /api/rentals/test
+ * @desc Test endpoint để kiểm tra rental route hoạt động
+ * @access Public
+ */
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Rental routes working!',
+    timestamp: new Date().toISOString(),
+    ip: req.ip
+  });
+});
+
+/**
  * @route POST /api/rentals/rent
  * @desc Tạo order thuê phim
  * @access Public
@@ -102,7 +144,12 @@ router.post('/confirm-payment', validateConfirmPayment, rentalController.confirm
  * @desc Kiểm tra quyền xem phim
  * @access Public
  */
-router.get('/status/:movieId', validateMovieId, validateUserId, rentalController.checkRentalAccess);
+router.get('/status/:movieId', (req, res, next) => {
+    console.log('🛣️ [Route] /status/:movieId hit');
+    console.log('📍 [Route] Params:', req.params);
+    console.log('📍 [Route] Query:', req.query);
+    next();
+}, validateMovieId, validateUserId, handleValidationErrors, rentalController.checkRentalAccess);
 
 /**
  * @route GET /api/rentals/history
@@ -118,6 +165,26 @@ router.get('/history', validateUserId, rentalController.getUserRentalHistory);
  * @access Public
  */
 router.put('/:rentalId/cancel', validateRentalId, rentalController.cancelRental);
+
+const validateActivateRental = [
+    body('userId')
+        .notEmpty()
+        .withMessage('userId là bắt buộc')
+        .isMongoId()
+        .withMessage('userId phải là ObjectId hợp lệ'),
+    body('movieId')
+        .notEmpty()
+        .withMessage('movieId là bắt buộc')
+        .isMongoId()
+        .withMessage('movieId phải là ObjectId hợp lệ')
+];
+
+/**
+ * @route POST /api/rentals/activate
+ * @desc Kích hoạt rental khi user nhấn "xem ngay"
+ * @access Public
+ */
+router.post('/activate', validateActivateRental, rentalController.activateRental);
 
 // ===========================================
 // STATISTICS ENDPOINTS (Admin)

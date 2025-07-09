@@ -120,17 +120,28 @@ class RentalController {
      */
     async checkRentalAccess(req, res) {
         try {
+            console.log('🎯 [Controller] checkRentalAccess called');
+            console.log('📍 [Controller] Request params:', req.params);
+            console.log('📍 [Controller] Request query:', req.query);
+            console.log('📍 [Controller] Request URL:', req.originalUrl);
+            console.log('📍 [Controller] Request method:', req.method);
+
             const { movieId } = req.params;
             const { userId } = req.query;
 
+            console.log('🔍 [Controller] Extracted values:', { movieId, userId });
+
             if (!userId) {
+                console.log('❌ [Controller] Missing userId');
                 return res.status(400).json({
                     success: false,
                     message: 'userId là bắt buộc'
                 });
             }
 
+            console.log('🚀 [Controller] Calling rentalService.checkRentalAccess...');
             const result = await rentalService.checkRentalAccess(userId, movieId);
+            console.log('✅ [Controller] Service result:', result);
 
             res.json({
                 success: true,
@@ -138,7 +149,7 @@ class RentalController {
             });
 
         } catch (error) {
-            console.error('Error in checkRentalAccess:', error);
+            console.error('💥 [Controller] Error in checkRentalAccess:', error);
             res.status(500).json({
                 success: false,
                 message: error.message || 'Lỗi server khi kiểm tra quyền xem',
@@ -223,6 +234,39 @@ class RentalController {
             res.status(500).json({
                 success: false,
                 message: error.message || 'Lỗi server khi hủy rental',
+                data: null
+            });
+        }
+    }
+
+    /**
+     * POST /api/rentals/activate
+     * Kích hoạt rental khi user nhấn "xem ngay"
+     */
+    async activateRental(req, res) {
+        try {
+            const { userId, movieId } = req.body;
+
+            if (!userId || !movieId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'userId và movieId là bắt buộc'
+                });
+            }
+
+            const result = await rentalService.activateRental(userId, movieId);
+
+            res.json({
+                success: true,
+                message: result.data.message,
+                data: result.data.rental
+            });
+
+        } catch (error) {
+            console.error('Error in activateRental:', error);
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Lỗi server khi kích hoạt rental',
                 data: null
             });
         }

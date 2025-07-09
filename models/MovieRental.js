@@ -25,17 +25,18 @@ const movieRentalSchema = new mongoose.Schema({
     },
     startTime: {
         type: Date,
-        required: true,
-        default: Date.now
+        required: function() { return this.status === 'active' || this.status === 'expired'; },
+        default: null
     },
     endTime: {
         type: Date,
-        required: true
+        required: function() { return this.status === 'active' || this.status === 'expired'; },
+        default: null
     },
     status: {
         type: String,
-        enum: ['active', 'expired', 'cancelled'],
-        default: 'active',
+        enum: ['pending', 'paid', 'active', 'expired', 'cancelled'],
+        default: 'pending',
         index: true
     },
     notificationSent: {
@@ -102,6 +103,22 @@ movieRentalSchema.methods.markNotificationSent = function() {
     return this.save();
 };
 
+movieRentalSchema.methods.activate = function() {
+    if (this.status !== 'paid') {
+        throw new Error('Chỉ có thể kích hoạt rental ở trạng thái đã thanh toán');
+    }
+    
+    const now = new Date();
+    this.status = 'active';
+    this.startTime = now;
+    
+    // Set endTime based on rentalType
+    const duration = this.rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+    this.endTime = new Date(now.getTime() + duration);
+    
+    return this.save();
+};
+
 // Static methods
 movieRentalSchema.statics.findActiveRental = function(userId, movieId) {
     return this.findOne({
@@ -110,6 +127,30 @@ movieRentalSchema.statics.findActiveRental = function(userId, movieId) {
         status: 'active',
         startTime: { $lte: new Date() },
         endTime: { $gte: new Date() }
+    }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
+};
+
+movieRentalSchema.statics.findPaidRental = function(userId, movieId) {
+    return this.findOne({
+        userId,
+        movieId,
+        status: 'paid'
+    }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
+};
+
+movieRentalSchema.statics.findRentalAccess = function(userId, movieId) {
+    return this.findOne({
+        userId,
+        movieId,
+        status: { $in: ['paid', 'active'] },
+        $or: [
+            { status: 'paid' },
+            { 
+                status: 'active',
+                startTime: { $lte: new Date() },
+                endTime: { $gte: new Date() }
+            }
+        ]
     }).populate('movieId', 'movie_title poster_path price').populate('paymentId', 'amount orderCode');
 };
 
@@ -154,7 +195,7 @@ movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {
     return this.aggregate([
         {
             $match: {
-                status: { $in: ['active', 'expired'] },
+                status: { $in: ['paid', 'active', 'expired'] },
                 createdAt: { $gte: startDate, $lte: endDate }
             }
         },
@@ -187,7 +228,8 @@ movieRentalSchema.statics.getRevenueStats = function(startDate, endDate) {
 
 // Pre-save middleware
 movieRentalSchema.pre('save', function(next) {
-    if (this.isNew && !this.endTime) {
+    // Chỉ set endTime khi chuyển sang active và startTime vừa được set
+    if (this.status === 'active' && this.isModified('startTime') && !this.endTime && this.startTime) {
         const duration = this.rentalType === '48h' ? 48 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
         this.endTime = new Date(this.startTime.getTime() + duration);
     }

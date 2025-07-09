@@ -219,10 +219,15 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Logic for single movies
             const singleEpisode = episodes[0];
 
-            // Check rental access for paid movies
+            // Check rental access for paid movies - include both paid and active rentals
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (!movie.is_free && userId) {
-                const userRental = await MovieRental.findActiveRental(userId, id);
+                // Check for both paid (needs activation) and active rentals
+                const userRental = await MovieRental.findOne({
+                    userId,
+                    movieId: id,
+                    status: { $in: ['paid', 'active'] }
+                });
                 hasRentalAccess = !!userRental;
             }
 
@@ -259,10 +264,15 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Logic for series - use schema method but override episode URIs if user has rental access
             movieData = movie.formatMovieResponse(episodes);
             
-            // Check if user has rental access to override locked episodes
+            // Check if user has rental access to override locked episodes - include both paid and active rentals
             let hasRentalAccess = movie.is_free; // Default to true for free movies
             if (userId && !movie.is_free) {
-                const userRental = await MovieRental.findActiveRental(userId, id);
+                // Check for both paid (needs activation) and active rentals
+                const userRental = await MovieRental.findOne({
+                    userId,
+                    movieId: id,
+                    status: { $in: ['paid', 'active'] }
+                });
                 hasRentalAccess = !!userRental;
             }
             
