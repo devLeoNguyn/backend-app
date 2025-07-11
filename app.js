@@ -22,7 +22,22 @@ const cloudflareStreamService = require('./services/cloudflare-stream.service');
 // CORS configuration
 app.use(cors({
   origin: [
-    'https://backend-app-lou3.onrender.com' // Production URL
+    'https://backend-app-lou3.onrender.com',
+    'http://localhost:3003',
+    'http://localhost:8081',
+    'http://192.168.5.47:3003',  // Backend URL
+    'http://192.168.5.47:8081',  // Frontend URL
+    'http://192.168.5.47:3003',  // Device access to backend
+    'http://192.168.5.47:8081',  // Device access to frontend
+    // Expo mobile app origins
+    'exp://192.168.5.47:8081',  
+    'exp://localhost:8081',
+    'http://localhost:5173',
+    // Allow any expo:// protocol for mobile
+    /^exp:\/\/.*/,
+    // Allow mobile app access
+    null, // For mobile apps without origin
+    undefined // For mobile apps without origin
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -52,7 +67,6 @@ const ratingRoutes = require('./routes/rating.routes');
 const genreRoutes = require('./routes/genre.routes');
 const watchingRoutes = require('./routes/watching.routes');
 const homeRoutes = require('./routes/home.routes');
-
 const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
@@ -74,7 +88,6 @@ app.use('/api/watching', watchingRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/video-url', videoRoutes);
 app.use('/api/series', seriesRoutes);
-
 app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 

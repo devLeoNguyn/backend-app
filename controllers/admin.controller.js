@@ -129,12 +129,12 @@ class AdminController {
             const formattedMovies = movies.map(movie => ({
                 id: movie._id,
                 title: movie.movie_title,
-                color: movie.genres[0]?.genre_name || 'Chưa phân loại',
+                genre: movie.genres[0]?.genre_name || 'Chưa phân loại',
                 producer: movie.producer,
                 price: movie.price || 0,
                 createdAt: movie.createdAt.toISOString().split('T')[0],
                 inStock: movie.release_status === 'released',
-                img: movie.poster_url || '/corrugated-box.jpg',
+                img: movie.poster_path,
                 // Thêm thông tin chi tiết
                 description: movie.description,
                 duration: movie.duration,

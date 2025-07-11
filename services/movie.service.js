@@ -71,11 +71,9 @@ const createMovieComprehensive = async (movieData) => {
             maxEpisodeNumber
         } = validatedData;
 
-        // Validate genres exist
-        const validGenres = await Genre.find({ _id: { $in: genres } });
-        if (validGenres.length !== genres.length) {
-            throw new Error('Một hoặc nhiều thể loại không tồn tại');
-        }
+        // Validate genres using the new validateGenres function
+        const validGenres = await validateGenres(genres, Genre);
+        const genreIds = validGenres.map(genre => genre._id);
 
         // Create movie data object
         const movieCreateData = {
@@ -85,7 +83,7 @@ const createMovieComprehensive = async (movieData) => {
             producer,
             price,
             movie_type,
-            genres,
+            genres: genreIds,   // Thêm genres vào movieCreateData      
             total_episodes: maxEpisodeNumber,
             poster_path: poster_path || '',
             is_free: price === 0
@@ -157,40 +155,71 @@ const createEpisodesForMovie = async (movieId, episodesData, movieType) => {
  */
 const updateMovie = async (movieId, updateData) => {
     try {
+        console.log('🔄 [MovieService] Updating movie:', { movieId, updateData });
+        
         // Validate update data if price is being updated
         if (updateData.price !== undefined) {
             updateData.price = validatePrice(updateData.price);
             updateData.is_free = updateData.price === 0;
         }
 
+        // Handle genres if provided
+        if (updateData.genres && updateData.genres.length > 0) {
+            console.log('🏷️ [MovieService] Processing genres:', updateData.genres);
+            
+            try {
+                const validatedGenres = await validateGenres(updateData.genres, Genre);
+                updateData.genres = validatedGenres.map(genre => genre._id);
+                console.log('✅ [MovieService] Validated genres:', updateData.genres);
+            } catch (genreError) {
+                console.error('❌ [MovieService] Genre validation error:', genreError.message);
+                throw new Error(`Lỗi thể loại: ${genreError.message}`);
+            }
+        }
+
+        // Remove episodes from updateData before movie update (will handle separately)
+        const episodesData = updateData.episodes;
+        delete updateData.episodes;
+
+        console.log('📝 [MovieService] Final update data:', updateData);
+
         // Update movie
         const updatedMovie = await Movie.findByIdAndUpdate(
             movieId,
             updateData,
-            { new: true, runValidators: true }
+            { new: true, runValidators: false }
         ).populate('genres', 'genre_name description is_active');
 
         if (!updatedMovie) {
             throw new Error('Không tìm thấy phim');
         }
 
+        console.log('✅ [MovieService] Movie updated successfully:', updatedMovie.movie_title);
+
         // Update episodes if provided
         let episodes = [];
-        if (updateData.episodes && updateData.episodes.length > 0) {
+        if (episodesData && episodesData.length > 0) {
+            console.log('📺 [MovieService] Updating episodes...');
+            
             // Delete old episodes
             await Episode.deleteMany({ movie_id: movieId });
 
             // Create new episodes
-            episodes = await createEpisodesForMovie(movieId, updateData.episodes, updatedMovie.movie_type);
+            episodes = await createEpisodesForMovie(movieId, episodesData, updatedMovie.movie_type);
+            
+            console.log(`✅ [MovieService] Created ${episodes.length} episodes`);
         } else {
             // Get existing episodes
             episodes = await Episode.find({ movie_id: movieId })
                 .select('episode_title uri episode_number episode_description duration createdAt updatedAt')
                 .sort({ episode_number: 1 });
+                
+            console.log(`📺 [MovieService] Retrieved ${episodes.length} existing episodes`);
         }
 
         return { updatedMovie, episodes };
     } catch (error) {
+        console.error('❌ [MovieService] Update movie error:', error);
         throw error;
     }
 };
@@ -410,6 +439,7 @@ const searchMovies = async (query, options = {}) => {
 
         // Build search criteria
         const searchCriteria = {
+            release_status: 'released', // Chỉ tìm phim đã phát hành
             $or: searchByTitle 
                 ? [{ movie_title: { $regex: query, $options: 'i' } }]
                 : [
@@ -462,7 +492,9 @@ const searchMovies = async (query, options = {}) => {
  */
 const getRecentMovies = async (limit = 5) => {
     try {
-        const recentMovies = await Movie.find()
+        const recentMovies = await Movie.find({
+            release_status: 'released' // Chỉ lấy phim đã phát hành
+        })
             .select('movie_title description production_time producer movie_type price is_free price_display')
             .sort({ production_time: -1 })
             .limit(limit);

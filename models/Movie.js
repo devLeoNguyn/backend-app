@@ -53,7 +53,6 @@ const movieSchema = new mongoose.Schema({
     type: Number,
     min: 1,
     required: function() {
-      // Always require total_episodes
       return true;
     },
     default: 1
@@ -80,12 +79,7 @@ const movieSchema = new mongoose.Schema({
   favorite_count: {
     type: Number,
     default: 0
-  },
-  tags: [{
-    type: String,
-    trim: true
-  }],
-
+  }
 }, {
   timestamps: true,
   toJSON: {

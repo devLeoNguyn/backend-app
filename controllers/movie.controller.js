@@ -7,6 +7,7 @@ const Rating = require('../models/Rating');
 const Watching = require('../models/Watching');
 const mongoose = require('mongoose');
 const MovieRental = require('../models/MovieRental');
+const PushNotificationService = require('../services/push-notification.service');
 
 // Import movie service for centralized movie operations
 const movieService = require('../services/movie.service');
@@ -55,6 +56,23 @@ const createMovieController = async (req, res) => {
         if (newMovie.movie_type === 'Thể thao') {
             formattedMovie.event_start_time = newMovie.event_start_time;
             formattedMovie.event_status = newMovie.event_status;
+        }
+
+        // Chỉ gửi push notification khi phim có trạng thái "released"
+        if (newMovie.release_status === 'released') {
+        try {
+                console.log('📢 Sending push notification for new released movie:', newMovie.movie_title);
+            await PushNotificationService.sendNewMovieNotification(
+                newMovie._id,
+                    newMovie.movie_title,
+                    newMovie.poster_path
+            );
+        } catch (notificationError) {
+            console.error('Error sending push notification:', notificationError);
+            // Don't fail the movie creation if notification fails
+            }
+        } else {
+            console.log('🔇 Skipping push notification for movie with status:', newMovie.release_status);
         }
 
         res.status(201).json({
@@ -131,7 +149,51 @@ const updateMovie = async (req, res) => {
     try {
         const { id } = req.params;
         
+        // Lấy thông tin phim cũ để so sánh trạng thái
+        const oldMovie = await Movie.findById(id);
+        if (!oldMovie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+        
         const { updatedMovie, episodes } = await movieService.updateMovie(id, req.body);
+
+        // Kiểm tra xem có thay đổi release_status từ 'ended' thành 'released' không
+        const wasEnded = oldMovie.release_status === 'ended';
+        const nowReleased = updatedMovie.release_status === 'released';
+        
+        if (wasEnded && nowReleased) {
+            try {
+                console.log('📢 Movie status changed from ended to released, sending notification:', updatedMovie.movie_title);
+                await PushNotificationService.sendNewMovieNotification(
+                    updatedMovie._id,
+                    updatedMovie.movie_title,
+                    updatedMovie.poster_path
+                );
+            } catch (notificationError) {
+                console.error('Error sending push notification for status change:', notificationError);
+                // Don't fail the update if notification fails
+            }
+        } else if (nowReleased && oldMovie.release_status !== 'released') {
+            // Trường hợp khác: từ upcoming hoặc trạng thái khác thành released
+            try {
+                console.log('📢 Movie status changed to released, sending notification:', updatedMovie.movie_title);
+                await PushNotificationService.sendNewMovieNotification(
+                    updatedMovie._id,
+                    updatedMovie.movie_title,
+                    updatedMovie.poster_path
+                );
+            } catch (notificationError) {
+                console.error('Error sending push notification for status change:', notificationError);
+            }
+        } else {
+            console.log('🔇 No notification needed for status change:', {
+                from: oldMovie.release_status,
+                to: updatedMovie.release_status
+            });
+        }
 
         // Format response using schema method
         const responseData = updatedMovie.formatMovieResponse(episodes);
@@ -571,14 +633,20 @@ const getMoviesByGenre = async (req, res) => {
 
         // Find movies with the specified genres
         const [movies, total] = await Promise.all([
-            Movie.find({ genres: { $in: genreIds } })
+            Movie.find({ 
+                genres: { $in: genreIds },
+                release_status: 'released' // Chỉ hiển thị phim đã phát hành
+            })
                 .populate('genres', 'genre_name')
                 .select('movie_title description poster_path genres producer price createdAt')
                 .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit))
                 .lean(),
-            Movie.countDocuments({ genres: { $in: genreIds } })
+            Movie.countDocuments({ 
+                genres: { $in: genreIds },
+                release_status: 'released' // Chỉ đếm phim đã phát hành
+            })
         ]);
 
         // Calculate total pages
@@ -719,7 +787,8 @@ const getRelatedMovies = async (req, res) => {
         // Lấy các phim cùng thể loại, loại trừ chính nó
         const relatedMovies = await Movie.find({
             _id: { $ne: id },
-             genres: { $in: genresToSearch }
+            genres: { $in: genresToSearch },
+            release_status: 'released' // Chỉ hiển thị phim đã phát hành
         })
         .select('movie_title poster_path movie_type producer genres')
         .limit(8)
