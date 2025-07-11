@@ -1,6 +1,6 @@
 export const API_BASE_URL = process.env.NODE_ENV === 'production' 
     ? 'https://backend-app-lou3.onrender.com' 
-    : 'http://localhost:3003'; // Backend dev server
+    : 'http://localhost:3003'; // Use localhost for development
 
 export const WS_BASE_URL = process.env.NODE_ENV === 'production'
     ? 'wss://backend-app-lou3.onrender.com'
@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
     ADMIN_ANALYTICS: `${API_BASE_URL}/api/admin/analytics/charts`,
     ADMIN_USERS: `${API_BASE_URL}/api/admin/users`,
     ADMIN_MOVIES: `${API_BASE_URL}/api/admin/movies`, 
+    ADMIN_MOVIES_CREATE: `${API_BASE_URL}/api/admin/movies`, // POST endpoint cho tạo phim mới
     ADMIN_RENTALS: `${API_BASE_URL}/api/admin/rentals`,
     
     // Admin template compatible endpoints

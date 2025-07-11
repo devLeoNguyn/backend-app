@@ -18,7 +18,7 @@ interface SystemStatusData {
     };
     environment: string;
     uptime: number;
-    memory: any;
+    memory: { rss: number; heapTotal: number; heapUsed: number; external: number };
     timestamp: string;
 }
 
@@ -33,8 +33,8 @@ const SystemStatus: React.FC = () => {
                 setLoading(true);
                 const response = await fetchSystemStatus();
                 setSystemData(response.data);
-            } catch (err: any) {
-                setError(err.message || 'Failed to load system status');
+            } catch (err) {
+                setError((err as Error).message || 'Failed to load system status');
             } finally {
                 setLoading(false);
             }

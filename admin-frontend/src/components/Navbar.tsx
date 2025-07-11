@@ -16,19 +16,30 @@ const Navbar = () => {
   const [isDrawerOpen, setDrawerOpen] = React.useState(false);
   const toggleDrawer = () => setDrawerOpen(!isDrawerOpen);
 
-  const toggleFullScreen = () => {
-    setIsFullScreen((prev) => !prev);
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullScreen(!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullScreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await element?.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
+    }
   };
 
   const navigate = useNavigate();
-
-  React.useEffect(() => {
-    if (isFullScreen) {
-      document.exitFullscreen();
-    } else {
-      element?.requestFullscreen({ navigationUI: 'auto' });
-    }
-  }, [element, isFullScreen]);
 
   return (
     // navbar screen
@@ -60,7 +71,7 @@ const Navbar = () => {
             ></label>
             <div className="menu p-4 w-auto min-h-full bg-base-200 text-base-content">
               <Link
-                to={'/'}
+                to={'/admin'}
                 className="flex items-center gap-1 xl:gap-2 mt-1 mb-5"
               >
                 <DiReact className="text-3xl sm:text-4xl xl:text-4xl 2xl:text-6xl text-primary animate-spin-slow" />
@@ -81,7 +92,7 @@ const Navbar = () => {
         </div>
 
         {/* navbar logo */}
-        <Link to={'/'} className="flex items-center gap-1 xl:gap-2">
+        <Link to={'/admin'} className="flex items-center gap-1 xl:gap-2">
           <DiReact className="text-3xl sm:text-4xl xl:text-4xl 2xl:text-6xl text-primary animate-spin-slow" />
           <span className="text-[16px] leading-[1.2] sm:text-lg xl:text-xl 2xl:text-2xl font-semibold text-base-content dark:text-neutral-200">
             React Dashboard
@@ -150,13 +161,18 @@ const Navbar = () => {
             tabIndex={0}
             className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-40"
           >
-            <Link to={'/profile'}>
-              <li>
-                <a className="justify-between">My Profile</a>
-              </li>
-            </Link>
-            <li onClick={() => navigate('/login')}>
-              <a>Log Out</a>
+            <li>
+              <Link to="/admin/profile" className="justify-between">
+                My Profile
+              </Link>
+            </li>
+            <li>
+              <Link to="/login" onClick={(e) => {
+                e.preventDefault();
+                navigate('/login');
+              }}>
+                Log Out
+              </Link>
             </li>
           </ul>
         </div>

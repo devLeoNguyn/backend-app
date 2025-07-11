@@ -19,9 +19,9 @@ const Login = () => {
 
         try {
             await authService.login(email, password);
-            navigate('/'); // Redirect to dashboard
-        } catch (error: any) {
-            setError(error.message || 'Login failed');
+            navigate('/admin'); // Redirect to dashboard
+        } catch (error) {
+            setError((error as Error).message || 'Login failed');
         } finally {
             setLoading(false);
         }
@@ -30,7 +30,7 @@ const Login = () => {
     // Check if already authenticated
     React.useEffect(() => {
         if (authService.isAuthenticated()) {
-            navigate('/');
+            navigate('/admin');
         }
     }, [navigate]);
 

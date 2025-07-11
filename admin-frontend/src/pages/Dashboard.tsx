@@ -159,7 +159,14 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.rentals.map((rental: any, index: number) => (
+                {data.rentals.map((rental: {
+                  customerName?: string;
+                  email?: string; 
+                  movieTitle?: string;
+                  amount?: number;
+                  status: string;
+                  createdAt: string;
+                }, index: number) => (
                   <tr key={index} className="border-b border-gray-100 dark:border-gray-700">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">

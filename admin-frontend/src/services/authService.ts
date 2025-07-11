@@ -46,9 +46,10 @@ class AuthService {
             } else {
                 throw new Error('Unauthorized: Admin access required');
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Login error:', error);
-            throw new Error(error.response?.data?.message || 'Login failed');
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            throw new Error(axiosError.response?.data?.message || 'Login failed');
         }
     }
 

@@ -2,9 +2,7 @@ import React from 'react';
 import {
   DataGrid,
   GridColDef,
-  //   GridToolbarQuickFilter,
   GridToolbar,
-  //   GridValueGetterParams,
 } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -18,7 +16,8 @@ interface DataTableProps {
   columns: GridColDef[];
   rows: object[];
   slug: string;
-  includeActionColumn: boolean;
+  includeActionColumn?: boolean;
+  onEdit?: (rowData: any) => void; // Thêm prop onEdit
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -26,43 +25,47 @@ const DataTable: React.FC<DataTableProps> = ({
   rows,
   slug,
   includeActionColumn,
+  onEdit, // Thêm onEdit vào destructuring
 }) => {
   const navigate = useNavigate();
 
   const actionColumn: GridColDef = {
     field: 'action',
     headerName: 'Action',
-    minWidth: 200,
-    flex: 1,
+    minWidth: 120,
+    flex: 0.5,
     renderCell: (params) => {
       return (
-        <div className="flex items-center">
-          {/* <div to={`/${props.slug}/${params.row.id}`}> */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => {
-              navigate(`/${slug}/${params.row.id}`);
+              navigate(`/admin/${slug}/${params.row.id}`);
             }}
-            className="btn btn-square btn-ghost"
+            className="btn btn-square btn-ghost btn-sm"
           >
             <HiOutlineEye />
           </button>
           <button
             onClick={() => {
-              toast('Jangan diedit!', {
-                icon: '😠',
+              if (onEdit) {
+                onEdit(params.row); // Sử dụng onEdit callback nếu có
+              } else {
+                toast('Chức năng đang phát triển!', {
+                  icon: '⚙️',
               });
+              }
             }}
-            className="btn btn-square btn-ghost"
+            className="btn btn-square btn-ghost btn-sm"
           >
             <HiOutlinePencilSquare />
           </button>
           <button
             onClick={() => {
-              toast('Jangan dihapus!', {
-                icon: '😠',
+              toast('Chức năng đang phát triển!', {
+                icon: '⚙️',
               });
             }}
-            className="btn btn-square btn-ghost"
+            className="btn btn-square btn-ghost btn-sm"
           >
             <HiOutlineTrash />
           </button>
@@ -71,69 +74,72 @@ const DataTable: React.FC<DataTableProps> = ({
     },
   };
 
-  if (includeActionColumn === true) {
-    return (
-      <div className="w-full bg-base-100 text-base-content">
-        <DataGrid
-          className="dataGrid p-0 xl:p-3 w-full bg-base-100 text-white"
-          rows={rows}
-          columns={[...columns, actionColumn]}
-          getRowHeight={() => 'auto'}
-          initialState={{
+  const tableProps = {
+    className: "dataGrid w-full bg-base-100 text-base-content min-h-[500px]",
+    rows,
+    columns: includeActionColumn ? [...columns, actionColumn] : columns,
+    getRowHeight: () => 60,
+    initialState: {
             pagination: {
               paginationModel: {
                 pageSize: 10,
               },
             },
-          }}
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{
+    },
+    slots: { toolbar: GridToolbar },
+    slotProps: {
             toolbar: {
               showQuickFilter: true,
               quickFilterProps: { debounceMs: 500 },
             },
-          }}
-          pageSizeOptions={[5]}
-          checkboxSelection
-          disableRowSelectionOnClick
-          disableColumnFilter
-          disableDensitySelector
-          disableColumnSelector
-        />
+    },
+    pageSizeOptions: [5, 10, 25, 50],
+    checkboxSelection: true,
+    disableRowSelectionOnClick: true,
+    disableColumnFilter: true,
+    disableDensitySelector: true,
+    disableColumnSelector: true,
+    autoHeight: true,
+    sx: {
+      // Custom styles for better responsive behavior
+      '& .MuiDataGrid-main': {
+        width: '100%',
+        overflow: 'auto',
+      },
+      '& .MuiDataGrid-virtualScroller': {
+        overflow: 'auto',
+      },
+      '& .MuiDataGrid-footerContainer': {
+        minHeight: '52px',
+      },
+      '& .MuiDataGrid-cell': {
+        whiteSpace: 'normal',
+        padding: '8px',
+        lineHeight: '1.2',
+      },
+      '& .MuiDataGrid-columnHeaders': {
+        minHeight: '48px !important',
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            },
+      '& .MuiDataGrid-toolbarContainer': {
+        padding: '8px',
+        gap: '8px',
+        flexWrap: 'wrap',
+      },
+      '& .MuiButton-root': {
+        padding: '4px 8px',
+        minWidth: 'auto',
+      },
+    },
+  };
+
+  return (
+    <div className="w-full overflow-hidden rounded-lg border border-base-300">
+      <div className="w-full overflow-auto">
+        <DataGrid {...tableProps} />
+      </div>
       </div>
     );
-  } else {
-    return (
-      <div className="w-full bg-base-100 text-base-content">
-        <DataGrid
-          className="dataGrid p-0 xl:p-3 w-full bg-base-100 text-white"
-          rows={rows}
-          columns={[...columns]}
-          getRowHeight={() => 'auto'}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 10,
-              },
-            },
-          }}
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 500 },
-            },
-          }}
-          pageSizeOptions={[5]}
-          checkboxSelection
-          disableRowSelectionOnClick
-          disableColumnFilter
-          disableDensitySelector
-          disableColumnSelector
-        />
-      </div>
-    );
-  }
 };
 
 export default DataTable;

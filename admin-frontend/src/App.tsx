@@ -4,6 +4,7 @@ import {
   RouterProvider,
   Outlet,
   ScrollRestoration,
+  Navigate,
 } from 'react-router-dom';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
@@ -64,66 +65,70 @@ function App() {
   const router = createBrowserRouter([
     {
       path: '/',
+      element: <Navigate to="/admin" replace />,
+    },
+    {
+      path: '/admin',
       element: <Layout />,
       children: [
         {
-          path: '/',
+          path: '',
           element: <Dashboard />,
         },
         {
-          path: '/home',
+          path: 'home',
           element: <Home />,
         },
         {
-          path: '/profile',
+          path: 'profile',
           element: <Profile />,
         },
         {
-          path: '/profile/edit',
+          path: 'profile/edit',
           element: <EditProfile />,
         },
         {
-          path: '/users',
+          path: 'users',
           element: <Users />,
         },
         {
-          path: '/users/:id',
+          path: 'users/:id',
           element: <User />,
         },
         {
-          path: '/products',
+          path: 'products',
           element: <Products />,
         },
         {
-          path: '/products/:id',
+          path: 'products/:id',
           element: <Product />,
         },
         {
-          path: '/orders',
+          path: 'orders',
           element: <Orders />,
         },
         {
-          path: '/posts',
+          path: 'posts',
           element: <Posts />,
         },
         {
-          path: '/notes',
+          path: 'notes',
           element: <Notes />,
         },
         {
-          path: '/calendar',
+          path: 'calendar',
           element: <Calendar />,
         },
         {
-          path: '/charts',
+          path: 'charts',
           element: <Charts />,
         },
         {
-          path: '/logs',
+          path: 'logs',
           element: <Logs />,
         },
         {
-          path: '/websocket-test',
+          path: 'websocket-test',
           element: <WebSocketTestPage />,
         },
       ],
