@@ -18,7 +18,7 @@ const Profile = () => {
             My Profile
           </h2>
           <button
-            onClick={() => navigate('/profile/edit')}
+            onClick={() => navigate('/admin/profile/edit')}
             className="btn text-xs xl:text-sm dark:btn-neutral"
           >
             <HiOutlinePencil className="text-lg" /> Edit My Profile

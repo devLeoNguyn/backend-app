@@ -21,13 +21,13 @@ export const menu = [
     listItems: [
       {
         isLink: true,
-        url: '/',
+        url: '/admin',
         icon: HiOutlineHome,
         label: 'homepage',
       },
       {
         isLink: true,
-        url: '/profile',
+        url: '/admin/profile',
         icon: HiOutlineUser,
         label: 'profile',
       },
@@ -38,25 +38,25 @@ export const menu = [
     listItems: [
       {
         isLink: true,
-        url: '/users',
+        url: '/admin/users',
         icon: HiOutlineUsers,
         label: 'users',
       },
       {
         isLink: true,
-        url: '/products',
+        url: '/admin/products',
         icon: HiOutlineCube,
         label: 'products',
       },
       {
         isLink: true,
-        url: '/orders',
+        url: '/admin/orders',
         icon: HiOutlineClipboardDocumentList,
         label: 'orders',
       },
       {
         isLink: true,
-        url: '/posts',
+        url: '/admin/posts',
         icon: HiOutlineDocumentChartBar,
         label: 'posts',
       },
@@ -67,13 +67,13 @@ export const menu = [
     listItems: [
       {
         isLink: true,
-        url: '/notes',
+        url: '/admin/notes',
         icon: HiOutlinePencilSquare,
         label: 'notes',
       },
       {
         isLink: true,
-        url: '/calendar',
+        url: '/admin/calendar',
         icon: HiOutlineCalendarDays,
         label: 'calendar',
       },
@@ -84,19 +84,19 @@ export const menu = [
     listItems: [
       {
         isLink: true,
-        url: '/charts',
+        url: '/admin/charts',
         icon: HiOutlinePresentationChartBar,
         label: 'charts',
       },
       {
         isLink: true,
-        url: '/logs',
+        url: '/admin/logs',
         icon: HiOutlineDocumentText,
         label: 'logs',
       },
       {
         isLink: true,
-        url: '/websocket-test',
+        url: '/admin/websocket-test',
         icon: HiOutlineSignal,
         label: 'WebSocket Test',
       },

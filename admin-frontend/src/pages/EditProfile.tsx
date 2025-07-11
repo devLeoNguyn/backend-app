@@ -46,14 +46,14 @@ const EditProfile = () => {
           </h2>
           <div className="w-full xl:w-auto grid grid-cols-2 xl:flex gap-3">
             <button
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate('/admin/profile')}
               className="btn btn-block xl:w-auto dark:btn-neutral"
             >
               Discard Changes
             </button>
             <button
               onClick={() => {
-                navigate('/profile');
+                navigate('/admin/profile');
                 toast('Gabisa diedit dong!', { icon: '😛' });
               }}
               className="btn btn-block xl:w-auto btn-primary"

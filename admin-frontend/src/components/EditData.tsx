@@ -1,8 +1,8 @@
 import React, { ChangeEvent, FormEvent } from 'react';
-import toast from 'react-hot-toast';
 import { HiOutlineXMark } from 'react-icons/hi2';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { createProduct, fetchParentGenres, fetchChildGenres } from '../api/ApiCollection';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { updateProduct, fetchParentGenres, fetchChildGenres } from '../api/ApiCollection';
 
 interface Genre {
   _id: string;
@@ -13,21 +13,20 @@ interface Genre {
   } | string | null;
   is_parent: boolean;
   children?: Genre[];
-  description?: string;
-  is_active: boolean;
-  sort_order: number;
 }
 
-interface AddDataProps {
+interface EditDataProps {
   slug: string;
   isOpen: boolean;
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsOpen: (isOpen: boolean) => void;
+  movieData: any;
 }
 
-const AddData: React.FC<AddDataProps> = ({
+const EditData: React.FC<EditDataProps> = ({
   slug,
   isOpen,
   setIsOpen,
+  movieData
 }) => {
   // React Query setup
   const queryClient = useQueryClient();
@@ -51,18 +50,42 @@ const AddData: React.FC<AddDataProps> = ({
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
 
-  // add product/movie - Updated fields
-  const [title, setTitle] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [productionTime, setProductionTime] = React.useState('');
+  // Form states - Khởi tạo với dữ liệu từ movieData
+  const [title, setTitle] = React.useState(movieData?.title || '');
+  const [description, setDescription] = React.useState(movieData?.description || '');
+  const [productionTime, setProductionTime] = React.useState(
+    movieData?.createdAt ? movieData.createdAt.split('T')[0] : ''
+  );
   const [genre, setGenre] = React.useState('');
-  const [producer, setProducer] = React.useState('');
-  const [price, setPrice] = React.useState('');
-  const [movieType, setMovieType] = React.useState('');
-  const [totalEpisodes, setTotalEpisodes] = React.useState('');
-  const [releaseStatus, setReleaseStatus] = React.useState('Đã phát hành');
-  const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(true);
+  const [producer, setProducer] = React.useState(movieData?.producer || '');
+  const [price, setPrice] = React.useState(movieData?.price?.toString() || '0');
+  const [movieType, setMovieType] = React.useState(movieData?.movieType || '');
+  const [totalEpisodes, setTotalEpisodes] = React.useState(movieData?.totalEpisodes?.toString() || '1');
+  const [releaseStatus, setReleaseStatus] = React.useState(
+    movieData?.status === 'released' ? 'Đã phát hành' : 
+    movieData?.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành'
+  );
+  
+  const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(false);
 
+  // Update form data when movieData changes
+  React.useEffect(() => {
+    if (movieData) {
+      setTitle(movieData.title || '');
+      setDescription(movieData.description || '');
+      setProductionTime(movieData.createdAt ? movieData.createdAt.split('T')[0] : '');
+      setProducer(movieData.producer || '');
+      setPrice(movieData.price?.toString() || '0');
+      setMovieType(movieData.movieType || '');
+      setTotalEpisodes(movieData.totalEpisodes?.toString() || '1');
+      setReleaseStatus(
+        movieData.status === 'released' ? 'Đã phát hành' : 
+        movieData.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành'
+      );
+    }
+  }, [movieData]);
+
+  // Load image handler
   const loadImage = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const imageUpload = e.target.files[0];
@@ -71,29 +94,15 @@ const AddData: React.FC<AddDataProps> = ({
     }
   };
 
-  // Mutation for creating product (movie)
-  const createProductMutation = useMutation({
-    mutationFn: createProduct,
+  // Mutation for updating product (movie)
+  const updateProductMutation = useMutation({
+    mutationFn: ({ productId, productData }: { productId: string, productData: any }) => 
+      updateProduct(productId, productData),
     onSuccess: (data: unknown) => {
-      toast.success('🎬 Phim mới đã được tạo thành công!');
-      
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setProductionTime('');
-      setGenre('');
-      setSelectedParentGenre('');
-      setProducer('');
-      setPrice('');
-      setMovieType('');
-      setTotalEpisodes('');
-      setReleaseStatus('Đã phát hành');
-      setFile(null);
-      setPreview(null);
-      
+      toast.success('🎬 Phim đã được cập nhật thành công!');
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ['allproducts'] });
-      console.log('✅ Movie created:', data);
+      console.log('✅ Movie updated:', data);
     },
     onError: (error: any) => {
       let errorMessage = 'Lỗi không xác định';
@@ -106,7 +115,7 @@ const AddData: React.FC<AddDataProps> = ({
         errorMessage = error.message;
       }
       
-      toast.error(`❌ Lỗi khi tạo phim: ${errorMessage}`);
+      toast.error(`❌ Lỗi khi cập nhật phim: ${errorMessage}`);
     }
   });
 
@@ -128,22 +137,42 @@ const AddData: React.FC<AddDataProps> = ({
         }
       }
       
-      const productData = {
-        title,
-        description,
-        production_time: productionTime,
-        genre: selectedGenreName,
-        producer,
-        price: parseFloat(price) || 0,
-        movie_type: movieType,
-        total_episodes: parseInt(totalEpisodes) || 1,
-        release_status: releaseStatus,
-        event_start_time: '',
-        poster_file: file || undefined
-      };
+      // Chỉ gửi các field đã thay đổi
+      const productData: any = {};
       
-      console.log('🎬 Submitting new movie:', productData);
-      createProductMutation.mutate(productData);
+      if (title !== movieData?.title) productData.title = title;
+      if (description !== movieData?.description) productData.description = description;
+      if (productionTime) productData.production_time = productionTime;
+      if (selectedGenreName) productData.genre = selectedGenreName;
+      if (producer !== movieData?.producer) productData.producer = producer;
+      if (parseFloat(price) !== movieData?.price) productData.price = parseFloat(price) || 0;
+      if (movieType !== movieData?.movieType) productData.movie_type = movieType;
+      if (parseInt(totalEpisodes) !== movieData?.totalEpisodes) {
+        productData.total_episodes = parseInt(totalEpisodes) || 1;
+      }
+      
+      // Kiểm tra thay đổi release status
+      const currentStatusVietnamese = movieData?.status === 'released' ? 'Đã phát hành' : 
+                                     movieData?.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành';
+      if (releaseStatus !== currentStatusVietnamese) {
+        productData.release_status = releaseStatus;
+      }
+      
+      if (file) productData.poster_file = file;
+      
+      console.log('🎬 Submitting movie update:', productData);
+      console.log('🎯 Selected genre info:', {
+        genre,
+        selectedParentGenre,
+        selectedGenreName,
+        childGenres: childGenres.length,
+        parentGenres: parentGenres.length
+      });
+      
+      updateProductMutation.mutate({
+        productId: movieData.id,
+        productData
+      });
     }
   };
 
@@ -152,23 +181,20 @@ const AddData: React.FC<AddDataProps> = ({
     setGenre('');
   }, [selectedParentGenre]);
 
-  // Updated validation for movie form
+  // Set preview từ dữ liệu có sẵn
   React.useEffect(() => {
-    const requiredFields = [
-      title,
-      description,
-      productionTime,
-      producer,
-      price,
-      movieType,
-      totalEpisodes,
-      releaseStatus
-    ];
+    if (movieData?.img && !preview) {
+      setPreview(movieData.img);
+    }
+  }, [movieData, preview]);
 
-    const hasValidGenre = genre || (selectedParentGenre && childGenres.length === 0);
-    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || file === null;
+  // Validation
+  React.useEffect(() => {
+    const requiredFields = [title, producer, price, movieType, totalEpisodes, releaseStatus];
+    const hasValidGenre = genre || selectedParentGenre;
+    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre;
     setFormProductIsEmpty(isFormEmpty);
-  }, [title, description, productionTime, genre, selectedParentGenre, childGenres, producer, price, movieType, totalEpisodes, releaseStatus, file]);
+  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, genre, selectedParentGenre]);
 
   if (!isOpen || slug !== 'product') return null;
 
@@ -189,7 +215,7 @@ const AddData: React.FC<AddDataProps> = ({
           >
             <HiOutlineXMark className="text-xl font-bold" />
           </button>
-          <span className="text-2xl font-bold">🎬 Thêm phim mới</span>
+          <span className="text-2xl font-bold">✏️ Chỉnh sửa phim: {movieData?.title}</span>
         </div>
         
         <form onSubmit={handleSubmit} className="w-full mt-4">
@@ -303,7 +329,6 @@ const AddData: React.FC<AddDataProps> = ({
                   className="file-input file-input-bordered w-full"
                   accept="image/*"
                   onChange={loadImage}
-                  required
                 />
                 {preview && (
                   <div className="mt-2">
@@ -329,15 +354,15 @@ const AddData: React.FC<AddDataProps> = ({
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={formProductIsEmpty || createProductMutation.isPending}
+              disabled={formProductIsEmpty || updateProductMutation.isPending}
             >
-              {createProductMutation.isPending ? (
+              {updateProductMutation.isPending ? (
                 <>
                   <span className="loading loading-spinner"></span>
-                  Đang tạo...
+                  Đang lưu...
                 </>
               ) : (
-                'Tạo phim'
+                'Lưu thay đổi'
               )}
             </button>
           </div>
@@ -347,4 +372,4 @@ const AddData: React.FC<AddDataProps> = ({
   );
 };
 
-export default AddData;
+export default EditData; 

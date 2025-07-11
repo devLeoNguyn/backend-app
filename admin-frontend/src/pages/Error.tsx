@@ -11,7 +11,7 @@ const Error = () => {
           <h1 className="font-bold text-7xl">
             🐔 Boom! Are you lost? 🙄
           </h1>
-          <button onClick={() => navigate('/')} className="btn">
+          <button onClick={() => navigate('/admin')} className="btn">
             <HiOutlineHome className="xl:text-2xl" />
             <span>Homepage</span>
           </button>

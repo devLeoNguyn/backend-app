@@ -5,36 +5,51 @@ import { fetchProducts } from '../api/ApiCollection';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import AddData from '../components/AddData';
+import EditData from '../components/EditData';
 
 const Products = () => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const { isLoading, isError, isSuccess, data } = useQuery({
+  const [isEditOpen, setIsEditOpen] = React.useState(false);
+  const [selectedMovie, setSelectedMovie] = React.useState(null);
+  
+  const { isLoading, isError, data } = useQuery({
     queryKey: ['allproducts'],
     queryFn: fetchProducts,
   });
 
+  // Handler để mở modal edit với dữ liệu phim
+  const handleEditMovie = (movieData: any) => {
+    setSelectedMovie(movieData);
+    setIsEditOpen(true);
+  };
+
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 90 },
+    { 
+      field: 'id', 
+      headerName: 'ID', 
+      width: 90,
+      minWidth: 90,
+    },
     {
       field: 'img',
-      headerName: 'Movie',
-      minWidth: 300,
+      headerName: 'Movie',  
+      minWidth: 250,
       flex: 1,
       renderCell: (params) => {
         return (
-          <div className="flex gap-3 items-center">
-            <div className="w-6 xl:w-10 overflow-hidden flex justify-center items-center">
+          <div className="flex gap-2 items-center py-2">
+            <div className="w-12 h-16 overflow-hidden rounded">
               <img
-                src={params.row.img || '/corrugated-box.jpg'}
+                src={params.row.img || ''}
                 alt="movie-poster"
-                className="object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="mb-0 pb-0 leading-none font-semibold">
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold truncate">
                 {params.row.title}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 truncate">
                 {params.row.movieType} • {params.row.releaseYear}
               </span>
             </div>
@@ -43,18 +58,18 @@ const Products = () => {
       },
     },
     {
-      field: 'color',
+      field: 'genre',
       type: 'string',
       headerName: 'Genre',
-      minWidth: 100,
-      flex: 1,
+      minWidth: 120,
+      flex: 0.8,
     },
     {
       field: 'price',
       type: 'number',
-      headerName: 'Price (VND)',
-      minWidth: 120,
-      flex: 1,
+      headerName: 'Price',
+      minWidth: 100,
+      flex: 0.6,
       renderCell: (params) => {
         return (
           <span className={params.row.price > 0 ? 'text-green-600 font-semibold' : 'text-gray-500'}>
@@ -64,143 +79,84 @@ const Products = () => {
       },
     },
     {
-      field: 'rating',
-      headerName: 'Rating',
-      minWidth: 80,
-      type: 'number',
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <span className="flex items-center gap-1">
-            ⭐ {params.row.rating || 'N/A'}
-          </span>
-        );
-      },
-    },
-    {
-      field: 'duration',
-      headerName: 'Duration',
-      minWidth: 100,
-      type: 'string',
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <span>
-            {params.row.duration ? `${params.row.duration} phút` : 'N/A'}
-          </span>
-        );
-      },
-    },
-    {
-      field: 'country',
-      headerName: 'Country',
-      minWidth: 100,
-      type: 'string',
-      flex: 1,
-    },
-    {
-      field: 'inStock',
+      field: 'status',
       headerName: 'Status',
-      minWidth: 100,
-      type: 'boolean',
-      flex: 1,
+      minWidth: 120,
+      flex: 0.6,
       renderCell: (params) => {
+        const status = params.row.status;
+        const isReleased = status === 'released';
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            params.row.inStock 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-yellow-100 text-yellow-800'
-          }`}>
-            {params.row.inStock ? 'Đã phát hành' : 'Chưa phát hành'}
+          <span className={`badge ${isReleased ? 'badge-success' : 'badge-warning'} text-xs`}>
+            {isReleased ? '✅ Đã phát hành' : '🚫 Đã kết thúc'}
           </span>
         );
       },
     },
     {
       field: 'createdAt',
-      headerName: 'Created At',
-      minWidth: 100,
       type: 'string',
-      flex: 1,
+      headerName: 'Created',
+      minWidth: 100,
+      flex: 0.6,
     },
   ];
 
-  React.useEffect(() => {
     if (isLoading) {
-      toast.loading('Loading...', { id: 'promiseProducts' });
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="loading loading-spinner loading-lg"></div>
+      </div>
+    );
     }
+
     if (isError) {
-      toast.error('Error while getting the data!', {
-        id: 'promiseProducts',
-      });
-    }
-    if (isSuccess) {
-      toast.success('Got the data successfully!', {
-        id: 'promiseProducts',
-      });
-    }
-  }, [isError, isLoading, isSuccess]);
+    toast.error('Lỗi khi tải dữ liệu phim!');
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-error">Có lỗi xảy ra khi tải dữ liệu</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full p-0 m-0">
-      <div className="w-full flex flex-col items-stretch gap-3">
-        <div className="w-full flex justify-between xl:mb-5">
-          <div className="flex gap-1 justify-start flex-col items-start">
-            <h2 className="font-bold text-2xl xl:text-4xl mt-0 pt-0 text-base-content dark:text-neutral-200">
-              Products
-            </h2>
-            {data && data.length > 0 && (
-              <span className="text-neutral dark:text-neutral-content font-medium text-base">
-                {data.length} Products Found
-              </span>
-            )}
-          </div>
+    <div className="w-full h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">🎬 Quản lý phim</h1>
           <button
+          className="btn btn-primary"
             onClick={() => setIsOpen(true)}
-            className={`btn ${
-              isLoading ? 'btn-disabled' : 'btn-primary'
-            }`}
           >
-            Add New Product +
+          + Thêm phim mới
           </button>
         </div>
 
-        {isLoading ? (
+      <div className="flex-1">
           <DataTable
-            slug="products"
             columns={columns}
-            rows={[]}
-            includeActionColumn={true}
-          />
-        ) : isSuccess ? (
-          <DataTable
+          rows={data || []} 
             slug="products"
-            columns={columns}
-            rows={data}
             includeActionColumn={true}
-          />
-        ) : (
-          <>
-            <DataTable
-              slug="products"
-              columns={columns}
-              rows={[]}
-              includeActionColumn={true}
-            />
-            <div className="w-full flex justify-center">
-              Error while getting the data!
+          onEdit={handleEditMovie} // Truyền handler edit
+        />
             </div>
-          </>
-        )}
 
-        {isOpen && (
+      {/* Add Data Modal */}
           <AddData
-            slug={'product'}
+        slug="product" 
             isOpen={isOpen}
             setIsOpen={setIsOpen}
           />
+
+      {/* Edit Data Modal */}
+      {selectedMovie && (
+        <EditData 
+          slug="product" 
+          isOpen={isEditOpen} 
+          setIsOpen={setIsEditOpen}
+          movieData={selectedMovie}
+        />
         )}
-      </div>
     </div>
   );
 };
