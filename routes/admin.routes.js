@@ -3,6 +3,9 @@ const router = express.Router();
 const adminController = require('../controllers/admin.controller');
 const { requireAdmin } = require('../middlewares/admin.middleware');
 
+// Import movie controller để sử dụng lại createMovieController
+const { createMovieController, updateMovie, deleteMovie } = require('../controllers/movie.controller');
+
 // Dashboard Analytics
 router.get('/dashboard/overview', requireAdmin, adminController.getDashboardOverview);
 router.get('/analytics/charts', requireAdmin, adminController.getAnalyticsData);
@@ -13,6 +16,9 @@ router.get('/users/:id', requireAdmin, adminController.getUserDetail);
 
 // Movie Management (Products)
 router.get('/movies', requireAdmin, adminController.getAllMovies);
+router.post('/movies', requireAdmin, createMovieController); // Thêm phim mới với push notification
+router.put('/movies/:id', requireAdmin, updateMovie); // Cập nhật phim
+router.delete('/movies/:id', requireAdmin, deleteMovie); // Xóa phim
 
 // Rental Management (Orders)
 router.get('/rentals', requireAdmin, adminController.getAllRentals);

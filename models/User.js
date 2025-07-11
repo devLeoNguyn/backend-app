@@ -40,6 +40,42 @@ const userSchema = new mongoose.Schema({
   is_phone_verified: {
     type: Boolean,
     default: false
+  },
+  // Thêm các trường cho push notification
+  pushNotificationsEnabled: {
+    type: Boolean,
+    default: true
+  },
+  expoPushToken: {
+    type: String,
+    sparse: true // Cho phép null và unique khi có giá trị
+  },
+  notificationSettings: {
+    newMovies: {
+      type: Boolean,
+      default: true
+    },
+    newEpisodes: {
+      type: Boolean,
+      default: true
+    },
+    favoriteGenres: [{
+      type: String
+    }],
+    quietHours: {
+      start: {
+        type: String,
+        default: "22:00"
+      },
+      end: {
+        type: String,
+        default: "08:00"
+      },
+      enabled: {
+        type: Boolean,
+        default: false
+      }
+    }
   }
 }, {
   timestamps: true

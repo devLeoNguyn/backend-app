@@ -17,8 +17,12 @@ const {
  * Enhanced to use Movie Service patterns
  */
 async function getSeriesBaseQuery(filter = {}) {
-    // Merge filter với điều kiện bắt buộc: chỉ lấy phim bộ
-    const seriesFilter = { ...filter, movie_type: 'Phim bộ' };
+    // Merge filter với điều kiện bắt buộc: chỉ lấy phim bộ đã phát hành
+    const seriesFilter = { 
+        ...filter, 
+        movie_type: 'Phim bộ',
+        release_status: 'released' // Chỉ hiển thị phim đã phát hành
+    };
     
     // Query database với populate genres
     const movies = await Movie.find(seriesFilter)

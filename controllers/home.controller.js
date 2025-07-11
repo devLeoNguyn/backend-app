@@ -287,7 +287,10 @@ const getGenreSections = async (req, res) => {
                     genreIds.push(...childGenres.map(child => child._id));
                 }
 
-                const movies = await Movie.find({ genres: { $in: genreIds } })
+                const movies = await Movie.find({ 
+                    genres: { $in: genreIds },
+                    release_status: 'released' // Chỉ hiển thị phim đã phát hành
+                })
                     .populate({
                         path: 'genres',
                         match: { is_active: true }, // Chỉ populate thể loại hoạt động

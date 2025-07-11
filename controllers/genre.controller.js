@@ -102,14 +102,20 @@ const getGenreMovies = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         // Lấy danh sách phim với đầy đủ thông tin
-        const movies = await Movie.find({ genres: { $in: genreIds } })
+        const movies = await Movie.find({ 
+            genres: { $in: genreIds },
+            release_status: 'released' // Chỉ hiển thị phim đã phát hành
+        })
             .populate('genres', 'genre_name')
             .sort(sort)
             .skip(skip)
             .limit(parseInt(limit));
 
         // Đếm tổng số phim
-        const total = await Movie.countDocuments({ genres: { $in: genreIds } });
+        const total = await Movie.countDocuments({ 
+            genres: { $in: genreIds },
+            release_status: 'released' // Chỉ đếm phim đã phát hành
+        });
 
         // Tính tổng số trang
         const totalPages = Math.ceil(total / parseInt(limit));

@@ -24,6 +24,76 @@ const validateEpisodes = (episodes) => {
     };
 };
 
+const validateGenres = async (genres, GenreModel) => {
+    // If genres is empty array, return empty array
+    if (!genres || genres.length === 0) {
+        return [];
+    }
+
+    // If genres is array of ObjectIds, validate they exist
+    if (Array.isArray(genres) && genres.length > 0) {
+        // Check if they are ObjectIds
+        const isObjectIds = genres.every(g => typeof g === 'string' && g.match(/^[0-9a-fA-F]{24}$/));
+        
+        if (isObjectIds) {
+            const validGenres = await GenreModel.find({ _id: { $in: genres } });
+            if (validGenres.length !== genres.length) {
+                throw new Error('Một hoặc nhiều thể loại không tồn tại');
+            }
+            return validGenres;
+        }
+    }
+
+    // If it's a single genre name string, convert to array
+    if (typeof genres === 'string') {
+        genres = [genres];
+    }
+
+    // If genres is array of genre names, find by name
+    if (Array.isArray(genres) && genres.length > 0) {
+        const genreNames = genres.filter(g => typeof g === 'string' && g.trim() !== '');
+        
+        if (genreNames.length === 0) {
+            return [];
+        }
+
+        const validGenres = await GenreModel.find({ 
+            genre_name: { $in: genreNames.map(name => name.trim()) }
+        });
+        
+        // Create missing genres automatically
+        const foundGenreNames = validGenres.map(g => g.genre_name);
+        const missingGenres = genreNames.filter(name => !foundGenreNames.includes(name.trim()));
+        
+        if (missingGenres.length > 0) {
+            console.log(`🏷️ Creating missing genres: ${missingGenres.join(', ')}`);
+            
+            const newGenres = await Promise.all(
+                missingGenres.map(async (genreName) => {
+                    try {
+                        const newGenre = new GenreModel({
+                            genre_name: genreName.trim(),
+                            description: `Thể loại ${genreName.trim()} được tạo tự động`,
+                            is_active: true
+                        });
+                        return await newGenre.save();
+                    } catch (error) {
+                        console.error(`Error creating genre ${genreName}:`, error);
+                        return null;
+                    }
+                })
+            );
+            
+            const createdGenres = newGenres.filter(g => g !== null);
+            return [...validGenres, ...createdGenres];
+        }
+        
+        return validGenres;
+    }
+
+    return [];
+};
+
 const determineMovieType = (maxEpisodeNumber) => {
     return maxEpisodeNumber > 1 ? 'Phim bộ' : 'Phim lẻ';
 };
@@ -133,6 +203,7 @@ const validateMovieData = (movieData) => {
 module.exports = {
     validatePrice,
     validateEpisodes,
+    validateGenres,
     determineMovieType,
     validateSportsEvent,
     validateSportsEpisodes,
