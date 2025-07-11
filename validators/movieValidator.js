@@ -190,12 +190,18 @@ const validateMovieData = (movieData) => {
     
     // Xử lý cho phim thường
     const { maxEpisodeNumber } = validateEpisodes(movieData.episodes);
-    const determinedType = determineMovieType(maxEpisodeNumber);
+    
+    // Kiểm tra xem movie_type người dùng nhập có phù hợp với số tập không
+    if (movie_type === 'Phim bộ' && maxEpisodeNumber === 1) {
+        console.info(`ℹ️ Info: movie_type is "Phim bộ" but only has 1 episode. Frontend should handle this.`);
+    } else if (movie_type === 'Phim lẻ' && maxEpisodeNumber > 1) {
+        console.info(`ℹ️ Info: movie_type is "Phim lẻ" but has ${maxEpisodeNumber} episodes. Frontend should handle this.`);
+    }
     
     return {
         ...movieData,
         price: validatedPrice,
-        movie_type: determinedType,
+        movie_type: movie_type, // ✅ Sử dụng movie_type người dùng nhập
         maxEpisodeNumber
     };
 };

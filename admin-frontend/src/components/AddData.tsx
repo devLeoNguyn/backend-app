@@ -268,22 +268,69 @@ const AddData: React.FC<AddDataProps> = ({
                 min="0"
               />
 
-              <input
-                type="text"
-                placeholder="Loại phim"
-                className="input input-bordered w-full"
+              <select
+                className="select select-bordered w-full"
                 value={movieType}
-                onChange={(e) => setMovieType(e.target.value)}
-              />
+                onChange={(e) => {
+                  const selectedType = e.target.value;
+                  setMovieType(selectedType);
+                  
+                  // Tự động điều chỉnh số tập dựa trên loại phim
+                  if (selectedType === 'Phim lẻ') {
+                    setTotalEpisodes('1');
+                  } else if (selectedType === 'Phim bộ') {
+                    setTotalEpisodes('2'); // Mặc định 2 tập cho phim bộ
+                  } else if (selectedType === 'Thể thao') {
+                    setTotalEpisodes('1'); // Thể thao thường 1 trận
+                  }
+                }}
+              >
+                <option value="">Chọn loại phim</option>
+                <option value="Phim lẻ">🎬 Phim lẻ</option>
+                <option value="Phim bộ">📺 Phim bộ</option>
+                <option value="Thể thao">⚽ Thể thao</option>
+              </select>
 
-              <input
-                type="number"
-                placeholder="Số tập"
-                className="input input-bordered w-full"
-                value={totalEpisodes}
-                onChange={(e) => setTotalEpisodes(e.target.value)}
-                min="1"
-              />
+              <div className="form-control w-full">
+                <input
+                  type="number"
+                  placeholder="Số tập"
+                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''}`}
+                  value={totalEpisodes}
+                  disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = parseInt(value) || 1;
+                    
+                    // Kiểm tra ràng buộc dựa trên loại phim
+                    if (movieType === 'Phim lẻ' && numValue > 1) {
+                      // Phim lẻ chỉ được 1 tập
+                      return;
+                    } else if (movieType === 'Phim bộ' && numValue < 2) {
+                      // Phim bộ tối thiểu 2 tập
+                      return;
+                    }
+                    
+                    setTotalEpisodes(value);
+                  }}
+                  min={movieType === 'Phim bộ' ? '2' : '1'}
+                  max={movieType === 'Phim lẻ' ? '1' : undefined}
+                  title={
+                    movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
+                    movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
+                    'Số tập của phim'
+                  }
+                />
+                {movieType && (
+                  <div className="label">
+                    <span className="label-text-alt text-xs">
+                      {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
+                      {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập'}
+                      {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <select
                 className="select select-bordered w-full"

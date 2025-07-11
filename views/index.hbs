@@ -1,2 +1,90 @@
-<h1>{{title}}</h1>
-<p>Welcome to {{title}}</p>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .container {
+        text-align: center;
+        background: white;
+        padding: 3rem;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        max-width: 500px;
+        width: 90%;
+    }
+    h1 {
+        color: #333;
+        margin-bottom: 1rem;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    p {
+        color: #666;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+    .admin-link {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-decoration: none;
+        padding: 15px 30px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    .admin-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        text-decoration: none;
+    }
+    .features {
+        margin-top: 2rem;
+        text-align: left;
+    }
+    .feature {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        color: #555;
+    }
+    .feature::before {
+        content: "✓";
+        background: #4CAF50;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container">
+    <h1>🎬 {{title}}</h1>
+    <p>Chào mừng đến với hệ thống quản lý phim. Truy cập admin panel để quản lý nội dung, người dùng và theo dõi thống kê.</p>
+    
+    <a href="/admin" class="admin-link">
+        🔧 Vào Admin Panel
+    </a>
+    
+    <div class="features">
+        <div class="feature">Quản lý phim và series</div>
+        <div class="feature">Quản lý người dùng</div>
+        <div class="feature">Theo dõi thống kê</div>
+        <div class="feature">Cấu hình hệ thống</div>
+    </div>
+</div>

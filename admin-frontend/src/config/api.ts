@@ -1,10 +1,28 @@
-export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-    ? 'https://backend-app-lou3.onrender.com' 
-    : 'http://localhost:3003'; // Use localhost for development
+// Detect API base URL based on current location instead of NODE_ENV
+const getCurrentBaseURL = () => {
+    if (typeof window !== 'undefined') {
+        const { protocol, hostname } = window.location;
+        
+        // If running on localhost (development or local production), use local backend
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return `${protocol}//${hostname}:3003`;
+        }
+        
+        // If running on production domain, use production backend
+        return 'https://backend-app-lou3.onrender.com';
+    }
+    
+    // Fallback for SSR or build time
+    return process.env.NODE_ENV === 'production' 
+        ? 'https://backend-app-lou3.onrender.com' 
+        : 'http://localhost:3003';
+};
 
-export const WS_BASE_URL = process.env.NODE_ENV === 'production'
-    ? 'wss://backend-app-lou3.onrender.com'
-    : 'ws://localhost:3003';
+export const API_BASE_URL = getCurrentBaseURL();
+
+export const WS_BASE_URL = API_BASE_URL.startsWith('https') 
+    ? API_BASE_URL.replace('https', 'wss')
+    : API_BASE_URL.replace('http', 'ws');
 
 export const API_ENDPOINTS = {
     // Admin specific endpoints
