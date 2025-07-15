@@ -81,4 +81,15 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+userSchema.pre('save', function(next) {
+  if (!this.full_name || this.full_name.trim() === '') {
+    if (this.email) {
+      this.full_name = this.email.split('@')[0];
+    } else {
+      this.full_name = 'User';
+    }
+  }
+  next();
+});
+
 module.exports = mongoose.model('User', userSchema);

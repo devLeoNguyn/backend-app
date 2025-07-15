@@ -10,7 +10,13 @@ const {
     unlikeMovie,       // Legacy
     addComment,
     getComments,
-    deleteUserComment
+    deleteUserComment,
+    // Star Rating Functions (NEW)
+    addStarRating,
+    getUserStarRating,
+    getMovieStarRatings,
+    deleteStarRating,
+    getAllMoviesRatingStats
 } = require('../controllers/rating.controller');
 
 // PUBLIC
@@ -32,6 +38,26 @@ router.delete('/:id', deleteRating);
 
 // ⚡ NEW: Toggle like/unlike in one API (RESTful)
 router.put('/movies/:movie_id/like', toggleLike);
+
+// ==============================================
+// STAR RATING APIS (NEW)
+// ==============================================
+
+// Thêm/cập nhật đánh giá sao cho phim
+router.post('/movies/:movie_id/stars', addStarRating);
+router.put('/movies/:movie_id/stars', addStarRating); // Cùng function để hỗ trợ cả POST và PUT
+
+// Lấy đánh giá sao của user cho một phim
+router.get('/movies/:movie_id/stars/user', getUserStarRating);
+
+// Lấy thống kê và danh sách đánh giá sao của một phim
+router.get('/movies/:movie_id/stars', getMovieStarRatings);
+
+// Xóa đánh giá sao của user
+router.delete('/movies/:movie_id/stars', deleteStarRating);
+
+// Lấy thống kê rating của tất cả phim (cho admin)
+router.get('/stats/all-movies', getAllMoviesRatingStats);
 
 // ==============================================
 // LEGACY ROUTES (for backward compatibility)
