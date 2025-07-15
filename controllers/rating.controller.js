@@ -406,7 +406,7 @@ exports.addComment = async (req, res) => {
             is_like: false,
             comment: comment.trim()
         });
-        await newRating.populate('user_id', 'name email');
+        await newRating.populate('user_id', 'name email avatar');
         // Console log rõ ràng khi user bình luận
         console.log(`[COMMENT] User ${userId} bình luận phim ${movie_id}: "${comment.trim()}" | _id: ${newRating._id} | createdAt: ${newRating.createdAt}`);
         res.json({
@@ -417,8 +417,9 @@ exports.addComment = async (req, res) => {
                     _id: newRating._id,
                     user: {
                         _id: newRating.user_id._id,
-                        name: newRating.user_id.name || 'Unknown User',
-                        email: newRating.user_id.email || 'unknown@email.com'
+                        name: newRating.user_id.full_name || newRating.user_id.name || 'Unknown User',
+                        email: newRating.user_id.email || 'unknown@email.com',
+                        avatar: newRating.user_id.avatar || null
                     },
                     comment: newRating.comment,
                     createdAt: newRating.createdAt,
@@ -457,7 +458,7 @@ exports.getComments = async (req, res) => {
         if (userId) filter.user_id = userId;
         // Lấy bình luận với phân trang
         const comments = await Rating.find(filter)
-            .populate('user_id', 'name email')
+            .populate('user_id', 'name email avatar')
             .sort(sortOption)
             .skip(skip)
             .limit(parseInt(limit));
@@ -474,8 +475,9 @@ exports.getComments = async (req, res) => {
                         _id: rating._id,
                         user: {
                             _id: user._id || null,
-                            name: user.name || 'Unknown User',
-                            email: user.email || 'unknown@email.com'
+                            name: user.full_name || user.name || 'Unknown User',
+                            email: user.email || 'unknown@email.com',
+                            avatar: user.avatar || null
                         },
                         comment: rating.comment,
                         isLike: rating.is_like,
@@ -494,6 +496,381 @@ exports.getComments = async (req, res) => {
         });
     } catch (error) {
         console.error('Error in getComments:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+}; 
+
+// ==============================================
+// STAR RATING FUNCTIONS (NEW)
+// ==============================================
+
+// Thêm hoặc cập nhật đánh giá sao cho phim
+exports.addStarRating = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { star_rating, comment, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        if (!star_rating || star_rating < 1 || star_rating > 5 || !Number.isInteger(star_rating)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Star rating phải là số nguyên từ 1 đến 5'
+            });
+        }
+
+        // Check if movie exists
+        const movie = await Movie.findById(movie_id);
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Check if user already rated this movie with stars
+        let existingRating = await Rating.findOne({ 
+            user_id: userId, 
+            movie_id, 
+            rating_type: 'star' 
+        });
+
+        if (existingRating) {
+            // Update existing star rating
+            existingRating.star_rating = star_rating;
+            if (comment) existingRating.comment = comment.trim();
+            existingRating.updatedAt = new Date();
+            await existingRating.save();
+            await existingRating.populate('user_id', 'name email avatar');
+            
+            var action = 'cập nhật';
+            var rating = existingRating;
+        } else {
+            // Create new star rating
+            const newRating = await Rating.create({
+                user_id: userId,
+                movie_id,
+                star_rating,
+                comment: comment ? comment.trim() : '',
+                rating_type: 'star',
+                is_like: true // Mặc định là true khi đánh giá sao
+            });
+            
+            await newRating.populate('user_id', 'name email avatar');
+            var action = 'thêm';
+            var rating = newRating;
+        }
+
+        // Tính toán lại average rating
+        const movieStats = await Rating.getMovieAverageRating(movie_id);
+
+        res.json({
+            status: 'success',
+            message: `Đã ${action} đánh giá ${star_rating} sao thành công`,
+            data: {
+                rating: {
+                    _id: rating._id,
+                    user: {
+                        _id: rating.user_id._id,
+                        name: rating.user_id.full_name || rating.user_id.name || 'Unknown User',
+                        email: rating.user_id.email || 'unknown@email.com',
+                        avatar: rating.user_id.avatar || null
+                    },
+                    star_rating: rating.star_rating,
+                    comment: rating.comment || '',
+                    rating_type: rating.rating_type,
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
+                },
+                movieStats
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in addStarRating:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// Lấy đánh giá sao của user cho một phim
+exports.getUserStarRating = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        const rating = await Rating.findOne({ 
+            user_id: userId, 
+            movie_id, 
+            rating_type: 'star' 
+        }).populate('user_id', 'name email avatar');
+
+        res.json({
+            status: 'success',
+            data: {
+                userRating: rating ? {
+                    _id: rating._id,
+                    star_rating: rating.star_rating,
+                    comment: rating.comment || '',
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
+                } : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in getUserStarRating:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// Lấy thống kê đánh giá sao của một phim
+exports.getMovieStarRatings = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { page = 1, limit = 10, sort = 'newest', star_filter } = req.query;
+
+        // Check if movie exists
+        const movie = await Movie.findById(movie_id);
+        if (!movie) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        // Tính toán thống kê rating
+        const movieStats = await Rating.getMovieAverageRating(movie_id);
+
+        // Lấy danh sách ratings với phân trang
+        const skip = (page - 1) * limit;
+        let sortOption = { createdAt: -1 };
+        if (sort === 'oldest') sortOption = { createdAt: 1 };
+        if (sort === 'highest') sortOption = { star_rating: -1, createdAt: -1 };
+        if (sort === 'lowest') sortOption = { star_rating: 1, createdAt: -1 };
+
+        // Filter
+        let filter = { 
+            movie_id, 
+            rating_type: 'star',
+            star_rating: { $exists: true, $ne: null }
+        };
+        
+        if (star_filter && star_filter >= 1 && star_filter <= 5) {
+            filter.star_rating = parseInt(star_filter);
+        }
+
+        const ratings = await Rating.find(filter)
+            .populate('user_id', 'name email avatar')
+            .sort(sortOption)
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await Rating.countDocuments(filter);
+        const totalPages = Math.ceil(total / limit);
+
+        res.json({
+            status: 'success',
+            data: {
+                movieStats,
+                ratings: ratings.map(rating => ({
+                    _id: rating._id,
+                    user: {
+                        _id: rating.user_id._id,
+                        name: rating.user_id.full_name || rating.user_id.name || 'Unknown User',
+                        email: rating.user_id.email || 'unknown@email.com',
+                        avatar: rating.user_id.avatar || null
+                    },
+                    star_rating: rating.star_rating,
+                    comment: rating.comment || '',
+                    createdAt: rating.createdAt,
+                    updatedAt: rating.updatedAt
+                })),
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalRatings: total,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in getMovieStarRatings:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// Xóa đánh giá sao của user
+exports.deleteStarRating = async (req, res) => {
+    try {
+        const { movie_id } = req.params;
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        const rating = await Rating.findOneAndDelete({ 
+            user_id: userId, 
+            movie_id, 
+            rating_type: 'star' 
+        });
+
+        if (!rating) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy đánh giá hoặc bạn không có quyền xóa'
+            });
+        }
+
+        // Tính toán lại average rating
+        const movieStats = await Rating.getMovieAverageRating(movie_id);
+
+        res.json({
+            status: 'success',
+            message: 'Đã xóa đánh giá sao thành công',
+            data: {
+                movieStats
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in deleteStarRating:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
+// Lấy thống kê tổng quan rating của tất cả phim (cho admin)
+exports.getAllMoviesRatingStats = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, sort = 'highest_rated' } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Aggregate để lấy thống kê rating của tất cả phim
+        let sortOption = {};
+        if (sort === 'highest_rated') sortOption = { averageRating: -1 };
+        if (sort === 'most_rated') sortOption = { totalRatings: -1 };
+        if (sort === 'newest') sortOption = { 'movie.createdAt': -1 };
+
+        const pipeline = [
+            {
+                $match: {
+                    rating_type: 'star',
+                    star_rating: { $exists: true, $ne: null }
+                }
+            },
+            {
+                $group: {
+                    _id: '$movie_id',
+                    averageRating: { $avg: '$star_rating' },
+                    totalRatings: { $sum: 1 },
+                    ratingDistribution: { $push: '$star_rating' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'movies',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'movie'
+                }
+            },
+            {
+                $unwind: '$movie'
+            },
+            {
+                $project: {
+                    _id: 1,
+                    averageRating: { $round: ['$averageRating', 1] },
+                    totalRatings: 1,
+                    movie: {
+                        _id: '$movie._id',
+                        title: '$movie.title',
+                        poster: '$movie.poster',
+                        release_year: '$movie.release_year',
+                        createdAt: '$movie.createdAt'
+                    },
+                    ratingDistribution: 1
+                }
+            }
+        ];
+
+        if (Object.keys(sortOption).length > 0) {
+            pipeline.push({ $sort: sortOption });
+        }
+
+        pipeline.push({ $skip: skip }, { $limit: parseInt(limit) });
+
+        const results = await Rating.aggregate(pipeline);
+
+        // Process rating distribution
+        const processedResults = results.map(result => {
+            const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            result.ratingDistribution.forEach(rating => {
+                distribution[rating] = (distribution[rating] || 0) + 1;
+            });
+            
+            return {
+                ...result,
+                ratingDistribution: distribution
+            };
+        });
+
+        // Count total
+        const totalMoviesWithRatings = await Rating.distinct('movie_id', {
+            rating_type: 'star',
+            star_rating: { $exists: true, $ne: null }
+        });
+
+        const totalPages = Math.ceil(totalMoviesWithRatings.length / limit);
+
+        res.json({
+            status: 'success',
+            data: {
+                movies: processedResults,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalMovies: totalMoviesWithRatings.length,
+                    hasNextPage: page < totalPages,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in getAllMoviesRatingStats:', error);
         res.status(500).json({
             status: 'error',
             message: error.message
