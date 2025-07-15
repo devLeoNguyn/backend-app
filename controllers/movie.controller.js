@@ -455,8 +455,8 @@ const getMovieDetailWithInteractions = async (req, res) => {
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
                 user: {
-                    name: comment.user_id.name,
-                    email: comment.user_id.email
+                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
+                    email: comment.user_id ? comment.user_id.email : null
                 },
                 comment: comment.comment,
                 isLike: comment.is_like,
@@ -498,8 +498,8 @@ const getMovieDetailWithInteractions = async (req, res) => {
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
                 user: {
-                    name: comment.user_id.name,
-                    email: comment.user_id.email
+                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
+                    email: comment.user_id ? comment.user_id.email : null
                 },
                 comment: comment.comment,
                 isLike: comment.is_like,
