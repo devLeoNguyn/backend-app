@@ -429,17 +429,79 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     isFavorite: movieData.userInteractions.isFavorite
                 });
 
-            } catch (userError) {
-                console.error('⚠️ [getMovieDetailWithInteractions] User interaction error:', userError.message);
-                // Continue without user interactions
-                movieData.userInteractions = {
-                    hasRated: false,
-                    userStars: 0,
-                    isFavorite: false,
-                    isFollowing: false,
-                    hasLiked: false,
-                    watchingProgress: null
-                };
+            }
+
+            // Add recent comments to response
+            movieData.recentComments = recentComments.map(comment => ({
+                _id: comment._id,
+                user: {
+                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
+                    email: comment.user_id ? comment.user_id.email : null
+                },
+                comment: comment.comment,
+                isLike: comment.is_like,
+                createdAt: comment.createdAt
+            }));
+
+            // Add related movies (simple implementation - same genre)
+            if (movie.genres && movie.genres.length > 0) {
+                const relatedMovies = await Movie.find({
+                    _id: { $ne: id }, // Exclude current movie
+                    genres: { $in: movie.genres.map(g => g._id) }
+                })
+                .select('movie_title poster_path movie_type producer')
+                .limit(5);
+
+                movieData.relatedMovies = relatedMovies.map(relatedMovie => ({
+                    movieId: relatedMovie._id,
+                    title: relatedMovie.movie_title,
+                    poster: relatedMovie.poster_path,
+                    movieType: relatedMovie.movie_type,
+                    producer: relatedMovie.producer
+                }));
+            }
+
+            // Add tabs configuration for UI
+            movieData.tabs = {
+                showEpisodesList: movie.movie_type !== 'Phim lẻ' && episodes.length > 1,
+                showRelated: movieData.relatedMovies && movieData.relatedMovies.length > 0
+            };
+        } else {
+            // For non-authenticated users, still show recent comments (sorted by updatedAt)
+            const recentComments = await Rating.find({ 
+                movie_id: id, 
+                comment: { $exists: true, $ne: '' } 
+            })
+            .populate('user_id', 'name email')
+            .sort({ updatedAt: -1 });
+
+            movieData.recentComments = recentComments.map(comment => ({
+                _id: comment._id,
+                user: {
+                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
+                    email: comment.user_id ? comment.user_id.email : null
+                },
+                comment: comment.comment,
+                isLike: comment.is_like,
+                createdAt: comment.createdAt
+            }));
+
+            // Add related movies for non-authenticated users too
+            if (movie.genres && movie.genres.length > 0) {
+                const relatedMovies = await Movie.find({
+                    _id: { $ne: id },
+                    genres: { $in: movie.genres.map(g => g._id) }
+                })
+                .select('movie_title poster_path movie_type producer')
+                .limit(5);
+
+                movieData.relatedMovies = relatedMovies.map(relatedMovie => ({
+                    movieId: relatedMovie._id,
+                    title: relatedMovie.movie_title,
+                    poster: relatedMovie.poster_path,
+                    movieType: relatedMovie.movie_type,
+                    producer: relatedMovie.producer
+                }));
             }
         }
 
