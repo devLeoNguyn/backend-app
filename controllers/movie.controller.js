@@ -404,14 +404,15 @@ const getMovieDetailWithInteractions = async (req, res) => {
             const recentComments = await Rating.find({ 
                 movie_id: id, 
                 comment: { $exists: true, $ne: '' } 
-            }).populate('user_id', 'name email')
+            }).populate('user_id', 'full_name name email avatar')
               .sort({ updatedAt: -1 });
 
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
                 user: {
-                    name: comment.user_id?.full_name || comment.user_id?.name || null,
-                    email: comment.user_id?.email || null
+                    name: comment.user_id?.email || null, // Đổi sang lấy email làm tên hiển thị
+                    email: comment.user_id?.email || null,
+                    avatar: comment.user_id?.avatar || null
                 },
                 comment: comment.comment,
                 isLike: comment.is_like,
