@@ -260,6 +260,7 @@ const getMovieStats = async (req, res) => {
 };
 
 // 🎭 Lấy chi tiết phim với tương tác - Enhanced with service patterns
+// 🎭 Lấy chi tiết phim với tương tác - Full Version
 const getMovieDetailWithInteractions = async (req, res) => {
     try {
         const { id } = req.params;
@@ -268,7 +269,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         // Get movie and episodes using service
         const { movie, episodes } = await movieService.getMovieById(id);
 
-        // Calculate interactions using utility functions
+        // Calculate interactions
         const [ratingData, viewCount, commentCount] = await Promise.all([
             calculateMovieRating(id),
             calculateViewCount(id),
@@ -276,15 +277,13 @@ const getMovieDetailWithInteractions = async (req, res) => {
         ]);
 
         let movieData;
-        
-        if (movie.movie_type === 'Phim lẻ') {
-            // Logic for single movies
-            const singleEpisode = episodes[0];
 
-            // Check rental access for paid movies - include both paid and active rentals
-            let hasRentalAccess = movie.is_free; // Default to true for free movies
+        // === CASE 1: Phim lẻ ===
+        if (movie.movie_type === 'Phim lẻ') {
+            const singleEpisode = episodes[0];
+            let hasRentalAccess = movie.is_free;
+
             if (!movie.is_free && userId) {
-                // Check for both paid (needs activation) and active rentals
                 const userRental = await MovieRental.findOne({
                     userId,
                     movieId: id,
@@ -305,31 +304,19 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 price: movie.price,
                 is_free: movie.is_free,
                 price_display: movie.getPriceDisplay(),
-                
-                // Video information for single movies - only return URI if user has access
                 uri: hasRentalAccess && singleEpisode ? singleEpisode.uri : null,
                 video_url: hasRentalAccess && singleEpisode ? singleEpisode.video_url : null,
                 duration: singleEpisode ? singleEpisode.duration : null,
                 is_locked: !hasRentalAccess
             };
+        }
 
-            console.log('🎬 [MovieDetail] Single movie access check:', {
-                movieId: id,
-                title: movie.movie_title,
-                isFree: movie.is_free,
-                userId: userId || 'not provided',
-                hasRentalAccess,
-                hasVideoUrl: !!movieData.uri || !!movieData.video_url
-            });
-
-        } else {
-            // Logic for series - use schema method but override episode URIs if user has rental access
+        // === CASE 2: Series ===
+        else {
             movieData = movie.formatMovieResponse(episodes);
-            
-            // Check if user has rental access to override locked episodes - include both paid and active rentals
-            let hasRentalAccess = movie.is_free; // Default to true for free movies
+            let hasRentalAccess = movie.is_free;
+
             if (userId && !movie.is_free) {
-                // Check for both paid (needs activation) and active rentals
                 const userRental = await MovieRental.findOne({
                     userId,
                     movieId: id,
@@ -337,8 +324,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 });
                 hasRentalAccess = !!userRental;
             }
-            
-            // If user has rental access, show real URIs for all episodes
+
             if (hasRentalAccess && movieData.episodes) {
                 movieData.episodes = movieData.episodes.map(ep => {
                     const fullEpisode = episodes.find(fullEp => fullEp.episode_number === ep.episode_number);
@@ -349,192 +335,115 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     };
                 });
             }
-
-            console.log('🎬 [MovieDetail] Series access check:', {
-                movieId: id,
-                title: movie.movie_title,
-                isFree: movie.is_free,
-                userId: userId || 'not provided',
-                hasRentalAccess,
-                episodesCount: movieData.episodes?.length || 0,
-                firstEpisodeUri: movieData.episodes?.[0]?.uri || 'none'
-            });
         }
 
-        // Add interaction data
+        // === Add common interaction data ===
         movieData.rating = ratingData.rating;
         movieData.likeCount = ratingData.likeCount;
         movieData.viewCount = viewCount;
         movieData.viewCountFormatted = formatViewCount(viewCount);
         movieData.commentCount = commentCount;
 
-        // Check user-specific data if userId provided
+        // === USER-SPECIFIC ===
         if (userId) {
             const Favorite = require('../models/Favorite');
             const Watching = require('../models/Watching');
 
-            // Get user interactions in parallel
             const [userRating, userFavorite, userWatching, recentComments] = await Promise.all([
-                // Check if user has liked/rated this movie
                 Rating.findOne({ user_id: userId, movie_id: id }),
-                
-                // Check if movie is in user's favorites
                 Favorite.findOne({ user_id: userId, movie_id: id }),
-                
-                // 🔧 FIX: Get user's most recent watching progress for any episode of this movie
-                // Instead of just checking first episode, find the most recently watched episode
                 (async () => {
                     if (episodes.length === 0) return null;
-                    
-                    // For single movies, check the single episode
                     if (movie.movie_type === 'Phim lẻ' && episodes[0]) {
                         return await Watching.findOne({ user_id: userId, episode_id: episodes[0]._id });
                     }
-                    
-                    // For series, find the most recently watched episode
-                    if (episodes.length > 0) {
-                        const episodeIds = episodes.map(ep => ep._id);
-                        return await Watching.findOne({ 
-                            user_id: userId, 
-                            episode_id: { $in: episodeIds }
-                        }).sort({ last_watched: -1 }); // Most recent first
-                    }
-                    
-                    return null;
+                    const episodeIds = episodes.map(ep => ep._id);
+                    return await Watching.findOne({ user_id: userId, episode_id: { $in: episodeIds } })
+                        .sort({ last_watched: -1 });
                 })(),
-                
-                // Get recent comments for display (sorted by updatedAt for latest updates first)
-                Rating.find({ 
-                    movie_id: id, 
-                    comment: { $exists: true, $ne: '' } 
-                })
-                .populate('user_id', 'name email')
-                .sort({ updatedAt: -1 })
+                Rating.find({ movie_id: id, comment: { $exists: true, $ne: '' } })
+                    .populate('user_id', 'name email')
+                    .sort({ updatedAt: -1 })
             ]);
 
-            // Add user-specific interaction data
             movieData.userInteractions = {
                 hasLiked: userRating ? userRating.is_like : false,
                 hasRated: !!userRating,
-                userComment: userRating && userRating.comment ? userRating.comment : null,
+                userComment: userRating?.comment || null,
                 isFavorite: !!userFavorite,
-                isFollowing: !!userFavorite, // Same as favorite for now
+                isFollowing: !!userFavorite,
                 watchingProgress: userWatching ? {
                     episodeId: userWatching.episode_id,
-                    // 🔧 FIX: Calculate episode number correctly from actual episode
                     episodeNumber: (() => {
                         if (movie.movie_type === 'Phim lẻ') return 1;
-                        
-                        // For series, find the actual episode and get its episode_number
-                        const actualEpisode = episodes.find(ep => ep._id.toString() === userWatching.episode_id.toString());
-                        return actualEpisode ? actualEpisode.episode_number : 1;
+                        const actualEp = episodes.find(ep => ep._id.toString() === userWatching.episode_id.toString());
+                        return actualEp ? actualEp.episode_number : 1;
                     })(),
                     watchPercentage: userWatching.watch_percentage,
                     currentTime: userWatching.current_time,
-                    duration: userWatching.duration, // Add duration for better progress calculation
+                    duration: userWatching.duration,
                     lastWatched: userWatching.last_watched,
                     completed: userWatching.completed
                 } : null
             };
-            
-            // 🔧 DEBUG: Log watching progress info
-            if (userWatching) {
-                console.log('🎬 [MovieDetail] User watching progress:', {
-                    movieId: id,
-                    movieTitle: movie.movie_title,
-                    movieType: movie.movie_type,
-                    watchingEpisodeId: userWatching.episode_id,
-                    episodeNumber: movieData.userInteractions.watchingProgress.episodeNumber,
-                    currentTime: userWatching.current_time,
-                    watchPercentage: userWatching.watch_percentage,
-                    lastWatched: userWatching.last_watched
-                });
-            }
 
-            // Add recent comments to response
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
                 user: {
-                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
-                    email: comment.user_id ? comment.user_id.email : null
+                    name: comment.user_id?.full_name || comment.user_id?.name || null,
+                    email: comment.user_id?.email || null
                 },
                 comment: comment.comment,
                 isLike: comment.is_like,
                 createdAt: comment.createdAt
             }));
+        }
 
-            // Add related movies (simple implementation - same genre)
-            if (movie.genres && movie.genres.length > 0) {
-                const relatedMovies = await Movie.find({
-                    _id: { $ne: id }, // Exclude current movie
-                    genres: { $in: movie.genres.map(g => g._id) }
-                })
-                .select('movie_title poster_path movie_type producer')
-                .limit(5);
-
-                movieData.relatedMovies = relatedMovies.map(relatedMovie => ({
-                    movieId: relatedMovie._id,
-                    title: relatedMovie.movie_title,
-                    poster: relatedMovie.poster_path,
-                    movieType: relatedMovie.movie_type,
-                    producer: relatedMovie.producer
-                }));
-            }
-
-            // Add tabs configuration for UI
-            movieData.tabs = {
-                showEpisodesList: movie.movie_type !== 'Phim lẻ' && episodes.length > 1,
-                showRelated: movieData.relatedMovies && movieData.relatedMovies.length > 0
-            };
-        } else {
-            // For non-authenticated users, still show recent comments (sorted by updatedAt)
+        // === GUEST USER ===
+        else {
             const recentComments = await Rating.find({ 
                 movie_id: id, 
                 comment: { $exists: true, $ne: '' } 
-            })
-            .populate('user_id', 'name email')
-            .sort({ updatedAt: -1 });
+            }).populate('user_id', 'name email')
+              .sort({ updatedAt: -1 });
 
             movieData.recentComments = recentComments.map(comment => ({
                 _id: comment._id,
                 user: {
-                    name: comment.user_id ? (comment.user_id.full_name || comment.user_id.name) : null,
-                    email: comment.user_id ? comment.user_id.email : null
+                    name: comment.user_id?.full_name || comment.user_id?.name || null,
+                    email: comment.user_id?.email || null
                 },
                 comment: comment.comment,
                 isLike: comment.is_like,
                 createdAt: comment.createdAt
             }));
-
-            // Add related movies for non-authenticated users too
-            if (movie.genres && movie.genres.length > 0) {
-                const relatedMovies = await Movie.find({
-                    _id: { $ne: id },
-                    genres: { $in: movie.genres.map(g => g._id) }
-                })
-                .select('movie_title poster_path movie_type producer')
-                .limit(5);
-
-                movieData.relatedMovies = relatedMovies.map(relatedMovie => ({
-                    movieId: relatedMovie._id,
-                    title: relatedMovie.movie_title,
-                    poster: relatedMovie.poster_path,
-                    movieType: relatedMovie.movie_type,
-                    producer: relatedMovie.producer
-                }));
-            }
-
-            movieData.tabs = {
-                showEpisodesList: movie.movie_type !== 'Phim lẻ' && episodes.length > 1,
-                showRelated: movieData.relatedMovies && movieData.relatedMovies.length > 0
-            };
         }
+
+        // === Related movies ===
+        if (movie.genres && movie.genres.length > 0) {
+            const relatedMovies = await Movie.find({
+                _id: { $ne: id },
+                genres: { $in: movie.genres.map(g => g._id) }
+            }).select('movie_title poster_path movie_type producer')
+              .limit(5);
+
+            movieData.relatedMovies = relatedMovies.map(m => ({
+                movieId: m._id,
+                title: m.movie_title,
+                poster: m.poster_path,
+                movieType: m.movie_type,
+                producer: m.producer
+            }));
+        }
+
+        movieData.tabs = {
+            showEpisodesList: movie.movie_type !== 'Phim lẻ' && episodes.length > 1,
+            showRelated: movieData.relatedMovies?.length > 0
+        };
 
         res.json({
             status: 'success',
-            data: {
-                movie: movieData
-            }
+            data: { movie: movieData }
         });
     } catch (err) {
         console.error('Error in getMovieDetailWithInteractions:', err);
@@ -546,6 +455,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         });
     }
 };
+
 
 // 🔍 Tìm kiếm phim - Refactored to use Movie Service
 const searchMovies = async (req, res) => {
