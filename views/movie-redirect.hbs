@@ -76,19 +76,30 @@
     </div>
     
     <script>
-        document.getElementById('openApp').addEventListener('click', function(e) {
-            e.preventDefault();
+        function openApp() {
+            // Try deep link first
+            const deepLink = 'tech5://movie/{{movie._id}}';
+            window.location.href = deepLink;
             
-            // Try to open in Expo Go
-            const expoUrl = 'exp://192.168.5.85:8081/--/movie/{{movie._id}}';
-            window.location.href = expoUrl;
-            
-            // If Expo Go doesn't open after a delay, try deep link
+            // If deep link fails after delay, try Expo Go
             setTimeout(function() {
-                const deepLink = 'tech5://movie/{{movie._id}}';
-                window.location.href = deepLink;
+                const expoUrl = 'exp://192.168.5.22:8081/--/movie/{{movie._id}}';
+                window.location.href = expoUrl;
+                
+                // If both fail, redirect to store
+                setTimeout(function() {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    if (isIOS) {
+                        window.location.href = 'https://apps.apple.com/app/tech5-movies';
+                    } else {
+                        window.location.href = 'https://play.google.com/store/apps/details?id=com.tech5.movies';
+                    }
+                }, 1000);
             }, 1000);
-        });
+        }
+        
+        // Execute immediately when page loads
+        openApp();
     </script>
 </body>
-</html> 
+</html>
