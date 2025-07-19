@@ -71,6 +71,8 @@ const videoRoutes = require('./routes/video.routes');
 const seriesRoutes = require('./routes/series.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const animeRoutes = require('./routes/anime.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const testNotificationRoutes = require('./routes/test-notification');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -90,6 +92,8 @@ app.use('/api/video-url', videoRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/notifications', notificationRoutes); // Add this line
+app.use('/api/test-notification', testNotificationRoutes); // Add test route
 
 // Admin routes
 const adminRoutes = require('./routes/admin.routes');
@@ -97,6 +101,7 @@ app.use('/api/admin', adminRoutes);
 
 // Serve admin frontend static files
 app.use('/admin', express.static(path.join(__dirname, 'admin-dist')));
+app.use('/login', express.static(path.join(__dirname, 'admin-dist')));
 
 // Swagger Documentation
 const swaggerPath = path.join(__dirname, 'swagger-combined.yaml');
@@ -107,12 +112,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
     customSiteTitle: "Movie App API Documentation"
 }));
 
-// SPA fallback for admin in production
-if (process.env.NODE_ENV === 'production') {
-    app.get('/admin/*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'admin-dist', 'index.html'));
-    });
-}
+// SPA fallback for admin routes
+app.get('/admin/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-dist', 'index.html'));
+});
+app.get('/login/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-dist', 'index.html'));
+});
 
 // Web URL redirect route (root level)
 app.get('/movie/:movieId', require('./controllers/movie.controller').getMovieRedirect);

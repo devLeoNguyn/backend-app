@@ -1,138 +1,198 @@
 const { Expo } = require('expo-server-sdk');
 const User = require('../models/User');
+const UserNotification = require('../models/UserNotification');
+
+// Initialize Expo SDK
+const expo = new Expo();
 
 class PushNotificationService {
-  constructor() {
-    this.expo = new Expo();
-  }
-
-  async sendNotification(tokens, title, body, data = {}) {
-    // Filter out invalid tokens
-    const messages = tokens
-      .filter(token => Expo.isExpoPushToken(token))
-      .map(token => ({
-        to: token,
-        sound: 'default',
-        title,
-        body,
-        data,
-        priority: 'high',
-      }));
-
-    if (messages.length === 0) {
-      console.log('No valid tokens to send notifications to');
-      return [];
-    }
-
-    const chunks = this.expo.chunkPushNotifications(messages);
-    const tickets = [];
-
+  /**
+   * Send a push notification to a single user
+   */
+  async sendPushNotification(userToken, notification) {
     try {
+      if (!Expo.isExpoPushToken(userToken)) {
+        console.error(`Invalid Expo push token: ${userToken}`);
+        return { success: false, error: 'Invalid push token' };
+      }
+
+      const message = {
+        to: userToken,
+        sound: 'default',
+        title: notification.title,
+        body: notification.body,
+        data: {
+          type: notification.type,
+          deep_link: notification.deep_link,
+          notification_id: notification._id.toString()
+        }
+      };
+
+      const chunks = expo.chunkPushNotifications([message]);
+      const tickets = [];
+
       for (const chunk of chunks) {
         try {
-          const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
+          const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
           tickets.push(...ticketChunk);
-          // Wait a second between chunks
-          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
-          console.error('Error sending chunk:', error);
+          console.error('Error sending push notification chunk:', error);
         }
       }
 
-      return tickets;
+      return { success: true, tickets };
     } catch (error) {
-      console.error('Error in sendNotification:', error);
-      throw error;
+      console.error('Error sending push notification:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  async sendNewMovieNotification(movieId, movieTitle, moviePoster) {
+  /**
+   * Send bulk push notifications
+   * This function was missing and causing test failures
+   */
+  async sendBulkPushNotifications(notification, userNotifications) {
     try {
-      // Get all users with push notifications enabled and valid tokens
-      const users = await User.find({
-        pushNotificationsEnabled: true,
-        expoPushToken: { $exists: true, $ne: null }
-      });
+      const messages = [];
+      const processedTokens = new Set(); // Deduplicate push tokens
+      let sentCount = 0;
+      let failedCount = 0;
 
-      if (!users.length) {
-        console.log('No users to notify');
-        return;
-      }
-
-      const tokens = users.map(user => user.expoPushToken);
-
-      const tickets = await this.sendNotification(
-        tokens,
-        '🎬 Phim mới đã ra mắt!',
-        `${movieTitle} - Khám phá ngay!`,
-        {
-          type: 'NEW_MOVIE',
-          movieId,
-          movieTitle,
-          moviePoster,
-          action: 'VIEW_MOVIE'
-        }
-      );
-
-      // Handle receipts
-      await this.handleNotificationReceipts(tickets);
-
-      return tickets;
-    } catch (error) {
-      console.error('Error in sendNewMovieNotification:', error);
-      throw error;
-    }
-  }
-
-  async handleNotificationReceipts(tickets) {
-    const receiptIds = tickets.map(ticket => ticket.id);
-    
-    try {
-      const receiptIdChunks = this.expo.chunkPushNotificationReceiptIds(receiptIds);
-      
-      for (const chunk of receiptIdChunks) {
+      // Get user tokens for all the target users
+      for (const userNotification of userNotifications) {
         try {
-          const receipts = await this.expo.getPushNotificationReceiptsAsync(chunk);
+          const user = await User.findById(userNotification.user_id);
           
-          for (const [receiptId, receipt] of Object.entries(receipts)) {
-            if (receipt.status === 'error') {
-              const { details } = receipt;
-              
-              if (details?.error === 'DeviceNotRegistered') {
-                await this.handleInvalidToken(details.expoPushToken);
-              }
-              
-              console.error(
-                `Error sending notification receipt[${receiptId}]:`,
-                receipt.message,
-                receipt.details
-              );
-            }
+          if (user && user.expoPushToken && !processedTokens.has(user.expoPushToken)) {
+            // Add token to processed set to avoid duplicates
+            processedTokens.add(user.expoPushToken);
+            
+            // Create notification message
+            messages.push({
+              to: user.expoPushToken,
+              sound: 'default',
+              title: notification.title,
+              body: notification.body,
+              data: {
+                type: notification.type,
+                deep_link: notification.deep_link,
+                notification_id: notification._id.toString(),
+                user_notification_id: userNotification._id.toString()
+              },
+              priority: notification.priority || 'default'
+            });
           }
         } catch (error) {
-          console.error('Error checking receipts:', error);
+          failedCount++;
+          console.error(`Error preparing notification for user ${userNotification.user_id}:`, error);
         }
       }
+
+      // Send notifications in chunks
+      if (messages.length > 0) {
+        const chunks = expo.chunkPushNotifications(messages);
+        const tickets = [];
+
+        for (const chunk of chunks) {
+          try {
+            const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+            tickets.push(...ticketChunk);
+          } catch (error) {
+            failedCount += chunk.length;
+            console.error('Error sending push notification chunk:', error);
+          }
+        }
+
+        // Process tickets
+        for (const ticket of tickets) {
+          if (ticket.status === 'ok') {
+            sentCount++;
+          } else {
+            failedCount++;
+          }
+        }
+      }
+
+      return {
+        success: sentCount,
+        failure: failedCount,
+        total: userNotifications.length
+      };
     } catch (error) {
-      console.error('Error in handleNotificationReceipts:', error);
+      console.error('Error sending bulk push notifications:', error);
       throw error;
     }
   }
 
-  async handleInvalidToken(token) {
+  /**
+   * Register push token for user
+   */
+  async registerPushToken(userId, token) {
     try {
-      await User.updateMany(
-        { expoPushToken: token },
-        { 
-          $set: { pushNotificationsEnabled: false },
-          $unset: { expoPushToken: 1 }
-        }
-      );
-      console.log(`Removed invalid token: ${token}`);
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      user.expoPushToken = token;
+      user.pushNotificationsEnabled = true;
+      
+      await user.save();
+      
+      return user;
     } catch (error) {
-      console.error('Error removing invalid token:', error);
+      console.error('Error registering push token:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update notification settings
+   */
+  async updateNotificationSettings(userId, settings) {
+    try {
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Update push notifications enabled state
+      if (settings.enabled !== undefined) {
+        user.pushNotificationsEnabled = settings.enabled;
+      }
+      
+      // Initialize notification settings if not exist
+      if (!user.notificationSettings) {
+        user.notificationSettings = {};
+      }
+      
+      // Update specific settings
+      if (settings.newMovies !== undefined) {
+        user.notificationSettings.newMovies = settings.newMovies;
+      }
+      
+      if (settings.newEpisodes !== undefined) {
+        user.notificationSettings.newEpisodes = settings.newEpisodes;
+      }
+      
+      if (settings.favoriteGenres) {
+        user.notificationSettings.favoriteGenres = settings.favoriteGenres;
+      }
+      
+      if (settings.quietHours) {
+        user.notificationSettings.quietHours = settings.quietHours;
+      }
+      
+      await user.save();
+      
+      return user;
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      throw error;
     }
   }
 }
 
-module.exports = new PushNotificationService(); 
+module.exports = new PushNotificationService();

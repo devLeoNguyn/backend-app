@@ -371,24 +371,48 @@ class RentalController {
 
     /**
      * POST /api/rentals/cron/manual-check
-     * Chạy manual check (for testing)
+     * Chạy manual check rental expiration
+     * @access Admin
      */
     async runManualCheck(req, res) {
         try {
-            const result = await cronService.runManualCheck();
-
+            const cronService = require('../services/cron.service');
+            
+            // Run manual rental check
+            const rentalResult = await MovieRental.findExpiredRentals();
+            const expiredCount = rentalResult.length;
+            
+            for (const rental of rentalResult) {
+                try {
+                    await rental.expire();
+                } catch (error) {
+                    console.error(`Error expiring rental ${rental._id}:`, error);
+                }
+            }
+            
+            // Run manual notification check
+            const notificationResult = await cronService.runManualNotificationCheck();
+            
             res.json({
                 success: true,
-                message: 'Manual check hoàn thành',
-                data: result
+                message: 'Manual check completed',
+                data: {
+                    expiredRentals: {
+                        found: expiredCount,
+                        processed: expiredCount
+                    },
+                    notifications: {
+                        found: notificationResult.total,
+                        sent: notificationResult.sent
+                    }
+                }
             });
-
         } catch (error) {
-            console.error('Error in runManualCheck:', error);
+            console.error('Error in manual check:', error);
             res.status(500).json({
                 success: false,
-                message: error.message || 'Lỗi server khi chạy manual check',
-                data: null
+                message: 'Error running manual check',
+                error: error.message
             });
         }
     }
@@ -510,4 +534,4 @@ class RentalController {
     }
 }
 
-module.exports = new RentalController(); 
+module.exports = new RentalController();

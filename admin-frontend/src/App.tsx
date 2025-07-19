@@ -29,6 +29,9 @@ import Login from './pages/Login';
 import WebSocketTestPage from './pages/WebSocketTest';
 import ProtectedRoute from './components/ProtectedRoute';
 import { authService } from './services/authService';
+import Notifications from './pages/Notifications';
+import TestNotifications from './pages/TestNotifications';
+import Settings from './pages/Settings';
 
 function App() {
   // Initialize authentication when app starts
@@ -130,6 +133,18 @@ function App() {
         {
           path: 'websocket-test',
           element: <WebSocketTestPage />,
+        },
+        {
+          path: 'notifications',
+          element: <Notifications />,
+        },
+        {
+          path: 'test-notifications',
+          element: <TestNotifications />,
+        },
+        {
+          path: 'settings',
+          element: <Settings />,
         },
       ],
       errorElement: <Error />,

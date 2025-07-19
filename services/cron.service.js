@@ -1,5 +1,7 @@
 const cron = require('node-cron');
 const MovieRental = require('../models/MovieRental');
+const Notification = require('../models/Notification');
+const notificationService = require('./notification.service');
 
 class CronService {
     
@@ -29,6 +31,12 @@ class CronService {
             
             // Job 4: Generate daily stats - chạy hàng ngày lúc 1:00 AM
             this.scheduleDailyStatsGeneration();
+
+            // New job: Check and send scheduled notifications - chạy mỗi phút
+            this.scheduleNotificationSender();
+            
+            // New job: Clean up old notifications - chạy hàng tuần
+            this.scheduleNotificationCleanup();
 
             this.isInitialized = true;
             console.log('All cron jobs initialized successfully');
@@ -100,8 +108,13 @@ class CronService {
                         await rental.markNotificationSent();
                         notificationCount++;
 
-                        // TODO: Implement actual notification sending
-                        // await this.sendExpiringNotification(rental);
+                        // Send actual notification using notification service
+                        await notificationService.createAutoNotification('rental_expiry', {
+                            userId: rental.userId._id,
+                            movieId: rental.movieId._id,
+                            movieTitle: rental.movieId.title,
+                            remainingHours: remainingHours
+                        }, process.env.SYSTEM_ADMIN_ID || '6478b131b260ba24b5a8183e'); // Use a system admin ID
 
                     } catch (error) {
                         console.error(`Error processing expiring rental ${rental._id}:`, error);
@@ -203,20 +216,106 @@ class CronService {
     }
 
     /**
+     * New Job: Check and send scheduled notifications
+     * Chạy mỗi phút
+     */
+    scheduleNotificationSender() {
+        const job = cron.schedule('* * * * *', async () => {
+            try {
+                console.log('Checking for scheduled notifications...');
+                
+                // Find all scheduled notifications that are due
+                const scheduledNotifications = await Notification.findScheduledNotifications();
+                
+                if (scheduledNotifications.length === 0) {
+                    return console.log('No scheduled notifications due');
+                }
+                
+                console.log(`Found ${scheduledNotifications.length} scheduled notifications to send`);
+                
+                // Send each notification
+                for (const notification of scheduledNotifications) {
+                    try {
+                        console.log(`Sending scheduled notification: ${notification._id} - "${notification.title}"`);
+                        await notificationService.sendNotification(notification._id);
+                    } catch (error) {
+                        console.error(`Error sending scheduled notification ${notification._id}:`, error);
+                    }
+                }
+                
+                console.log('Scheduled notification sending completed');
+            } catch (error) {
+                console.error('Error in notification sender job:', error);
+            }
+        }, {
+            scheduled: false,
+            timezone: "Asia/Ho_Chi_Minh"
+        });
+
+        this.jobs.set('notificationSender', job);
+        job.start();
+        console.log('Scheduled notification sender job (every minute)');
+    }
+
+    /**
+     * New Job: Clean up old notifications
+     * Chạy hàng tuần vào Chủ Nhật lúc 3:00 AM
+     */
+    scheduleNotificationCleanup() {
+        const job = cron.schedule('0 3 * * 0', async () => {
+            try {
+                console.log('Running notification cleanup...');
+                
+                const ninetyDaysAgo = new Date();
+                ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                
+                // Clean up old notifications (older than 90 days and already sent or failed)
+                const notificationResult = await Notification.deleteMany({
+                    status: { $in: ['sent', 'failed'] },
+                    created_at: { $lt: ninetyDaysAgo }
+                });
+                
+                // Delete related user notifications
+                const userNotificationResult = await mongoose.model('UserNotification').deleteMany({
+                    notification_id: { $exists: false }  // Delete orphaned records
+                });
+                
+                console.log(`Notification cleanup completed. Deleted ${notificationResult.deletedCount} old notifications and ${userNotificationResult.deletedCount} orphaned user notifications.`);
+                
+            } catch (error) {
+                console.error('Error in notification cleanup job:', error);
+            }
+        }, {
+            scheduled: false,
+            timezone: "Asia/Ho_Chi_Minh"
+        });
+
+        this.jobs.set('notificationCleanup', job);
+        job.start();
+        console.log('Scheduled notification cleanup job (weekly on Sunday at 3:00 AM)');
+    }
+
+    /**
      * Gửi thông báo sắp hết hạn (placeholder)
      */
     async sendExpiringNotification(rental) {
-        // TODO: Implement actual notification sending
-        // Có thể integrate với:
-        // - Email service (SendGrid, Mailgun, etc.)
-        // - Push notification service (Firebase, OneSignal, etc.)
-        // - SMS service (Twilio, etc.)
-        
-        const message = `Phim "${rental.movieId.title}" của bạn sắp hết hạn trong ${Math.ceil(rental.remainingTime / (1000 * 60 * 60))} giờ nữa.`;
-        
-        console.log(`Would send notification to ${rental.userId.email}: ${message}`);
-        
-        return true;
+        try {
+            const message = `Phim "${rental.movieId.title}" của bạn sắp hết hạn trong ${Math.ceil(rental.remainingTime / (1000 * 60 * 60))} giờ nữa.`;
+            
+            // Use notification service to send expiry notification
+            await notificationService.createAutoNotification('rental_expiry', {
+                userId: rental.userId._id,
+                movieId: rental.movieId._id,
+                movieTitle: rental.movieId.title,
+                remainingHours: Math.ceil(rental.remainingTime / (1000 * 60 * 60))
+            }, process.env.SYSTEM_ADMIN_ID || '6478b131b260ba24b5a8183e');
+            
+            console.log(`Sent notification to ${rental.userId.email}: ${message}`);
+            return true;
+        } catch (error) {
+            console.error(`Error sending expiring notification for rental ${rental._id}:`, error);
+            return false;
+        }
     }
 
     /**
@@ -309,6 +408,45 @@ class CronService {
             throw error;
         }
     }
+
+    /**
+     * Run manual notification check
+     */
+    async runManualNotificationCheck() {
+        try {
+            console.log('Running manual notification check...');
+            
+            // Find all scheduled notifications that are due
+            const scheduledNotifications = await Notification.findScheduledNotifications();
+            
+            if (scheduledNotifications.length === 0) {
+                console.log('No scheduled notifications due');
+                return { sent: 0, total: 0 };
+            }
+            
+            console.log(`Found ${scheduledNotifications.length} scheduled notifications to send`);
+            
+            let sentCount = 0;
+            
+            // Send each notification
+            for (const notification of scheduledNotifications) {
+                try {
+                    console.log(`Sending scheduled notification: ${notification._id} - "${notification.title}"`);
+                    await notificationService.sendNotification(notification._id);
+                    sentCount++;
+                } catch (error) {
+                    console.error(`Error sending scheduled notification ${notification._id}:`, error);
+                }
+            }
+            
+            console.log(`Manual notification check completed. Sent ${sentCount} notifications.`);
+            return { sent: sentCount, total: scheduledNotifications.length };
+            
+        } catch (error) {
+            console.error('Error in manual notification check:', error);
+            throw error;
+        }
+    }
 }
 
-module.exports = new CronService(); 
+module.exports = new CronService();

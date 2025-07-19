@@ -76,6 +76,52 @@ const userSchema = new mongoose.Schema({
         default: false
       }
     }
+  },
+  notification_preferences: {
+    enabled: {
+      type: Boolean,
+      default: true
+    },
+    categories: {
+      new_movies: {
+        type: Boolean,
+        default: true
+      },
+      new_episodes: {
+        type: Boolean,
+        default: true
+      },
+      rental_expiry: {
+        type: Boolean,
+        default: true
+      },
+      payment_success: {
+        type: Boolean,
+        default: true
+      },
+      promotions: {
+        type: Boolean,
+        default: true
+      },
+      system_updates: {
+        type: Boolean,
+        default: true
+      }
+    },
+    quiet_hours: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      start_time: {
+        type: String,
+        default: "22:00"
+      },
+      end_time: {
+        type: String,
+        default: "08:00"
+      }
+    }
   }
 }, {
   timestamps: true

@@ -12,6 +12,7 @@ import {
   HiOutlineDocumentText,
   HiOutlineArrowLeftOnRectangle,
   HiOutlineSignal,
+  HiOutlineBell,
 } from 'react-icons/hi2';
 // import { IoSettingsOutline } from 'react-icons/io5';
 
@@ -99,6 +100,17 @@ export const menu = [
         url: '/admin/websocket-test',
         icon: HiOutlineSignal,
         label: 'WebSocket Test',
+      },
+    ],
+  },
+  {
+    catalog: 'notifications',
+    listItems: [
+      {
+        isLink: true,
+        url: '/admin/notifications',
+        icon: HiOutlineBell,
+        label: 'notifications',
       },
     ],
   },

@@ -51,4 +51,14 @@ export const API_ENDPOINTS = {
     // Existing rental stats APIs
     RENTAL_STATS_REVENUE: `${API_BASE_URL}/api/rentals/stats/revenue`,
     RENTAL_STATS_POPULAR: `${API_BASE_URL}/api/rentals/stats/popular`,
-}; 
+    
+    // Push Notification Admin Endpoints
+    ADMIN_NOTIFICATIONS: `${API_BASE_URL}/api/admin/notifications`,
+    ADMIN_NOTIFICATION_STATS: `${API_BASE_URL}/api/admin/notifications/stats`,
+    ADMIN_NOTIFICATION_BULK_SEND: `${API_BASE_URL}/api/admin/notifications/bulk-send`,
+    ADMIN_NOTIFICATION_BULK_DELETE: `${API_BASE_URL}/api/admin/notifications/bulk-delete`,
+    
+    // User Notification Endpoints (for reference)
+    USER_NOTIFICATIONS: `${API_BASE_URL}/api/notifications`,
+    USER_NOTIFICATION_COUNT: `${API_BASE_URL}/api/notifications/unread-count`,
+};
