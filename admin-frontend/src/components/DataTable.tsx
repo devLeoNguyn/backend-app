@@ -3,6 +3,7 @@ import {
   DataGrid,
   GridColDef,
   GridToolbar,
+  GridRowSelectionModel,
 } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,10 +15,19 @@ import toast from 'react-hot-toast';
 
 interface DataTableProps {
   columns: GridColDef[];
-  rows: object[];
-  slug: string;
+  rows: Record<string, unknown>[];
+  slug?: string;
   includeActionColumn?: boolean;
-  onEdit?: (rowData: any) => void; // Thêm prop onEdit
+  onEdit?: (rowData: Record<string, unknown>) => void;
+  loading?: boolean;
+  getRowId?: (row: Record<string, unknown>) => string;
+  checkboxSelection?: boolean;
+  onRowSelectionModelChange?: (newSelectionModel: string[]) => void;
+  rowSelectionModel?: string[];
+  getRowActions?: (row: Record<string, unknown>) => Array<{
+    label: string;
+    onClick: () => void;
+  }>;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -25,7 +35,13 @@ const DataTable: React.FC<DataTableProps> = ({
   rows,
   slug,
   includeActionColumn,
-  onEdit, // Thêm onEdit vào destructuring
+  onEdit,
+  loading = false,
+  getRowId,
+  checkboxSelection = false,
+  onRowSelectionModelChange,
+  rowSelectionModel,
+  getRowActions,
 }) => {
   const navigate = useNavigate();
 
@@ -74,10 +90,59 @@ const DataTable: React.FC<DataTableProps> = ({
     },
   };
 
+  // Build custom actions column if getRowActions is provided
+  const customActionColumn: GridColDef = {
+    field: 'customActions',
+    headerName: 'Actions',
+    minWidth: 150,
+    flex: 0.5,
+    renderCell: (params) => {
+      const actions = getRowActions ? getRowActions(params.row) : [];
+      return (
+        <div className="flex items-center gap-1">
+          {actions.map((action, index) => (
+            <button
+              key={index}
+              onClick={action.onClick}
+              className="btn btn-xs btn-outline"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      );
+    },
+  };
+
+  // Determine which columns to show
+  const finalColumns = (() => {
+    if (getRowActions) {
+      return [...columns, customActionColumn];
+    }
+    if (includeActionColumn) {
+      return [...columns, actionColumn];
+    }
+    return columns;
+  })();
+
+  // Wrapper function to handle row selection model change
+  const handleRowSelectionModelChange = (
+    rowSelectionModel: GridRowSelectionModel
+  ) => {
+    if (onRowSelectionModelChange) {
+      onRowSelectionModelChange(rowSelectionModel as string[]);
+    }
+  };
+
   const tableProps = {
     className: "dataGrid w-full bg-base-100 text-base-content min-h-[500px]",
     rows,
-    columns: includeActionColumn ? [...columns, actionColumn] : columns,
+    columns: finalColumns,
+    loading,
+    getRowId: getRowId || ((row: Record<string, unknown>) => row.id as string),
+    checkboxSelection,
+    onRowSelectionModelChange: handleRowSelectionModelChange,
+    rowSelectionModel,
     getRowHeight: () => 60,
     initialState: {
             pagination: {
@@ -94,7 +159,6 @@ const DataTable: React.FC<DataTableProps> = ({
             },
     },
     pageSizeOptions: [5, 10, 25, 50],
-    checkboxSelection: true,
     disableRowSelectionOnClick: true,
     disableColumnFilter: true,
     disableDensitySelector: true,

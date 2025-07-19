@@ -8,6 +8,7 @@ import ChangeThemes from './ChangesThemes';
 import toast from 'react-hot-toast';
 import { menu } from './menu/data';
 import MenuItem from './menu/MenuItem';
+import { authService } from '../services/authService';
 
 const Navbar = () => {
   const [isFullScreen, setIsFullScreen] = React.useState(true);
@@ -40,6 +41,22 @@ const Navbar = () => {
   };
 
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    try {
+      // Clear authentication data
+      authService.logout();
+      
+      // Show success message
+      toast.success('Logged out successfully');
+      
+      // Navigate to login page
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Error logging out');
+    }
+  };
 
   return (
     // navbar screen
@@ -167,12 +184,12 @@ const Navbar = () => {
               </Link>
             </li>
             <li>
-              <Link to="/login" onClick={(e) => {
-                e.preventDefault();
-                navigate('/login');
-              }}>
+              <button 
+                onClick={handleLogout}
+                className="justify-between w-full text-left"
+              >
                 Log Out
-              </Link>
+              </button>
             </li>
           </ul>
         </div>

@@ -6,6 +6,18 @@ const { requireAdmin } = require('../middlewares/admin.middleware');
 // Import movie controller để sử dụng lại createMovieController
 const { createMovieController, updateMovie, deleteMovie } = require('../controllers/movie.controller');
 
+// Import notification controller
+const notificationController = require('../controllers/admin/notification.controller');
+
+// Import validators
+const {
+  validateCreateNotification,
+  validateUpdateNotification,
+  validateNotificationId,
+  validateScheduleNotification,
+  validateBulkOperation
+} = require('../validators/notification.validator');
+
 // Dashboard Analytics
 router.get('/dashboard/overview', requireAdmin, adminController.getDashboardOverview);
 router.get('/analytics/charts', requireAdmin, adminController.getAnalyticsData);
@@ -41,4 +53,17 @@ router.put('/genres/:id/status', requireAdmin, adminController.updateGenreStatus
 // WebSocket management
 router.get('/websocket/connections', requireAdmin, adminController.getWebSocketConnections);
 
-module.exports = router; 
+// Notification Management - Validation first, then authentication
+router.get('/notifications', requireAdmin, notificationController.getNotifications);
+router.post('/notifications', validateCreateNotification, requireAdmin, notificationController.createNotification);
+router.get('/notifications/stats', requireAdmin, notificationController.getNotificationStats);
+router.post('/notifications/bulk-send', validateBulkOperation, requireAdmin, notificationController.bulkSendNotifications);
+router.post('/notifications/bulk-delete', validateBulkOperation, requireAdmin, notificationController.bulkDeleteNotifications);
+router.get('/notifications/:id', validateNotificationId, requireAdmin, notificationController.getNotificationById);
+router.put('/notifications/:id', validateUpdateNotification, requireAdmin, notificationController.updateNotification);
+router.delete('/notifications/:id', validateNotificationId, requireAdmin, notificationController.deleteNotification);
+router.post('/notifications/:id/send', validateNotificationId, requireAdmin, notificationController.sendNotification);
+router.post('/notifications/:id/schedule', validateNotificationId, validateScheduleNotification, requireAdmin, notificationController.scheduleNotification);
+
+// Export the router
+module.exports = router;

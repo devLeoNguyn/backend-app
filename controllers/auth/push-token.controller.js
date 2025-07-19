@@ -1,9 +1,10 @@
 const User = require('../../models/User');
 const { Expo } = require('expo-server-sdk');
+const pushNotificationService = require('../../services/push-notification.service');
 
 const registerPushToken = async (req, res) => {
   try {
-    const { expoPushToken, userId } = req.body;
+    const { userId, expoPushToken } = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -19,38 +20,16 @@ const registerPushToken = async (req, res) => {
       });
     }
 
-    // Validate the token
-    if (!Expo.isExpoPushToken(expoPushToken)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid Expo push token'
-      });
-    }
-
-    // Update user's push token
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        expoPushToken,
-        pushNotificationsEnabled: true
-      },
-      { new: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    // Validate the token using the push notification service
+    const result = await pushNotificationService.registerPushToken(userId, expoPushToken);
 
     res.status(200).json({
       success: true,
       message: 'Push token registered successfully',
       data: {
-        userId: user._id,
-        pushNotificationsEnabled: user.pushNotificationsEnabled,
-        notificationSettings: user.notificationSettings
+        userId: result._id,
+        pushNotificationsEnabled: result.pushNotificationsEnabled,
+        notificationSettings: result.notificationSettings
       }
     });
   } catch (error) {
@@ -74,38 +53,22 @@ const updateNotificationSettings = async (req, res) => {
       });
     }
 
-    const updateData = {};
-
-    if (typeof pushNotificationsEnabled === 'boolean') {
-      updateData.pushNotificationsEnabled = pushNotificationsEnabled;
-    }
-
-    if (notificationSettings) {
-      updateData.notificationSettings = {
-        ...notificationSettings
-      };
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true }
+    // Use the push notification service
+    const updatedSettings = await pushNotificationService.updateNotificationSettings(
+      userId, 
+      { 
+        enabled: pushNotificationsEnabled, 
+        ...notificationSettings 
+      }
     );
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
 
     res.status(200).json({
       success: true,
       message: 'Notification settings updated successfully',
       data: {
-        userId: user._id,
-        pushNotificationsEnabled: user.pushNotificationsEnabled,
-        notificationSettings: user.notificationSettings
+        userId,
+        pushNotificationsEnabled: updatedSettings.pushNotificationsEnabled,
+        notificationSettings: updatedSettings.notificationSettings
       }
     });
   } catch (error) {
@@ -121,4 +84,4 @@ const updateNotificationSettings = async (req, res) => {
 module.exports = {
   registerPushToken,
   updateNotificationSettings
-}; 
+};
