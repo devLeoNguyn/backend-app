@@ -3,6 +3,14 @@ import toast from 'react-hot-toast';
 import { HiOutlineXMark } from 'react-icons/hi2';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { createProduct, fetchParentGenres, fetchChildGenres } from '../api/ApiCollection';
+import { 
+  validateMovieForm, 
+  validateOnBlur, 
+  isFormValid, 
+  clearFieldError,
+  type MovieFormData,
+  type ValidationErrors 
+} from '../validation/movieValidation';
 
 interface Genre {
   _id: string;
@@ -63,6 +71,9 @@ const AddData: React.FC<AddDataProps> = ({
   const [releaseStatus, setReleaseStatus] = React.useState('Đã phát hành');
   const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(true);
 
+  // State lưu lỗi validation
+  const [errors, setErrors] = React.useState<ValidationErrors>({});
+
   const loadImage = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const imageUpload = e.target.files[0];
@@ -110,8 +121,34 @@ const AddData: React.FC<AddDataProps> = ({
     }
   });
 
+  // Validate form sử dụng module validation
+  const validateForm = () => {
+    const formData: MovieFormData = {
+      title,
+      description,
+      productionTime,
+      producer,
+      price,
+      movieType,
+      episodeCount: totalEpisodes,
+      status: releaseStatus,
+      poster: file || undefined
+    };
+    
+    const newErrors = validateMovieForm(formData);
+    
+    // Validate genre separately (not in MovieFormData interface)
+    if (!(genre || (selectedParentGenre && childGenres.length === 0))) {
+      newErrors.genre = 'Thể loại là bắt buộc';
+    }
+    
+    setErrors(newErrors);
+    return isFormValid(newErrors);
+  };
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!validateForm()) return;
     
     if (slug === 'product') {
       // Get genre name từ selected genre (child hoặc parent nếu không có child)
@@ -196,106 +233,156 @@ const AddData: React.FC<AddDataProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Tên phim"
-                className="input input-bordered w-full"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Tên phim <span className="text-error">*</span></span></label>
+                <input
+                  type="text"
+                  placeholder="Tên phim"
+                  className={`input input-bordered w-full ${errors.title ? 'input-error' : ''}`}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('title', title, errors);
+                    setErrors(newErrors);
+                  }}
+                />
+                {errors.title && <span className="text-error text-xs">{errors.title}</span>}
+              </div>
               
-              <textarea
-                placeholder="Mô tả phim"
-                className="textarea textarea-bordered w-full h-24"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Mô tả phim <span className="text-error">*</span></span></label>
+                <textarea
+                  placeholder="Mô tả phim"
+                  className={`textarea textarea-bordered w-full h-24 ${errors.description ? 'textarea-error' : ''}`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('description', description, errors);
+                    setErrors(newErrors);
+                  }}
+                />
+                {errors.description && <span className="text-error text-xs">{errors.description}</span>}
+              </div>
               
-              <input
-                type="date"
-                placeholder="Thời gian sản xuất"
-                className="input input-bordered w-full"
-                value={productionTime}
-                onChange={(e) => setProductionTime(e.target.value)}
-              />
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Ngày sản xuất <span className="text-error">*</span></span></label>
+                <input
+                  type="date"
+                  placeholder="Thời gian sản xuất"
+                  className={`input input-bordered w-full ${errors.productionTime ? 'input-error' : ''}`}
+                  value={productionTime}
+                  onChange={(e) => setProductionTime(e.target.value)}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('productionTime', productionTime, errors);
+                    setErrors(newErrors);
+                  }}
+                  min="1900-01-01"
+                  max={`${new Date().getFullYear() + 1}-12-31`}
+                />
+                {errors.productionTime && <span className="text-error text-xs">{errors.productionTime}</span>}
+              </div>
               
               {/* Genre Selection */}
-              <select
-                className="select select-bordered w-full"
-                value={selectedParentGenre}
-                onChange={(e) => setSelectedParentGenre(e.target.value)}
-              >
-                <option value="">Chọn thể loại chính</option>
-                {parentGenres.map((genre) => (
-                  <option key={genre._id} value={genre._id}>
-                    {genre.genre_name}
-                  </option>
-                ))}
-              </select>
-
-              {selectedParentGenre && childGenres.length > 0 && (
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Thể loại <span className="text-error">*</span></span></label>
                 <select
-                  className="select select-bordered w-full"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
+                  className={`select select-bordered w-full ${errors.genre ? 'select-error' : ''}`}
+                  value={selectedParentGenre}
+                  onChange={(e) => setSelectedParentGenre(e.target.value)}
                 >
-                  <option value="">Chọn thể loại phụ</option>
-                  {childGenres.map((genre) => (
-                    <option key={genre._id} value={genre._id}>
-                      {genre.genre_name}
-                    </option>
+                  <option value="">Chọn thể loại chính</option>
+                  {parentGenres.map((genre) => (
+                    <option key={genre._id} value={genre._id}>{genre.genre_name}</option>
                   ))}
                 </select>
-              )}
+                {selectedParentGenre && childGenres.length > 0 && (
+                  <select
+                    className={`select select-bordered w-full mt-2 ${errors.genre ? 'select-error' : ''}`}
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                  >
+                    <option value="">Chọn thể loại phụ</option>
+                    {childGenres.map((genre) => (
+                      <option key={genre._id} value={genre._id}>{genre.genre_name}</option>
+                    ))}
+                  </select>
+                )}
+                {errors.genre && <span className="text-error text-xs">{errors.genre}</span>}
+              </div>
             </div>
 
             {/* Right Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nhà sản xuất"
-                className="input input-bordered w-full"
-                value={producer}
-                onChange={(e) => setProducer(e.target.value)}
-              />
-
-              <input
-                type="number"
-                placeholder="Giá (VND)"
-                className="input input-bordered w-full"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                min="0"
-              />
-
-              <select
-                className="select select-bordered w-full"
-                value={movieType}
-                onChange={(e) => {
-                  const selectedType = e.target.value;
-                  setMovieType(selectedType);
-                  
-                  // Tự động điều chỉnh số tập dựa trên loại phim
-                  if (selectedType === 'Phim lẻ') {
-                    setTotalEpisodes('1');
-                  } else if (selectedType === 'Phim bộ') {
-                    setTotalEpisodes('2'); // Mặc định 2 tập cho phim bộ
-                  } else if (selectedType === 'Thể thao') {
-                    setTotalEpisodes('1'); // Thể thao thường 1 trận
-                  }
-                }}
-              >
-                <option value="">Chọn loại phim</option>
-                <option value="Phim lẻ">🎬 Phim lẻ</option>
-                <option value="Phim bộ">📺 Phim bộ</option>
-                <option value="Thể thao">⚽ Thể thao</option>
-              </select>
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Nhà sản xuất <span className="text-error">*</span></span></label>
+                <input
+                  type="text"
+                  placeholder="Nhà sản xuất"
+                  className={`input input-bordered w-full ${errors.producer ? 'input-error' : ''}`}
+                  value={producer}
+                  onChange={(e) => setProducer(e.target.value)}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('producer', producer, errors);
+                    setErrors(newErrors);
+                  }}
+                />
+                {errors.producer && <span className="text-error text-xs">{errors.producer}</span>}
+              </div>
 
               <div className="form-control w-full">
+                <label className="label"><span className="label-text">Giá (VND) <span className="text-error">*</span></span></label>
+                <input
+                  type="number"
+                  placeholder="Giá (VND)"
+                  className={`input input-bordered w-full ${errors.price ? 'input-error' : ''}`}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('price', price, errors);
+                    setErrors(newErrors);
+                  }}
+                  min="0"
+                />
+                {errors.price && <span className="text-error text-xs">{errors.price}</span>}
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Loại phim <span className="text-error">*</span></span></label>
+                <select
+                  className={`select select-bordered w-full ${errors.movieType ? 'select-error' : ''}`}
+                  value={movieType}
+                  onChange={(e) => {
+                    const selectedType = e.target.value;
+                    setMovieType(selectedType);
+                    
+                    // Tự động điều chỉnh số tập dựa trên loại phim
+                    if (selectedType === 'Phim lẻ') {
+                      setTotalEpisodes('1');
+                    } else if (selectedType === 'Phim bộ') {
+                      setTotalEpisodes('2'); // Mặc định 2 tập cho phim bộ
+                    } else if (selectedType === 'Thể thao') {
+                      setTotalEpisodes('1'); // Thể thao thường 1 trận
+                    }
+                  }}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('movieType', movieType, errors);
+                    setErrors(newErrors);
+                  }}
+                >
+                  <option value="">Chọn loại phim</option>
+                  <option value="Phim lẻ">🎬 Phim lẻ</option>
+                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Thể thao">⚽ Thể thao</option>
+                </select>
+                {errors.movieType && <span className="text-error text-xs">{errors.movieType}</span>}
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Số tập <span className="text-error">*</span></span></label>
                 <input
                   type="number"
                   placeholder="Số tập"
-                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''}`}
+                  className={`input input-bordered w-full ${errors.totalEpisodes ? 'input-error' : ''} ${movieType === 'Phim lẻ' ? 'input-disabled' : ''}`}
                   value={totalEpisodes}
                   disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
                   onChange={(e) => {
@@ -313,14 +400,14 @@ const AddData: React.FC<AddDataProps> = ({
                     
                     setTotalEpisodes(value);
                   }}
+                  onBlur={() => {
+                    const newErrors = validateOnBlur('episodeCount', totalEpisodes, errors);
+                    setErrors(newErrors);
+                  }}
                   min={movieType === 'Phim bộ' ? '2' : '1'}
                   max={movieType === 'Phim lẻ' ? '1' : undefined}
-                  title={
-                    movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
-                    movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
-                    'Số tập của phim'
-                  }
                 />
+                {errors.totalEpisodes && <span className="text-error text-xs">{errors.totalEpisodes}</span>}
                 {movieType && (
                   <div className="label">
                     <span className="label-text-alt text-xs">
@@ -332,26 +419,35 @@ const AddData: React.FC<AddDataProps> = ({
                 )}
               </div>
 
-              <select
-                className="select select-bordered w-full"
-                value={releaseStatus}
-                onChange={(e) => setReleaseStatus(e.target.value)}
-              >
-                <option value="Đã phát hành">✅ Đã phát hành</option>
-                <option value="Đã kết thúc">🚫 Đã kết thúc</option>
-              </select>
+              <div className="form-control w-full">
+                <label className="label"><span className="label-text">Trạng thái phát hành</span></label>
+                <select
+                  className="select select-bordered w-full"
+                  value={releaseStatus}
+                  onChange={(e) => setReleaseStatus(e.target.value)}
+                >
+                  <option value="Đã phát hành">✅ Đã phát hành</option>
+                  <option value="Đã kết thúc">🚫 Đã kết thúc</option>
+                </select>
+              </div>
 
               <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Poster phim</span>
-                </label>
+                <label className="label"><span className="label-text">Poster phim <span className="text-error">*</span></span></label>
                 <input
                   type="file"
-                  className="file-input file-input-bordered w-full"
+                  className={`file-input file-input-bordered w-full ${errors.poster ? 'file-input-error' : ''}`}
                   accept="image/*"
-                  onChange={loadImage}
+                  onChange={(e) => {
+                    loadImage(e);
+                    // Clear poster error when file is selected
+                    if (e.target.files && e.target.files[0]) {
+                      const newErrors = clearFieldError(errors, 'poster');
+                      setErrors(newErrors);
+                    }
+                  }}
                   required
                 />
+                {errors.poster && <span className="text-error text-xs">{errors.poster}</span>}
                 {preview && (
                   <div className="mt-2">
                     <img

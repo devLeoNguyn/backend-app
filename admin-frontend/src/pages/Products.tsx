@@ -7,10 +7,23 @@ import toast from 'react-hot-toast';
 import AddData from '../components/AddData';
 import EditData from '../components/EditData';
 
+interface MovieData {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  producer: string;
+  price: number;
+  movieType: string;
+  totalEpisodes: number;
+  status: 'released' | 'ended' | string;
+  img?: string;
+}
+
 const Products = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
-  const [selectedMovie, setSelectedMovie] = React.useState(null);
+  const [selectedMovie, setSelectedMovie] = React.useState<MovieData | null>(null);
   
   const { isLoading, isError, data } = useQuery({
     queryKey: ['allproducts'],
@@ -18,7 +31,9 @@ const Products = () => {
   });
 
   // Handler để mở modal edit với dữ liệu phim
-  const handleEditMovie = (movieData: any) => {
+  const handleEditMovie = (rowData: Record<string, unknown>) => {
+    // Safe type assertion
+    const movieData = rowData as unknown as MovieData;
     setSelectedMovie(movieData);
     setIsEditOpen(true);
   };

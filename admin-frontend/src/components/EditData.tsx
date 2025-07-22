@@ -15,11 +15,47 @@ interface Genre {
   children?: Genre[];
 }
 
+interface MovieData {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  producer: string;
+  price: number;
+  movieType: string;
+  totalEpisodes: number;
+  status: 'released' | 'ended' | string;
+  img?: string;
+}
+
+interface ProductData {
+  title?: string;
+  description?: string;
+  production_time?: string;
+  genre?: string;
+  producer?: string;
+  price?: number;
+  movie_type?: string;
+  total_episodes?: number;
+  release_status?: string;
+  poster_file?: File;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      error?: string;
+    };
+  };
+  message?: string;
+}
+
 interface EditDataProps {
   slug: string;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  movieData: any;
+  movieData: MovieData;
 }
 
 const EditData: React.FC<EditDataProps> = ({
@@ -96,7 +132,7 @@ const EditData: React.FC<EditDataProps> = ({
 
   // Mutation for updating product (movie)
   const updateProductMutation = useMutation({
-    mutationFn: ({ productId, productData }: { productId: string, productData: any }) => 
+    mutationFn: ({ productId, productData }: { productId: string, productData: ProductData }) => 
       updateProduct(productId, productData),
     onSuccess: (data: unknown) => {
       toast.success('🎬 Phim đã được cập nhật thành công!');
@@ -104,7 +140,7 @@ const EditData: React.FC<EditDataProps> = ({
       queryClient.invalidateQueries({ queryKey: ['allproducts'] });
       console.log('✅ Movie updated:', data);
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       let errorMessage = 'Lỗi không xác định';
       
       if (error.response?.data?.message) {
@@ -138,7 +174,7 @@ const EditData: React.FC<EditDataProps> = ({
       }
       
       // Chỉ gửi các field đã thay đổi
-      const productData: any = {};
+      const productData: ProductData = {};
       
       if (title !== movieData?.title) productData.title = title;
       if (description !== movieData?.description) productData.description = description;

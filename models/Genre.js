@@ -4,7 +4,7 @@ const genreSchema = new mongoose.Schema({
     genre_name: {
         type: String,
         required: true,
-        unique: true,
+        unique: false,
         trim: true
         // Bỏ lowercase vì giờ cần giữ nguyên dấu tiếng Việt
     },
@@ -70,6 +70,7 @@ genreSchema.virtual('parent', {
 // Index compound cho performance
 genreSchema.index({ parent_genre: 1, is_active: 1, sort_order: 1 });
 genreSchema.index({ is_parent: 1, is_active: 1, sort_order: 1 });
+genreSchema.index({ parent_genre: 1, genre_name: 1 }, { unique: true })
 
 // Pre-save middleware để tự động set is_parent
 genreSchema.pre('save', function(next) {
