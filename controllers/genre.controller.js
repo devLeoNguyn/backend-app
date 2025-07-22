@@ -23,27 +23,76 @@ const {
 const getGenres = async (req, res) => {
     try {
         const type = req.query.type || 'all';
+        const format = req.query.format || 'tree';
 
-        // Luôn trả về poster, children, tree
-        const include_poster = true;
-        const include_children = true;
-        const format = 'tree';
+        // Nếu type là 'children', chỉ trả về thể loại con của parent_id
+        if (type === 'children' && req.query.parent_id) {
+            const childGenres = await Genre.find({ 
+                parent_genre: req.query.parent_id,
+                is_active: true 
+            })
+            .select('+poster')
+            .sort({ sort_order: 1, genre_name: 1 });
 
+            let formattedGenres = await Promise.all(
+                childGenres.map(async (genre) => {
+                    const genreInfo = await getGenreFullInfo(genre, false);
+                    return genreInfo;
+                })
+            );
+
+            return res.json(createResponse({
+                genres: formattedGenres,
+                total: formattedGenres.length,
+                type: 'children',
+                format: 'list'
+            }));
+        }
+
+        // Nếu format là 'tree', chỉ trả về thể loại cha và con của chúng
+        if (format === 'tree') {
+            // Chỉ lấy thể loại cha (parent_genre = null)
+            const parentGenres = await Genre.find({ 
+                parent_genre: null,
+                is_active: true 
+            })
+            .select('+poster')
+            .sort({ sort_order: 1, genre_name: 1 });
+
+            let formattedGenres = await Promise.all(
+                parentGenres.map(async (genre) => {
+                    const genreInfo = await getGenreFullInfo(genre, true);
+                    // Luôn thêm children cho thể loại cha
+                    genreInfo.children = await getChildrenGenres(genre._id);
+                    return genreInfo;
+                })
+            );
+
+            return res.json(createResponse({
+                genres: formattedGenres,
+                total: formattedGenres.length,
+                type: 'tree',
+                format: 'tree'
+            }));
+        }
+
+        // Nếu format là 'list', trả về tất cả genres như cũ
         let query = {};
         if (type === 'parent') query.parent_genre = null;
         if (type === 'active') query.is_active = true;
         if (type === 'children' && req.query.parent_id) {
             query.parent_genre = req.query.parent_id;
         }
+        
         const genres = await Genre.find(query)
-            .select(include_poster ? '+poster' : '-poster')
+            .select('+poster')
             .sort({ sort_order: 1, genre_name: 1 });
 
         let formattedGenres = await Promise.all(
             genres.map(async (genre) => {
                 const genreInfo = await getGenreFullInfo(genre, true);
-                // Chỉ thêm children khi type KHÔNG phải là 'parent'
-                if (include_children && type !== 'parent') {
+                // Chỉ thêm children khi type KHÔNG phải là 'parent' và KHÔNG phải là 'children'
+                if (type !== 'parent' && type !== 'children') {
                     genreInfo.children = await getChildrenGenres(genre._id);
                 }
                 return genreInfo;
@@ -53,7 +102,8 @@ const getGenres = async (req, res) => {
         res.json(createResponse({
             genres: formattedGenres,
             total: formattedGenres.length,
-            type
+            type,
+            format: 'list'
         }));
     } catch (error) {
         console.error('Get genres error:', error);
