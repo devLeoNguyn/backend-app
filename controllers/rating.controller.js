@@ -26,12 +26,22 @@ exports.createRating = async (req, res) => {
             comment
         });
 
-        await rating.populate('user_id', 'name email');
+        await rating.populate('user_id', 'full_name email');
 
         res.status(201).json({
             status: 'success',
             message: 'Đã thêm đánh giá thành công',
-            data: { rating }
+            data: { 
+                rating: {
+                    ...rating.toObject(),
+                    user: {
+                        _id: rating.user_id._id,
+                        full_name: rating.user_id.full_name || '',
+                        email: rating.user_id.email || '',
+                        avatar: rating.user_id.avatar || null
+                    }
+                }
+            }
         });
 
     } catch (error) {
@@ -102,7 +112,7 @@ exports.getMovieRatings = async (req, res) => {
 
         // Lấy tất cả like của phim, sắp xếp theo thời gian mới nhất
         const ratings = await Rating.find({ movie_id })
-            .populate('user_id', 'name email')
+            .populate('user_id', 'full_name email')
             .sort({ createdAt: -1 });
 
         // Đếm tổng số like
@@ -111,7 +121,15 @@ exports.getMovieRatings = async (req, res) => {
         res.json({
             status: 'success',
             data: {
-                ratings,
+                ratings: ratings.map(rating => ({
+                    ...rating.toObject(),
+                    user: {
+                        _id: rating.user_id._id,
+                        full_name: rating.user_id.full_name || '',
+                        email: rating.user_id.email || '',
+                        avatar: rating.user_id.avatar || null
+                    }
+                })),
                 total_likes: totalLikes
             }
         });
@@ -406,7 +424,7 @@ exports.addComment = async (req, res) => {
             is_like: false,
             comment: comment.trim()
         });
-        await newRating.populate('user_id', 'name email avatar');
+        await newRating.populate('user_id', 'full_name email avatar');
         // Console log rõ ràng khi user bình luận
         console.log(`[COMMENT] User ${userId} bình luận phim ${movie_id}: "${comment.trim()}" | _id: ${newRating._id} | createdAt: ${newRating.createdAt}`);
         res.json({
@@ -417,8 +435,8 @@ exports.addComment = async (req, res) => {
                     _id: newRating._id,
                     user: {
                         _id: newRating.user_id._id,
-                        name: newRating.user_id.full_name || newRating.user_id.name || 'Unknown User',
-                        email: newRating.user_id.email || 'unknown@email.com',
+                        full_name: newRating.user_id.full_name || '',
+                        email: newRating.user_id.email || '',
                         avatar: newRating.user_id.avatar || null
                     },
                     comment: newRating.comment,
@@ -458,7 +476,7 @@ exports.getComments = async (req, res) => {
         if (userId) filter.user_id = userId;
         // Lấy bình luận với phân trang
         const comments = await Rating.find(filter)
-            .populate('user_id', 'name email avatar')
+            .populate('user_id', 'full_name email avatar')
             .sort(sortOption)
             .skip(skip)
             .limit(parseInt(limit));
@@ -475,8 +493,8 @@ exports.getComments = async (req, res) => {
                         _id: rating._id,
                         user: {
                             _id: user._id || null,
-                            name: user.full_name || user.name || 'Unknown User',
-                            email: user.email || 'unknown@email.com',
+                            full_name: user.full_name || '',
+                            email: user.email || '',
                             avatar: user.avatar || null
                         },
                         comment: rating.comment,
@@ -549,7 +567,7 @@ exports.addStarRating = async (req, res) => {
             if (comment) existingRating.comment = comment.trim();
             existingRating.updatedAt = new Date();
             await existingRating.save();
-            await existingRating.populate('user_id', 'name email avatar');
+            await existingRating.populate('user_id', 'full_name email avatar');
             
             var action = 'cập nhật';
             var rating = existingRating;
@@ -564,7 +582,7 @@ exports.addStarRating = async (req, res) => {
                 is_like: true // Mặc định là true khi đánh giá sao
             });
             
-            await newRating.populate('user_id', 'name email avatar');
+            await newRating.populate('user_id', 'full_name email avatar');
             var action = 'thêm';
             var rating = newRating;
         }
@@ -580,8 +598,8 @@ exports.addStarRating = async (req, res) => {
                     _id: rating._id,
                     user: {
                         _id: rating.user_id._id,
-                        name: rating.user_id.full_name || rating.user_id.name || 'Unknown User',
-                        email: rating.user_id.email || 'unknown@email.com',
+                        full_name: rating.user_id.full_name || '',
+                        email: rating.user_id.email || '',
                         avatar: rating.user_id.avatar || null
                     },
                     star_rating: rating.star_rating,
@@ -620,7 +638,7 @@ exports.getUserStarRating = async (req, res) => {
             user_id: userId, 
             movie_id, 
             rating_type: 'star' 
-        }).populate('user_id', 'name email avatar');
+        }).populate('user_id', 'full_name email avatar');
 
         res.json({
             status: 'success',
@@ -681,7 +699,7 @@ exports.getMovieStarRatings = async (req, res) => {
         }
 
         const ratings = await Rating.find(filter)
-            .populate('user_id', 'name email avatar')
+            .populate('user_id', 'full_name email avatar')
             .sort(sortOption)
             .skip(skip)
             .limit(parseInt(limit));
@@ -697,8 +715,8 @@ exports.getMovieStarRatings = async (req, res) => {
                     _id: rating._id,
                     user: {
                         _id: rating.user_id._id,
-                        name: rating.user_id.full_name || rating.user_id.name || 'Unknown User',
-                        email: rating.user_id.email || 'unknown@email.com',
+                        full_name: rating.user_id.full_name || '',
+                        email: rating.user_id.email || '',
                         avatar: rating.user_id.avatar || null
                     },
                     star_rating: rating.star_rating,
