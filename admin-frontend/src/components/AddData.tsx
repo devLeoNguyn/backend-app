@@ -2,7 +2,7 @@ import React, { ChangeEvent, FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { HiOutlineXMark } from 'react-icons/hi2';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { createProduct, fetchParentGenres, fetchChildGenres } from '../api/ApiCollection';
+import { createProduct, fetchParentGenres } from '../api/ApiCollection';
 import { 
   validateMovieForm, 
   validateOnBlur, 
@@ -41,7 +41,10 @@ const AddData: React.FC<AddDataProps> = ({
   const queryClient = useQueryClient();
   
   // States cho genre selection
-  const [selectedParentGenre, setSelectedParentGenre] = React.useState('');
+  // State for multiple parent genres
+  const [selectedParents, setSelectedParents] = React.useState<string[]>([]);
+  // State for selected child genre per parent
+  const [selectedChildren, setSelectedChildren] = React.useState<{ [parentId: string]: string }>({});
   
   // Fetch parent genres
   const { data: parentGenres = [] } = useQuery<Genre[]>({
@@ -50,11 +53,11 @@ const AddData: React.FC<AddDataProps> = ({
   });
 
   // Fetch child genres based on selected parent
-  const { data: childGenres = [] } = useQuery<Genre[]>({
-    queryKey: ['childGenres', selectedParentGenre],
-    queryFn: () => fetchChildGenres(selectedParentGenre),
-    enabled: !!selectedParentGenre
-  });
+  // const { data: childGenres = [] } = useQuery<Genre[]>({
+  //   queryKey: ['childGenres', selectedParentGenre],
+  //   queryFn: () => fetchChildGenres(selectedParentGenre),
+  //   enabled: !!selectedParentGenre
+  // });
   
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
@@ -63,7 +66,8 @@ const AddData: React.FC<AddDataProps> = ({
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [productionTime, setProductionTime] = React.useState('');
-  const [genre, setGenre] = React.useState('');
+  // Remove single genre state
+  // Remove: const [genre, setGenre] = React.useState('');
   const [producer, setProducer] = React.useState('');
   const [price, setPrice] = React.useState('');
   const [movieType, setMovieType] = React.useState('');
@@ -82,6 +86,30 @@ const AddData: React.FC<AddDataProps> = ({
     }
   };
 
+  // Handler for selecting/deselecting parent genres
+  const handleSelectParent = (parentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedParents(prev => [...prev, parentId]);
+    } else {
+      setSelectedParents(prev => prev.filter(id => id !== parentId));
+      setSelectedChildren(prev => {
+        const newChildren = { ...prev };
+        delete newChildren[parentId];
+        return newChildren;
+      });
+    }
+  };
+
+  // Handler for selecting a child genre for a parent
+  const handleSelectChild = (parentId: string, childId: string) => {
+    // Prevent duplicate child selection across parents
+    if (Object.values(selectedChildren).includes(childId)) {
+      toast.error('Thể loại con này đã được chọn cho cha khác!');
+      return;
+    }
+    setSelectedChildren(prev => ({ ...prev, [parentId]: childId }));
+  };
+
   // Mutation for creating product (movie)
   const createProductMutation = useMutation({
     mutationFn: createProduct,
@@ -92,8 +120,8 @@ const AddData: React.FC<AddDataProps> = ({
       setTitle('');
       setDescription('');
       setProductionTime('');
-      setGenre('');
-      setSelectedParentGenre('');
+      // Remove single genre state
+      // Remove: setGenre('');
       setProducer('');
       setPrice('');
       setMovieType('');
@@ -136,40 +164,38 @@ const AddData: React.FC<AddDataProps> = ({
     };
     
     const newErrors = validateMovieForm(formData);
-    
-    // Validate genre separately (not in MovieFormData interface)
-    if (!(genre || (selectedParentGenre && childGenres.length === 0))) {
-      newErrors.genre = 'Thể loại là bắt buộc';
+
+    // Validate at least one parent genre is selected
+    if (selectedParents.length === 0) {
+      newErrors.parentGenres = 'Phải chọn ít nhất một thể loại chính';
+    }
+
+    // Validate no duplicate child genres
+    const childIds = Object.values(selectedChildren);
+    const uniqueChildIds = Array.from(new Set(childIds));
+    if (childIds.length !== uniqueChildIds.length) {
+      newErrors.childGenres = 'Không được chọn trùng thể loại phụ giữa các thể loại chính';
     }
     
     setErrors(newErrors);
     return isFormValid(newErrors);
   };
 
+  // In the form submit handler, build the genres array
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     if (slug === 'product') {
-      // Get genre name từ selected genre (child hoặc parent nếu không có child)
-      let selectedGenreName = '';
-      if (genre) {
-        const selectedChildGenre = childGenres.find(g => g._id === genre);
-        if (selectedChildGenre) {
-          selectedGenreName = selectedChildGenre.genre_name;
-        }
-      } else if (selectedParentGenre) {
-        const selectedParent = parentGenres.find(g => g._id === selectedParentGenre);
-        if (selectedParent) {
-          selectedGenreName = selectedParent.genre_name;
-        }
-      }
-      
+      // Collect all selected parent ids and child ids (no duplicates)
+      let genres = [...selectedParents, ...Object.values(selectedChildren)];
+      genres = Array.from(new Set(genres));
+
       const productData = {
         title,
         description,
         production_time: productionTime,
-        genre: selectedGenreName,
+        genres, // <-- send array of genre ids
         producer,
         price: parseFloat(price) || 0,
         movie_type: movieType,
@@ -178,7 +204,7 @@ const AddData: React.FC<AddDataProps> = ({
         event_start_time: '',
         poster_file: file || undefined
       };
-      
+
       console.log('🎬 Submitting new movie:', productData);
       createProductMutation.mutate(productData);
     }
@@ -186,8 +212,9 @@ const AddData: React.FC<AddDataProps> = ({
 
   // Reset child genre khi parent thay đổi
   React.useEffect(() => {
-    setGenre('');
-  }, [selectedParentGenre]);
+    // Remove all code that sets or uses selectedParentGenre or setSelectedParentGenre
+    // Remove all code that sets or uses genre as a string
+  }, []);
 
   // Updated validation for movie form
   React.useEffect(() => {
@@ -201,11 +228,11 @@ const AddData: React.FC<AddDataProps> = ({
       totalEpisodes,
       releaseStatus
     ];
-
-    const hasValidGenre = genre || (selectedParentGenre && childGenres.length === 0);
+    // At least one parent genre must be selected
+    const hasValidGenre = selectedParents.length > 0;
     const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || file === null;
     setFormProductIsEmpty(isFormEmpty);
-  }, [title, description, productionTime, genre, selectedParentGenre, childGenres, producer, price, movieType, totalEpisodes, releaseStatus, file]);
+  }, [title, description, productionTime, selectedParents, selectedChildren, producer, price, movieType, totalEpisodes, releaseStatus, file]);
 
   if (!isOpen || slug !== 'product') return null;
 
@@ -284,31 +311,49 @@ const AddData: React.FC<AddDataProps> = ({
               
               {/* Genre Selection */}
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Thể loại <span className="text-error">*</span></span></label>
-                <select
-                  className={`select select-bordered w-full ${errors.genre ? 'select-error' : ''}`}
-                  value={selectedParentGenre}
-                  onChange={(e) => setSelectedParentGenre(e.target.value)}
-                >
-                  <option value="">Chọn thể loại chính</option>
-                  {parentGenres.map((genre) => (
-                    <option key={genre._id} value={genre._id}>{genre.genre_name}</option>
+                <label className="label"><span className="label-text">Thể loại chính <span className="text-error">*</span></span></label>
+                <div className="flex flex-wrap gap-2">
+                  {parentGenres.map((parent) => (
+                    <label key={parent._id} className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedParents.includes(parent._id)}
+                        onChange={e => handleSelectParent(parent._id, e.target.checked)}
+                      />
+                      <span>{parent.genre_name}</span>
+                    </label>
                   ))}
-                </select>
-                {selectedParentGenre && childGenres.length > 0 && (
-                  <select
-                    className={`select select-bordered w-full mt-2 ${errors.genre ? 'select-error' : ''}`}
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                  >
-                    <option value="">Chọn thể loại phụ</option>
-                    {childGenres.map((genre) => (
-                      <option key={genre._id} value={genre._id}>{genre.genre_name}</option>
-                    ))}
-                  </select>
-                )}
-                {errors.genre && <span className="text-error text-xs">{errors.genre}</span>}
+                </div>
+                {errors.parentGenres && <span className="text-error text-xs">{errors.parentGenres}</span>}
               </div>
+
+              {/* For each selected parent, render a child genre dropdown */}
+              {selectedParents.map(parentId => {
+                const parent = parentGenres.find(g => g._id === parentId);
+                // Fetch children for this parent (if not already fetched, you may need to refactor to fetch all children at once)
+                const children = parent?.children || [];
+                return (
+                  <div key={parentId} className="form-control w-full mt-2">
+                    <label className="label"><span className="label-text">Thể loại phụ cho {parent?.genre_name}</span></label>
+                    <select
+                      className="select select-bordered w-full"
+                      value={selectedChildren[parentId] || ''}
+                      onChange={e => handleSelectChild(parentId, e.target.value)}
+                    >
+                      <option value="">Chọn thể loại phụ</option>
+                      {children.map(child => (
+                        <option
+                          key={child._id}
+                          value={child._id}
+                          disabled={Object.values(selectedChildren).includes(child._id) && selectedChildren[parentId] !== child._id}
+                        >
+                          {child.genre_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Right Column */}

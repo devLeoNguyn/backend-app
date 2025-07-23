@@ -196,7 +196,7 @@ export const createProduct = async (productData: {
     title: string;
     description: string;
     production_time: string;
-    genre: string; // Changed from 'genres' to 'genre' for consistency
+    genres: string[]; // <-- now an array of genre ids
     producer: string;
     price: number;
     movie_type: string;
@@ -265,7 +265,7 @@ export const createProduct = async (productData: {
         total_episodes: productData.total_episodes,
         release_status: mappedReleaseStatus, // "released" hoặc "ended"
         poster_path: posterUrl, // Use Cloudflare URL or placeholder
-        genres: productData.genre ? [productData.genre] : [], // Pass genre names as array
+        genres: productData.genres, // <-- assign genres array directly
         event_start_time: null, // Không sử dụng event_start_time
         episodes: [
             {
