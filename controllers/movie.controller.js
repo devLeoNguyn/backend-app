@@ -282,6 +282,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         if (movie.movie_type === 'Phim lẻ') {
             const singleEpisode = episodes[0];
             let hasRentalAccess = movie.is_free;
+            let isRentalActive = movie.is_free;
 
             if (!movie.is_free && userId) {
                 const userRental = await MovieRental.findOne({
@@ -290,6 +291,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     status: { $in: ['paid', 'active'] }
                 });
                 hasRentalAccess = !!userRental;
+                isRentalActive = userRental && userRental.status === 'active';
             }
 
             movieData = {
@@ -304,10 +306,10 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 price: movie.price,
                 is_free: movie.is_free,
                 price_display: movie.getPriceDisplay(),
-                uri: hasRentalAccess && singleEpisode ? singleEpisode.uri : null,
-                video_url: hasRentalAccess && singleEpisode ? singleEpisode.video_url : null,
+                uri: isRentalActive && singleEpisode ? singleEpisode.uri : null,
+                video_url: isRentalActive && singleEpisode ? singleEpisode.video_url : null,
                 duration: singleEpisode ? singleEpisode.duration : null,
-                is_locked: !hasRentalAccess
+                is_locked: !isRentalActive
             };
         }
 
@@ -315,6 +317,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         else {
             movieData = movie.formatMovieResponse(episodes);
             let hasRentalAccess = movie.is_free;
+            let isRentalActive = movie.is_free;
 
             if (userId && !movie.is_free) {
                 const userRental = await MovieRental.findOne({
@@ -323,9 +326,10 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     status: { $in: ['paid', 'active'] }
                 });
                 hasRentalAccess = !!userRental;
+                isRentalActive = userRental && userRental.status === 'active';
             }
 
-            if (hasRentalAccess && movieData.episodes) {
+            if (isRentalActive && movieData.episodes) {
                 movieData.episodes = movieData.episodes.map(ep => {
                     const fullEpisode = episodes.find(fullEp => fullEp.episode_number === ep.episode_number);
                     return {
@@ -334,6 +338,13 @@ const getMovieDetailWithInteractions = async (req, res) => {
                         is_locked: false
                     };
                 });
+            } else if (movieData.episodes) {
+                // Nếu chưa active, không trả về uri
+                movieData.episodes = movieData.episodes.map(ep => ({
+                  ...ep,
+                  uri: null,
+                  is_locked: true
+                }));
             }
         }
 
