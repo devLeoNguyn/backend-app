@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HiBars3CenterLeft } from 'react-icons/hi2';
-import { DiReact } from 'react-icons/di';
-import { HiSearch, HiOutlineBell } from 'react-icons/hi';
-import { RxEnterFullScreen, RxExitFullScreen } from 'react-icons/rx';
+import { IoMenuOutline } from 'react-icons/io5';
+import { IoSearchOutline, IoNotificationsOutline } from 'react-icons/io5';
+import { IoExpandOutline, IoContractOutline } from 'react-icons/io5';
 import ChangeThemes from './ChangesThemes';
 import toast from 'react-hot-toast';
 import { menu } from './menu/data';
 import MenuItem from './menu/MenuItem';
 import { authService } from '../services/authService';
+import { DiReact } from 'react-icons/di';
 
 const Navbar = () => {
   const [isFullScreen, setIsFullScreen] = React.useState(true);
@@ -77,7 +77,7 @@ const Navbar = () => {
               htmlFor="drawer-navbar-mobile"
               className="p-0 btn btn-ghost drawer-button"
             >
-              <HiBars3CenterLeft className="text-2xl" />
+              <IoMenuOutline className="text-2xl" />
             </label>
           </div>
           <div className="drawer-side z-[99]">
@@ -89,11 +89,22 @@ const Navbar = () => {
             <div className="menu p-4 w-auto min-h-full bg-base-200 text-base-content">
               <Link
                 to={'/admin'}
-                className="flex items-center gap-1 xl:gap-2 mt-1 mb-5"
+                className="flex items-center gap-2 xl:gap-3 mt-1 mb-5"
               >
-                <DiReact className="text-3xl sm:text-4xl xl:text-4xl 2xl:text-6xl text-primary animate-spin-slow" />
+                <div className="logo-container">
+                  <img 
+                    src="/logo.png" 
+                    alt="Movie Management Logo"
+                    className="w-8 h-8 sm:w-10 sm:h-10 xl:w-12 xl:h-12 2xl:w-14 2xl:h-14 object-contain" 
+                    onError={(e) => {
+                      console.error('❌ Mobile logo failed to load from /logo.png');
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    onLoad={() => console.log('✅ Mobile logo loaded successfully')}
+                  />
+                </div>
                 <span className="text-[16px] leading-[1.2] sm:text-lg xl:text-xl 2xl:text-2xl font-semibold text-base-content dark:text-neutral-200">
-                  React Dashboard
+                  Quản Lý Phim
                 </span>
               </Link>
               {menu.map((item, index) => (
@@ -109,10 +120,10 @@ const Navbar = () => {
         </div>
 
         {/* navbar logo */}
-        <Link to={'/admin'} className="flex items-center gap-1 xl:gap-2">
+        <Link to={'/admin'} className="flex items-center gap-2 xl:gap-3 mt-1 mb-5">
           <DiReact className="text-3xl sm:text-4xl xl:text-4xl 2xl:text-6xl text-primary animate-spin-slow" />
           <span className="text-[16px] leading-[1.2] sm:text-lg xl:text-xl 2xl:text-2xl font-semibold text-base-content dark:text-neutral-200">
-            React Dashboard
+            Quản Lý Phim
           </span>
         </Link>
       </div>
@@ -128,7 +139,7 @@ const Navbar = () => {
           }
           className="hidden sm:inline-flex btn btn-circle btn-ghost"
         >
-          <HiSearch className="text-xl 2xl:text-2xl 3xl:text-3xl" />
+          <IoSearchOutline className="text-xl 2xl:text-2xl 3xl:text-3xl" />
         </button>
 
         {/* fullscreen */}
@@ -137,9 +148,9 @@ const Navbar = () => {
           className="hidden xl:inline-flex btn btn-circle btn-ghost"
         >
           {isFullScreen ? (
-            <RxEnterFullScreen className="xl:text-xl 2xl:text-2xl 3xl:text-3xl" />
+            <IoExpandOutline className="xl:text-xl 2xl:text-2xl 3xl:text-3xl" />
           ) : (
-            <RxExitFullScreen className="xl:text-xl 2xl:text-2xl 3xl:text-3xl" />
+            <IoContractOutline className="xl:text-xl 2xl:text-2xl 3xl:text-3xl" />
           )}
         </button>
 
@@ -152,7 +163,7 @@ const Navbar = () => {
           }
           className="px-0 xl:px-auto btn btn-circle btn-ghost"
         >
-          <HiOutlineBell className="text-xl 2xl:text-2xl 3xl:text-3xl" />
+          <IoNotificationsOutline className="text-xl 2xl:text-2xl 3xl:text-3xl" />
         </button>
 
         {/* theme */}

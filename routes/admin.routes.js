@@ -53,6 +53,13 @@ router.put('/genres/:id/status', requireAdmin, adminController.updateGenreStatus
 // WebSocket management
 router.get('/websocket/connections', requireAdmin, adminController.getWebSocketConnections);
 
+// Episode Management - CRUD operations
+router.get('/episodes', requireAdmin, adminController.getEpisodesByMovie);
+router.post('/episodes', requireAdmin, adminController.createEpisode);
+router.put('/episodes/:id', requireAdmin, adminController.updateEpisode);
+router.delete('/episodes/:id', requireAdmin, adminController.deleteEpisode);
+router.post('/episodes/reorder', requireAdmin, adminController.reorderEpisodes);
+
 // Notification Management - Validation first, then authentication
 router.get('/notifications', requireAdmin, notificationController.getNotifications);
 router.post('/notifications', validateCreateNotification, requireAdmin, notificationController.createNotification);
