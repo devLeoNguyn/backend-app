@@ -58,6 +58,10 @@ export const API_ENDPOINTS = {
     ADMIN_NOTIFICATION_BULK_SEND: `${API_BASE_URL}/api/admin/notifications/bulk-send`,
     ADMIN_NOTIFICATION_BULK_DELETE: `${API_BASE_URL}/api/admin/notifications/bulk-delete`,
     
+    // Episode Management Admin Endpoints
+    ADMIN_EPISODES: `${API_BASE_URL}/api/admin/episodes`,
+    ADMIN_EPISODES_REORDER: `${API_BASE_URL}/api/admin/episodes/reorder`,
+    
     // User Notification Endpoints (for reference)
     USER_NOTIFICATIONS: `${API_BASE_URL}/api/notifications`,
     USER_NOTIFICATION_COUNT: `${API_BASE_URL}/api/notifications/unread-count`,

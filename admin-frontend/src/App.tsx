@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Products from './pages/Products';
+import Episodes from './pages/Episodes';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Menu from './components/menu/Menu';
@@ -105,6 +106,10 @@ function App() {
         {
           path: 'products/:id',
           element: <Product />,
+        },
+        {
+          path: 'episodes',
+          element: <Episodes />,
         },
         {
           path: 'orders',

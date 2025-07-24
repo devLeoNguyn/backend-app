@@ -65,18 +65,18 @@ const Users = () => {
       flex: 1,
       renderCell: (params) => {
         return (
-          <div className="flex flex-col gap-1">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          <div className="flex flex-col gap-1 items-center">
+            <span className={`badge font-medium shadow-md transition-all duration-200 ${
               params.row.verified 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
+                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white' 
+                : 'bg-gradient-to-r from-red-400 to-pink-500 text-white'
             }`}>
               {params.row.verified ? '✓ Verified' : '✗ Not Verified'}
             </span>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            <span className={`badge font-medium shadow-md transition-all duration-200 ${
               params.row.isActive 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-gray-100 text-gray-800'
+                ? 'bg-gradient-to-r from-blue-400 to-cyan-500 text-white' 
+                : 'bg-gradient-to-r from-gray-400 to-slate-500 text-white'
             }`}>
               {params.row.isActive ? '🟢 Active' : '🔴 Inactive'}
             </span>
@@ -143,21 +143,21 @@ const Users = () => {
         <div className="w-full flex justify-between mb-5">
           <div className="flex gap-1 justify-start flex-col items-start">
             <h2 className="font-bold text-2xl xl:text-4xl mt-0 pt-0 text-base-content dark:text-neutral-200">
-              Users
+              👥 Quản lý người dùng
             </h2>
             {data && data.length > 0 && (
               <span className="text-neutral dark:text-neutral-content font-medium text-base">
-                {data.length} Users Found
+                Tìm thấy {data.length} người dùng
               </span>
             )}
           </div>
           <button
             onClick={() => setIsOpen(true)}
             className={`btn ${
-              isLoading ? 'btn-disabled' : 'btn-primary'
+              isLoading ? 'btn-disabled' : 'btn-black elegant-black'
             }`}
           >
-            Add New User +
+            + Thêm người dùng mới
           </button>
         </div>
         {isLoading ? (

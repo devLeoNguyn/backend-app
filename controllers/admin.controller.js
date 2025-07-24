@@ -120,10 +120,15 @@ class AdminController {
     // GET /api/admin/movies - Map movies thành products format
     async getAllMovies(req, res) {
         try {
+            const { page = 1, limit = 100 } = req.query; // Tăng limit mặc định
+            
             const movies = await Movie.find()
                 .populate('genres', 'genre_name')
                 .sort({ createdAt: -1 })
-                .limit(50);
+                .limit(parseInt(limit))
+                .skip((parseInt(page) - 1) * parseInt(limit));
+
+            const totalMovies = await Movie.countDocuments();
 
             // Map to admin template products format
             const formattedMovies = movies.map(movie => ({
@@ -146,7 +151,13 @@ class AdminController {
                 status: movie.release_status
             }));
 
-            res.json(formattedMovies);
+            res.json({
+                data: formattedMovies,
+                total: totalMovies,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(totalMovies / parseInt(limit))
+            });
         } catch (error) {
             console.error('Get all movies error:', error);
             res.status(500).json({ status: 'error', message: error.message });
@@ -665,6 +676,341 @@ class AdminController {
             });
         } catch (error) {
             console.error('Get WebSocket connections error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // ============================================================================
+    // EPISODE MANAGEMENT SYSTEM
+    // ============================================================================
+
+    // GET /api/admin/episodes - Lấy danh sách episodes theo movieId
+    async getEpisodesByMovie(req, res) {
+        try {
+            const { adminUserId, movieId } = req.query;
+            const { page = 1, limit = 20 } = req.query;
+            
+            const admin = await User.findById(adminUserId);
+            if (!admin || admin.role !== 'admin') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Admin access required'
+                });
+            }
+
+            if (!movieId) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'movieId is required'
+                });
+            }
+
+            // Verify movie exists
+            const movie = await Movie.findById(movieId);
+            if (!movie) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Movie not found'
+                });
+            }
+
+            // Get episodes with pagination
+            const Episode = require('../models/Episode');
+            const episodes = await Episode.find({ movie_id: movieId })
+                .sort({ episode_number: 1 })
+                .limit(limit * 1)
+                .skip((page - 1) * limit);
+
+            const total = await Episode.countDocuments({ movie_id: movieId });
+
+            // Format episodes for admin interface
+            const formattedEpisodes = episodes.map(episode => ({
+                id: episode._id,
+                episode_title: episode.episode_title,
+                episode_number: episode.episode_number,
+                episode_description: episode.episode_description,
+                uri: episode.uri,
+                duration: episode.duration,
+                createdAt: episode.createdAt.toISOString().split('T')[0],
+                updatedAt: episode.updatedAt.toISOString().split('T')[0],
+                movie_id: episode.movie_id,
+                movie_title: movie.movie_title
+            }));
+
+            res.json({
+                status: 'success',
+                message: 'Episodes retrieved successfully',
+                data: {
+                    episodes: formattedEpisodes,
+                    pagination: {
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        total,
+                        pages: Math.ceil(total / limit)
+                    },
+                    movie: {
+                        id: movie._id,
+                        title: movie.movie_title,
+                        total_episodes: movie.total_episodes
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Get episodes by movie error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // POST /api/admin/episodes - Tạo episode mới
+    async createEpisode(req, res) {
+        try {
+            const { adminUserId } = req.query;
+            const { 
+                episode_title, 
+                episode_number, 
+                episode_description, 
+                movie_id, 
+                duration = 120,
+                uri = 'pending-upload'
+            } = req.body;
+            
+            const admin = await User.findById(adminUserId);
+            if (!admin || admin.role !== 'admin') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Admin access required'
+                });
+            }
+
+            // Validate required fields
+            if (!episode_title || !episode_number || !movie_id) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'episode_title, episode_number, and movie_id are required'
+                });
+            }
+
+            // Verify movie exists
+            const movie = await Movie.findById(movie_id);
+            if (!movie) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Movie not found'
+                });
+            }
+
+            // Check if episode number already exists for this movie
+            const Episode = require('../models/Episode');
+            const existingEpisode = await Episode.findOne({ 
+                movie_id, 
+                episode_number 
+            });
+
+            if (existingEpisode) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Episode ${episode_number} already exists for this movie`
+                });
+            }
+
+            // Create new episode
+            const newEpisode = new Episode({
+                episode_title,
+                episode_number,
+                episode_description,
+                movie_id,
+                duration,
+                uri
+            });
+
+            await newEpisode.save();
+
+            // Update movie's total episodes count if needed
+            const totalEpisodes = await Episode.countDocuments({ movie_id });
+            if (totalEpisodes > movie.total_episodes) {
+                await Movie.findByIdAndUpdate(movie_id, { 
+                    total_episodes: totalEpisodes 
+                });
+            }
+
+            res.status(201).json({
+                status: 'success',
+                message: 'Episode created successfully',
+                data: { episode: newEpisode }
+            });
+        } catch (error) {
+            console.error('Create episode error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // PUT /api/admin/episodes/:id - Cập nhật episode
+    async updateEpisode(req, res) {
+        try {
+            const { adminUserId } = req.query;
+            const { id } = req.params;
+            const { 
+                episode_title, 
+                episode_number, 
+                episode_description, 
+                duration,
+                uri
+            } = req.body;
+            
+            const admin = await User.findById(adminUserId);
+            if (!admin || admin.role !== 'admin') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Admin access required'
+                });
+            }
+
+            const Episode = require('../models/Episode');
+            const episode = await Episode.findById(id);
+            if (!episode) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Episode not found'
+                });
+            }
+
+            // Check if new episode number conflicts with existing episodes
+            if (episode_number && episode_number !== episode.episode_number) {
+                const existingEpisode = await Episode.findOne({ 
+                    movie_id: episode.movie_id, 
+                    episode_number,
+                    _id: { $ne: id }
+                });
+
+                if (existingEpisode) {
+                    return res.status(400).json({
+                        status: 'error',
+                        message: `Episode ${episode_number} already exists for this movie`
+                    });
+                }
+            }
+
+            // Update episode
+            const updateData = {};
+            if (episode_title) updateData.episode_title = episode_title;
+            if (episode_number) updateData.episode_number = episode_number;
+            if (episode_description) updateData.episode_description = episode_description;
+            if (duration) updateData.duration = duration;
+            if (uri) updateData.uri = uri;
+
+            const updatedEpisode = await Episode.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true, runValidators: true }
+            );
+
+            res.json({
+                status: 'success',
+                message: 'Episode updated successfully',
+                data: { episode: updatedEpisode }
+            });
+        } catch (error) {
+            console.error('Update episode error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // DELETE /api/admin/episodes/:id - Xóa episode
+    async deleteEpisode(req, res) {
+        try {
+            const { adminUserId } = req.query;
+            const { id } = req.params;
+            
+            const admin = await User.findById(adminUserId);
+            if (!admin || admin.role !== 'admin') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Admin access required'
+                });
+            }
+
+            const Episode = require('../models/Episode');
+            const episode = await Episode.findById(id);
+            if (!episode) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Episode not found'
+                });
+            }
+
+            const movieId = episode.movie_id;
+
+            // Delete episode
+            await Episode.findByIdAndDelete(id);
+
+            // Update movie's total episodes count
+            const totalEpisodes = await Episode.countDocuments({ movie_id: movieId });
+            await Movie.findByIdAndUpdate(movieId, { 
+                total_episodes: totalEpisodes 
+            });
+
+            res.json({
+                status: 'success',
+                message: 'Episode deleted successfully'
+            });
+        } catch (error) {
+            console.error('Delete episode error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // POST /api/admin/episodes/reorder - Sắp xếp lại thứ tự episodes
+    async reorderEpisodes(req, res) {
+        try {
+            const { adminUserId } = req.query;
+            const { movie_id, episodes } = req.body; // episodes: [{ id, episode_number }]
+            
+            const admin = await User.findById(adminUserId);
+            if (!admin || admin.role !== 'admin') {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Admin access required'
+                });
+            }
+
+            if (!movie_id || !episodes || !Array.isArray(episodes)) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'movie_id and episodes array are required'
+                });
+            }
+
+            // Verify movie exists
+            const movie = await Movie.findById(movie_id);
+            if (!movie) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Movie not found'
+                });
+            }
+
+            const Episode = require('../models/Episode');
+
+            // Update episode numbers in batch
+            for (const episodeUpdate of episodes) {
+                await Episode.findByIdAndUpdate(
+                    episodeUpdate.id,
+                    { episode_number: episodeUpdate.episode_number },
+                    { runValidators: true }
+                );
+            }
+
+            // Get updated episodes list
+            const updatedEpisodes = await Episode.find({ movie_id })
+                .sort({ episode_number: 1 });
+
+            res.json({
+                status: 'success',
+                message: 'Episodes reordered successfully',
+                data: { episodes: updatedEpisodes }
+            });
+        } catch (error) {
+            console.error('Reorder episodes error:', error);
             res.status(500).json({ status: 'error', message: error.message });
         }
     }
