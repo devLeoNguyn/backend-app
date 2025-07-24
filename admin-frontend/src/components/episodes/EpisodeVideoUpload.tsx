@@ -112,9 +112,10 @@ const EpisodeVideoUpload = ({
       });
 
       if (response.data.status === 'success') {
-        const videoUrl = response.data.data.streamUid || response.data.data.playbackUrl;
+        // Use HLS Manifest URL as the primary video URL for Episode
+        const videoUrl = response.data.data.hlsManifestUrl || response.data.data.streamUid;
         
-        // Update episode with video URL
+        // Update episode with HLS video URL
         updateMutation.mutate({
           id: episode.id,
           data: { uri: videoUrl }

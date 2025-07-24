@@ -86,7 +86,7 @@ class CloudflareStreamService {
                 const streamData = response.data.result;
                 
                 console.log('✅ Cloudflare Stream upload success:', {
-                    uid: streamData.uid,
+                    uid: '[REDACTED]',
                     status: streamData.status,
                     duration: streamData.duration,
                     size: streamData.size
@@ -102,7 +102,10 @@ class CloudflareStreamService {
                     size: streamData.size,
                     created: streamData.created,
                     modified: streamData.modified,
-                    meta: streamData.meta
+                    meta: streamData.meta,
+                    
+                    // 🔗 HLS Manifest URL for direct streaming
+                    hlsManifestUrl: this.generateHLSManifestUrl(streamData.uid)
                 };
             } else {
                 throw new Error(`Cloudflare Stream API error: ${JSON.stringify(response.data.errors)}`);
@@ -118,6 +121,16 @@ class CloudflareStreamService {
             
             throw new Error('Lỗi khi upload video lên Cloudflare Stream: ' + error.message);
         }
+    }
+
+    /**
+     * 🔗 Generate HLS Manifest URL từ Stream UID
+     * @param {string} streamUid - Cloudflare Stream UID
+     * @returns {string} - HLS Manifest URL
+     */
+    generateHLSManifestUrl(streamUid) {
+        const customerDomain = process.env.CUSTOMER_DOMAIN_URL || `customer-${this.accountId}.cloudflarestream.com`;
+        return `https://${customerDomain}/${streamUid}/manifest/video.m3u8`;
     }
 
     /**
@@ -160,23 +173,24 @@ class CloudflareStreamService {
             }
 
             // 🔗 Tạo stream URLs tối ưu cho EXPO APP (mobile-first)
+            const customerDomain = process.env.CUSTOMER_DOMAIN_URL || `customer-${this.accountId}.cloudflarestream.com`;
             const streamUrls = {
                 // 📱 HLS - PRIMARY cho Expo/React Native
-                hls: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.m3u8`,
+                hls: `https://${customerDomain}/${videoUid}/manifest/video.m3u8`,
                 
                 // 🎬 MP4 fallback cho Expo Video component
-                mp4: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4`,
+                mp4: `https://${customerDomain}/${videoUid}/manifest/video.mp4`,
                 
                 // 📱 Mobile-optimized MP4 qualities
                 mp4_mobile: {
-                    '360p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=360p`,
-                    '480p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=480p`,
-                    '720p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=720p`
+                    '360p': `https://${customerDomain}/${videoUid}/manifest/video.mp4?quality=360p`,
+                    '480p': `https://${customerDomain}/${videoUid}/manifest/video.mp4?quality=480p`,
+                    '720p': `https://${customerDomain}/${videoUid}/manifest/video.mp4?quality=720p`
                 },
                 
                 // 🖼️ Thumbnails for mobile
-                thumbnail: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg`,
-                poster: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg?time=5s`
+                thumbnail: `https://${customerDomain}/${videoUid}/thumbnails/thumbnail.jpg`,
+                poster: `https://${customerDomain}/${videoUid}/thumbnails/thumbnail.jpg?time=5s`
             };
 
             return {

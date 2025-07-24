@@ -100,7 +100,7 @@ const getVideoStreamUrl = async (req, res) => {
         // 🎥 Lấy Stream URL từ Cloudflare Stream
         const cloudflareStart = Date.now();
         console.log('☁️ [VideoController] Calling Cloudflare Stream service:', {
-            streamUid,
+            streamUid: '[REDACTED]',
             quality,
             format,
             cloudflareStartTime: cloudflareStart,
@@ -145,7 +145,7 @@ const getVideoStreamUrl = async (req, res) => {
             totalTime: responseTime - startTime,
             responseTime,
             videoId,
-            streamUid
+            streamUid: '[REDACTED]'
         });
         
         return res.json({
@@ -350,22 +350,27 @@ const getVideoStatus = async (req, res) => {
 };
 
 /**
- * 🆔 Extract Stream UID từ URI
- * @param {string} uri - URI có thể chứa Stream UID hoặc path cũ
+ * 🆔 Extract Stream UID từ URI - Updated để support HLS Manifest URL với CUSTOMER_DOMAIN_URL
+ * @param {string} uri - URI có thể chứa Stream UID, HLS URL hoặc path cũ
  * @returns {string|null} - Stream UID
  */
 function extractStreamUid(uri) {
     if (!uri) return null;
     
-    // 🎬 Nếu là Cloudflare Stream UID (format: 36 ký tự hex)
+    // 🎬 Nếu là Cloudflare Stream UID (format: 32 ký tự hex)
     if (uri.match(/^[a-f0-9]{32}$/i)) {
         return uri;
     }
     
-    // 🔗 Nếu là URL chứa Stream UID
+    // 🔗 Nếu là HLS Manifest URL hoặc Cloudflare Stream URL
     if (uri.includes('cloudflarestream.com')) {
-        const matches = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
-        return matches ? matches[1] : null;
+        // Pattern cho HLS: https://{customer-domain}/{uid}/manifest/video.m3u8
+        const hlsMatch = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})\/manifest/i);
+        if (hlsMatch) return hlsMatch[1];
+        
+        // Pattern cho general Cloudflare Stream URLs: https://{customer-domain}/{uid}
+        const generalMatch = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
+        if (generalMatch) return generalMatch[1];
     }
     
     // 📁 Legacy: URI có thể là path cũ, cần migration

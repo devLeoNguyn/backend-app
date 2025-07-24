@@ -3,6 +3,7 @@ const { uploadToCloudflare, deleteFromCloudflare } = require('../utils/cloudflar
 const cloudflareStreamService = require('../services/cloudflare-stream.service');
 const Episode = require('../models/Episode');
 const Movie = require('../models/Movie');
+const { secureLog, secureError } = require('../utils/secureLogger');
 
 // 📁 Cấu hình Multer cho video upload
 const videoStorage = multer.memoryStorage();
@@ -58,7 +59,7 @@ const uploadVideoToStream = async (req, res) => {
             });
         }
 
-        console.log('🎬 Starting video upload to Cloudflare Stream:', {
+        secureLog('🎬 Starting video upload to Cloudflare Stream:', {
             episodeId,
             filename: req.file.originalname,
             size: req.file.size,
@@ -91,15 +92,18 @@ const uploadVideoToStream = async (req, res) => {
             allowedOrigins: ['*']
         });
 
-        // 📝 Cập nhật Episode với Stream UID
+        // 📝 Cập nhật Episode với HLS Manifest URL
         const streamUid = uploadResult.uid;
+        const hlsManifestUrl = uploadResult.hlsManifestUrl || cloudflareStreamService.generateHLSManifestUrl(streamUid);
+        
         await Episode.findByIdAndUpdate(episodeId, {
-            uri: streamUid // Lưu Stream UID thay vì file path
+            uri: hlsManifestUrl // Lưu HLS Manifest URL thay vì Stream UID
         });
 
-        console.log('✅ Video uploaded successfully to Cloudflare Stream:', {
+        secureLog('✅ Video uploaded successfully to Cloudflare Stream:', {
             episodeId,
-            streamUid,
+            streamUid: streamUid ? '[REDACTED]' : null,
+            hlsManifestUrl: '[REDACTED]',
             status: uploadResult.status
         });
 
@@ -109,6 +113,7 @@ const uploadVideoToStream = async (req, res) => {
             data: {
                 episodeId,
                 streamUid,
+                hlsManifestUrl, // HLS Manifest URL cho streaming
                 uploadStatus: uploadResult.status,
                 playback: uploadResult.playback,
                 preview: uploadResult.preview,
@@ -127,7 +132,7 @@ const uploadVideoToStream = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Video upload error:', error);
+        secureError('❌ Video upload error:', error);
         
         // Xử lý lỗi file quá lớn
         if (error.code === 'LIMIT_FILE_SIZE') {
@@ -282,15 +287,27 @@ const deleteVideoFromStream = async (req, res) => {
             });
         }
 
-        // 🆔 Extract Stream UID
+        // 🆔 Extract Stream UID - Updated để support HLS Manifest URL với CUSTOMER_DOMAIN_URL
         function extractStreamUid(uri) {
+            if (!uri) return null;
+            
+            // 🎬 Nếu là Cloudflare Stream UID (format: 32 ký tự hex)
             if (uri.match(/^[a-f0-9]{32}$/i)) {
                 return uri;
             }
+            
+            // 🔗 Nếu là HLS Manifest URL hoặc Cloudflare Stream URL
             if (uri.includes('cloudflarestream.com')) {
-                const matches = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
-                return matches ? matches[1] : null;
+                // Pattern cho HLS: https://{customer-domain}/{uid}/manifest/video.m3u8
+                const hlsMatch = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})\/manifest/i);
+                if (hlsMatch) return hlsMatch[1];
+                
+                // Pattern cho general Cloudflare Stream URLs: https://{customer-domain}/{uid}
+                const generalMatch = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
+                if (generalMatch) return generalMatch[1];
             }
+            
+            // 📁 Legacy: URI có thể là path cũ, trả về null
             return null;
         }
 
@@ -311,7 +328,7 @@ const deleteVideoFromStream = async (req, res) => {
                 $unset: { uri: 1 }
             });
 
-            console.log('✅ Video deleted from Cloudflare Stream:', streamUid);
+            console.log('✅ Video deleted from Cloudflare Stream:', streamUid ? '[REDACTED]' : 'none');
 
             res.json({
                 status: 'success',
@@ -375,9 +392,12 @@ const uploadVideoFromUrl = async (req, res) => {
             }
         });
 
-        // 📝 Cập nhật Episode
+        // 📝 Cập nhật Episode với HLS Manifest URL
+        const streamUid = uploadResult.uid;
+        const hlsManifestUrl = uploadResult.hlsManifestUrl || cloudflareStreamService.generateHLSManifestUrl(streamUid);
+        
         await Episode.findByIdAndUpdate(episodeId, {
-            uri: uploadResult.uid
+            uri: hlsManifestUrl // Lưu HLS Manifest URL thay vì Stream UID
         });
 
         res.json({
@@ -385,7 +405,8 @@ const uploadVideoFromUrl = async (req, res) => {
             message: 'Video đã được upload từ URL thành công',
             data: {
                 episodeId,
-                streamUid: uploadResult.uid,
+                streamUid,
+                hlsManifestUrl, // HLS Manifest URL cho streaming
                 status: uploadResult.status,
                 sourceUrl: url
             }
