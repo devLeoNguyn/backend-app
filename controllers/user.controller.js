@@ -276,6 +276,31 @@ const getUserInteractionsSummary = async (req, res) => {
     }
 };
 
+// API cập nhật trạng thái mute notification
+const updateNotificationMute = async (req, res) => {
+  try {
+    const { userId, isMuted, muteUntil } = req.body;
+    let muteUntilValue = null;
+    if (muteUntil && !isNaN(Number(muteUntil))) {
+      const d = new Date(Number(muteUntil));
+      if (!isNaN(d.getTime())) {
+        muteUntilValue = d;
+      }
+    }
+    // Nếu không hợp lệ hoặc null thì để null
+    await User.findByIdAndUpdate(userId, {
+      notificationMute: {
+        isMuted,
+        muteUntil: muteUntilValue
+      }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update mute failed:', err);
+    res.status(500).json({ success: false, message: 'Update mute failed' });
+  }
+};
+
 // Helper function to format watch time
 const formatWatchTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -293,5 +318,6 @@ const formatWatchTime = (seconds) => {
 module.exports = {
     getProfile,
     updateProfile,
-    getUserInteractionsSummary
+    getUserInteractionsSummary,
+    updateNotificationMute
 }; 

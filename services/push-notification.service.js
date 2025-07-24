@@ -11,6 +11,14 @@ class PushNotificationService {
    */
   async sendPushNotification(userToken, notification) {
     try {
+      // Lấy user theo token để kiểm tra trạng thái mute
+      const user = await User.findOne({ expoPushToken: userToken });
+      if (user && user.notificationMute && user.notificationMute.isMuted) {
+        if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
+          // Đang mute, không gửi notification
+          return { success: false, error: 'User is muted' };
+        }
+      }
       if (!Expo.isExpoPushToken(userToken)) {
         console.error(`Invalid Expo push token: ${userToken}`);
         return { success: false, error: 'Invalid push token' };
@@ -62,6 +70,13 @@ class PushNotificationService {
       for (const userNotification of userNotifications) {
         try {
           const user = await User.findById(userNotification.user_id);
+          // Chặn gửi nếu user đang mute
+          if (user && user.notificationMute && user.notificationMute.isMuted) {
+            if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
+              // Đang mute, bỏ qua gửi notification cho user này
+              continue;
+            }
+          }
           
           if (user && user.expoPushToken && !processedTokens.has(user.expoPushToken)) {
             // Add token to processed set to avoid duplicates
