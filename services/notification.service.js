@@ -104,37 +104,81 @@ class NotificationService {
       const userNotifications = await UserNotification.find({ user_id: userId })
         .sort({ created_at: -1 })
         .skip(skip)
-        .limit(limit);
-
-      // Get corresponding notifications
-      const notificationIds = userNotifications.map(un => un.notification_id);
-      const notifications = await Notification.find({ _id: { $in: notificationIds } });
-
-      // Combine notification with read status
-      const notificationsWithStatus = notifications.map(notification => {
-        const userNotification = userNotifications.find(un => 
-          un.notification_id.toString() === notification._id.toString()
-        );
-        
-        return {
-          ...notification.toObject(),
-          is_read: userNotification ? userNotification.is_read : false
-        };
-      });
+        .limit(limit)
+        .populate('notification_id'); // Populate để lấy thông tin notification
 
       // Get total count
       const total = await UserNotification.countDocuments({ user_id: userId });
+      
+      // Get unread count
+      const unreadCount = await UserNotification.countDocuments({ 
+        user_id: userId, 
+        is_read: false 
+      });
+
+      // Convert to proper format with populated notification data
+      const notificationsWithStatus = userNotifications.map(userNotification => {
+        const notification = userNotification.notification_id;
+        
+        // Handle case where notification might be null (deleted notification)
+        if (!notification) {
+          console.warn('⚠️ [Backend] Notification not found for userNotification:', userNotification._id);
+          return {
+            _id: userNotification._id,
+            user_id: userNotification.user_id,
+            notification_id: userNotification.notification_id,
+            is_read: userNotification.is_read,
+            read_at: userNotification.read_at,
+            created_at: userNotification.created_at,
+            notification: {
+              _id: 'unknown',
+              title: 'Thông báo đã bị xóa',
+              body: 'Nội dung thông báo không còn tồn tại',
+              type: 'manual',
+              event_type: null,
+              deep_link: null,
+              image_url: null,
+              priority: 'normal',
+              created_at: userNotification.created_at,
+              updated_at: userNotification.created_at,
+              sent_at: null
+            }
+          };
+        }
+        
+        return {
+          _id: userNotification._id,
+          user_id: userNotification.user_id,
+          notification_id: userNotification.notification_id._id,
+          is_read: userNotification.is_read,
+          read_at: userNotification.read_at,
+          created_at: userNotification.created_at,
+          notification: {
+            _id: notification._id,
+            title: notification.title,
+            body: notification.body,
+            type: notification.type,
+            event_type: notification.event_type,
+            deep_link: notification.deep_link,
+            image_url: notification.image_url,
+            priority: notification.priority,
+            created_at: notification.created_at,
+            updated_at: notification.updated_at,
+            sent_at: notification.sent_at
+          }
+        };
+      });
 
       return {
         notifications: notificationsWithStatus,
+        unread_count: unreadCount,
         pagination: {
-          totalDocs: total, // Add this for test compatibility
-          total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
-          hasNextPage: page * limit < total,
-          hasPrevPage: page > 1
+          total,
+          total_pages: Math.ceil(total / limit),
+          has_next: page * limit < total,
+          has_prev: page > 1
         }
       };
     } catch (error) {
