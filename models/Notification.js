@@ -20,7 +20,7 @@ const notificationSchema = new mongoose.Schema({
   },
   event_type: {
     type: String,
-    enum: ['new_movie', 'payment_success', 'rental_expiry', 'new_episode', 'promotion', 'system_update', 'test'],
+    enum: ['new_movie', 'rental_expiry', 'new_episode', 'promotion', 'test'],
     default: null
   },
   target_type: {

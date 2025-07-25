@@ -34,6 +34,8 @@ interface MovieUpdateData {
     total_episodes?: number;
     release_status?: string;
     poster_path?: string;
+    genres?: string[]; // Thêm hỗ trợ genres array
+    event_start_time?: string | null;
     [key: string]: unknown;
 }
 
@@ -58,11 +60,11 @@ const getAdminUserId = () => {
     return adminUser._id;
 };
 
-// Thêm function để lấy parent genres
+// Thêm function để lấy parent genres với children
 export const fetchParentGenres = async (): Promise<Genre[]> => {
     try {
-        const response = await axios.get(`${API_ENDPOINTS.GENRES}?type=parent`);
-        console.log('📚 Parent Genres fetched:', response.data);
+        const response = await axios.get(`${API_ENDPOINTS.GENRES}?type=parent&format=tree`);
+        console.log('📚 Parent Genres with children fetched:', response.data);
         return response.data.data?.genres || [];
     } catch (error) {
         console.error('❌ Error fetching parent genres:', error);
@@ -218,6 +220,9 @@ export const fetchSingleProduct = async (id: string) => {
         description: movie.description,
         color: movie.genres?.[0]?.genre_name || 'Unknown',
         genre: movie.genres?.[0]?.genre_name || '',
+        // Thêm thông tin genres đầy đủ cho form edit
+        genres: movie.genres || [], // Tất cả genres của phim
+        currentGenreIds: movie.genres?.map((g: Genre) => g._id) || [], // Array các genre IDs
         producer: movie.producer,
         price: movie.price,
         movieType: movie.movie_type,
@@ -356,6 +361,7 @@ export const updateProduct = async (productId: string, productData: {
     description?: string;
     production_time?: string;
     genre?: string;
+    genres?: string[]; // Thêm support cho array of genre IDs
     producer?: string;
     price?: number;
     movie_type?: string;
@@ -425,10 +431,16 @@ export const updateProduct = async (productId: string, productData: {
     if (mappedReleaseStatus) movieUpdateData.release_status = mappedReleaseStatus;
     // Chỉ cập nhật poster_path khi có ảnh mới được upload thành công
     if (posterUrl) movieUpdateData.poster_path = posterUrl;
-    // Chỉ gửi genres khi có genre được chọn
-    if (productData.genre && productData.genre.trim() !== '') {
+    
+    // Xử lý genres - ưu tiên genres array, fallback về genre string
+    if (productData.genres && productData.genres.length > 0) {
+        movieUpdateData.genres = productData.genres;
+        console.log('🏷️ Using genres array:', productData.genres);
+    } else if (productData.genre && productData.genre.trim() !== '') {
         movieUpdateData.genres = [productData.genre.trim()];
+        console.log('🏷️ Using single genre:', productData.genre);
     }
+    
     if (productData.event_start_time) {
         movieUpdateData.event_start_time = productData.event_start_time ? new Date(productData.event_start_time).toISOString() : null;
     }

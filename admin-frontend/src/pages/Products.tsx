@@ -2,11 +2,25 @@ import { useState } from 'react';
 import { GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable';
-import { fetchProducts, deleteProduct } from '../api/ApiCollection';
+import { fetchProducts, deleteProduct, fetchSingleProduct } from '../api/ApiCollection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import AddData from '../components/AddData';
 import EditData from '../components/EditData';
+
+interface Genre {
+  _id: string;
+  genre_name: string;
+  parent_genre?: {
+    _id: string;
+    genre_name: string;
+  } | string | null;
+  is_parent: boolean;
+  children?: Genre[];
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
 
 interface MovieData {
   id: string;
@@ -19,6 +33,9 @@ interface MovieData {
   totalEpisodes: number;
   status: 'released' | 'ended' | string;
   img?: string;
+  // Thêm thông tin genres cho edit form
+  genres?: Genre[];
+  currentGenreIds?: string[];
 }
 
 const Products = () => {
@@ -45,11 +62,27 @@ const Products = () => {
   });
 
   // Handler để mở modal edit với dữ liệu phim
-  const handleEditMovie = (rowData: Record<string, unknown>) => {
-    // Safe type assertion
+  const handleEditMovie = async (rowData: Record<string, unknown>) => {
     const movieData = rowData as unknown as MovieData;
-    setSelectedMovie(movieData);
-    setIsEditOpen(true);
+    
+    try {
+      // Invalidate cache trước khi fetch để đảm bảo fresh data
+      queryClient.invalidateQueries({ queryKey: ['singleProduct', movieData.id] });
+      
+      // Fetch dữ liệu đầy đủ của phim bao gồm genres
+      console.log('🎯 Fetching detailed movie data for edit:', movieData.id);
+      const fullMovieData = await fetchSingleProduct(movieData.id);
+      
+      console.log('🎯 Full movie data received:', fullMovieData);
+      console.log('🎯 Current genres in movie:', fullMovieData.genres);
+      console.log('🎯 Current genre IDs:', fullMovieData.currentGenreIds);
+      
+      setSelectedMovie(fullMovieData);
+      setIsEditOpen(true);
+    } catch (error) {
+      console.error('❌ Error fetching movie details:', error);
+      toast.error('Lỗi khi tải thông tin phim');
+    }
   };
 
   // Handler để xóa phim
