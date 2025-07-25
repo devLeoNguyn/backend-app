@@ -3,6 +3,12 @@ import { HiOutlineXMark } from 'react-icons/hi2';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { updateProduct, fetchParentGenres } from '../api/ApiCollection';
+import { 
+  validateMovieForm, 
+  validateOnBlur, 
+  type ValidationErrors,
+  type MovieFormData
+} from '../validation/movieValidation';
 
 interface Genre {
   _id: string;
@@ -106,6 +112,40 @@ const EditData: React.FC<EditDataProps> = ({
   );
   
   const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(false);
+  
+  // Validation states cho error messages
+  const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({});
+
+  // Validation function sử dụng movieValidation module
+  const validateForm = () => {
+    const formData: MovieFormData = {
+      title,
+      description,
+      productionTime,
+      producer,
+      price,
+      movieType,
+      episodeCount: totalEpisodes,
+      status: releaseStatus,
+      poster: file || undefined
+    };
+
+    const errors = validateMovieForm(formData);
+    
+    // Thêm validation cho genres
+    if (selectedParents.length === 0) {
+      errors.genres = 'Phải chọn ít nhất một thể loại chính';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle field blur for real-time validation
+  const handleFieldBlur = (fieldName: keyof MovieFormData, value: string | File | undefined) => {
+    const updatedErrors = validateOnBlur(fieldName, value, validationErrors);
+    setValidationErrors(updatedErrors);
+  };
 
   // Handler for selecting/deselecting parent genres - theo AddData
   const handleSelectParent = (parentId: string, checked: boolean) => {
@@ -345,6 +385,12 @@ const EditData: React.FC<EditDataProps> = ({
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // Validate form trước khi submit
+    if (!validateForm()) {
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập');
+      return;
+    }
+    
     if (slug === 'product') {
       // Xây dựng mảng genres IDs từ selections - FIXED: Thêm CẢ parent VÀ child
       let selectedGenreIds: string[] = [];
@@ -432,8 +478,11 @@ const EditData: React.FC<EditDataProps> = ({
     }
   };
 
-  // Validation - cập nhật để sử dụng new genre states
+  // Validation - cập nhật để sử dụng new genre states và validation function
   React.useEffect(() => {
+    // Reset validation errors when form changes
+    setValidationErrors({});
+    
     const requiredFields = [title, producer, price, movieType, totalEpisodes, releaseStatus];
     const hasValidGenre = selectedParents.length > 0; // At least one parent genre selected
     const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre;
@@ -466,28 +515,66 @@ const EditData: React.FC<EditDataProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Tên phim"
-                className="input input-bordered w-full"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              {/* Title Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Tên phim <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên phim"
+                  className={`input input-bordered w-full ${validationErrors.title ? 'input-error' : ''}`}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => handleFieldBlur('title', title)}
+                  maxLength={200}
+                />
+                {validationErrors.title && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.title}</span>
+                  </div>
+                )}
+              </div>
               
-              <textarea
-                placeholder="Mô tả phim"
-                className="textarea textarea-bordered w-full h-24"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              {/* Description Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Mô tả phim <span className="text-error">*</span></span>
+                </label>
+                <textarea
+                  placeholder="Nhập mô tả chi tiết về phim"
+                  className={`textarea textarea-bordered w-full h-24 ${validationErrors.description ? 'textarea-error' : ''}`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => handleFieldBlur('description', description)}
+                  maxLength={2000}
+                />
+                <div className="label">
+                  <span className="label-text-alt">{description.length}/2000 ký tự</span>
+                  {validationErrors.description && (
+                    <span className="label-text-alt text-error">{validationErrors.description}</span>
+                  )}
+                </div>
+              </div>
               
-              <input
-                type="date"
-                placeholder="Thời gian sản xuất"
-                className="input input-bordered w-full"
-                value={productionTime}
-                onChange={(e) => setProductionTime(e.target.value)}
-              />
+              {/* Production Time Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Thời gian sản xuất <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="date"
+                  className={`input input-bordered w-full ${validationErrors.productionTime ? 'input-error' : ''}`}
+                  value={productionTime}
+                  onChange={(e) => setProductionTime(e.target.value)}
+                  onBlur={() => handleFieldBlur('productionTime', productionTime)}
+                />
+                {validationErrors.productionTime && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.productionTime}</span>
+                  </div>
+                )}
+              </div>
               
               {/* Current Genres Display - Based on current selection state */}
               {(selectedParents.length > 0 || Object.keys(selectedChildren).length > 0) && (
@@ -538,19 +625,27 @@ const EditData: React.FC<EditDataProps> = ({
 
               {/* Genre Selection - theo AddData flow */}
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Thể loại chính <span className="text-error">*</span></span></label>
+                <label className="label">
+                  <span className="label-text">Thể loại chính <span className="text-error">*</span></span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {parentGenres.map((parent) => (
-                    <label key={parent._id} className="flex items-center gap-1">
+                    <label key={parent._id} className="flex items-center gap-1 cursor-pointer">
                       <input
                         type="checkbox"
+                        className="checkbox checkbox-primary checkbox-sm"
                         checked={selectedParents.includes(parent._id)}
                         onChange={e => handleSelectParent(parent._id, e.target.checked)}
                       />
-                      <span>{parent.genre_name}</span>
+                      <span className="text-sm">{parent.genre_name}</span>
                     </label>
                   ))}
                 </div>
+                {validationErrors.genres && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.genres}</span>
+                  </div>
+                )}
               </div>
 
               {/* For each selected parent, render a child genre dropdown */}
@@ -587,54 +682,98 @@ const EditData: React.FC<EditDataProps> = ({
 
             {/* Right Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nhà sản xuất"
-                className="input input-bordered w-full"
-                value={producer}
-                onChange={(e) => setProducer(e.target.value)}
-              />
-
-              <input
-                type="number"
-                placeholder="Giá (VND)"
-                className="input input-bordered w-full"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                min="0"
-              />
-
-              <select
-                className="select select-bordered w-full"
-                value={movieType}
-                onChange={(e) => {
-                  const selectedType = e.target.value;
-                  setMovieType(selectedType);
-                  
-                  // Tự động điều chỉnh số tập dựa trên loại phim
-                  if (selectedType === 'Phim lẻ') {
-                    setTotalEpisodes('1');
-                  } else if (selectedType === 'Phim bộ') {
-                    // Chỉ điều chỉnh nếu hiện tại là 1 tập
-                    if (totalEpisodes === '1') {
-                      setTotalEpisodes('2');
-                    }
-                  } else if (selectedType === 'Thể thao') {
-                    setTotalEpisodes('1'); // Thể thao thường 1 trận
-                  }
-                }}
-              >
-                <option value="">Chọn loại phim</option>
-                <option value="Phim lẻ">🎬 Phim lẻ</option>
-                <option value="Phim bộ">📺 Phim bộ</option>
-                <option value="Thể thao">⚽ Thể thao</option>
-              </select>
-
+              {/* Producer Field */}
               <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Nhà sản xuất <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên nhà sản xuất"
+                  className={`input input-bordered w-full ${validationErrors.producer ? 'input-error' : ''}`}
+                  value={producer}
+                  onChange={(e) => setProducer(e.target.value)}
+                  onBlur={() => handleFieldBlur('producer', producer)}
+                  maxLength={100}
+                />
+                {validationErrors.producer && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.producer}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Giá phim (VND) <span className="text-error">*</span></span>
+                </label>
                 <input
                   type="number"
-                  placeholder="Số tập"
-                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''}`}
+                  placeholder="Nhập giá phim"
+                  className={`input input-bordered w-full ${validationErrors.price ? 'input-error' : ''}`}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  onBlur={() => handleFieldBlur('price', price)}
+                  min="0"
+                  max="1000000"
+                  step="1000"
+                />
+                <div className="label">
+                  <span className="label-text-alt">Giá từ 0 đến 1,000,000 VND</span>
+                  {validationErrors.price && (
+                    <span className="label-text-alt text-error">{validationErrors.price}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Movie Type Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Loại phim <span className="text-error">*</span></span>
+                </label>
+                <select
+                  className={`select select-bordered w-full ${validationErrors.movieType ? 'select-error' : ''}`}
+                  value={movieType}
+                  onChange={(e) => {
+                    const selectedType = e.target.value;
+                    setMovieType(selectedType);
+                    
+                    // Tự động điều chỉnh số tập dựa trên loại phim
+                    if (selectedType === 'Phim lẻ') {
+                      setTotalEpisodes('1');
+                    } else if (selectedType === 'Phim bộ') {
+                      // Chỉ điều chỉnh nếu hiện tại là 1 tập
+                      if (totalEpisodes === '1') {
+                        setTotalEpisodes('2');
+                      }
+                    } else if (selectedType === 'Thể thao') {
+                      setTotalEpisodes('1'); // Thể thao thường 1 trận
+                    }
+                  }}
+                  onBlur={() => handleFieldBlur('movieType', movieType)}
+                >
+                  <option value="">Chọn loại phim</option>
+                  <option value="Phim lẻ">🎬 Phim lẻ</option>
+                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Thể thao">⚽ Thể thao</option>
+                </select>
+                {validationErrors.movieType && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.movieType}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total Episodes Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Số tập <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="Nhập số tập"
+                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''} ${validationErrors.episodeCount ? 'input-error' : ''}`}
                   value={totalEpisodes}
                   disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
                   onChange={(e) => {
@@ -652,50 +791,76 @@ const EditData: React.FC<EditDataProps> = ({
                     
                     setTotalEpisodes(value);
                   }}
+                  onBlur={() => handleFieldBlur('episodeCount', totalEpisodes)}
                   min={movieType === 'Phim bộ' ? '2' : '1'}
-                  max={movieType === 'Phim lẻ' ? '1' : undefined}
+                  max={movieType === 'Phim lẻ' ? '1' : '1000'}
                   title={
                     movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
                     movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
                     'Số tập của phim'
                   }
                 />
-                {movieType && (
+                <div className="label">
+                  <span className="label-text-alt text-xs">
+                    {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
+                    {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập, tối đa 1000 tập'}
+                    {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
+                  </span>
+                  {validationErrors.episodeCount && (
+                    <span className="label-text-alt text-error">{validationErrors.episodeCount}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Release Status Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Trạng thái phát hành <span className="text-error">*</span></span>
+                </label>
+                <select
+                  className={`select select-bordered w-full ${validationErrors.status ? 'select-error' : ''}`}
+                  value={releaseStatus}
+                  onChange={(e) => setReleaseStatus(e.target.value)}
+                  onBlur={() => handleFieldBlur('status', releaseStatus)}
+                >
+                  <option value="Đã phát hành">✅ Đã phát hành</option>
+                  <option value="Đã kết thúc">🚫 Đã kết thúc</option>
+                </select>
+                {validationErrors.status && (
                   <div className="label">
-                    <span className="label-text-alt text-xs">
-                      {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
-                      {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập'}
-                      {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
-                    </span>
+                    <span className="label-text-alt text-error">{validationErrors.status}</span>
                   </div>
                 )}
               </div>
 
-              <select
-                className="select select-bordered w-full"
-                value={releaseStatus}
-                onChange={(e) => setReleaseStatus(e.target.value)}
-              >
-                <option value="Đã phát hành">✅ Đã phát hành</option>
-                <option value="Đã kết thúc">🚫 Đã kết thúc</option>
-              </select>
-
+              {/* Poster Field */}
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">Poster phim</span>
+                  <span className="label-text-alt">JPG, PNG, WebP - Tối đa 10MB</span>
                 </label>
                 <input
                   type="file"
-                  className="file-input file-input-bordered w-full"
-                  accept="image/*"
-                  onChange={loadImage}
+                  className={`file-input file-input-bordered w-full ${validationErrors.poster ? 'file-input-error' : ''}`}
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={(e) => {
+                    loadImage(e);
+                    if (e.target.files && e.target.files[0]) {
+                      handleFieldBlur('poster', e.target.files[0]);
+                    }
+                  }}
                 />
+                {validationErrors.poster && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.poster}</span>
+                  </div>
+                )}
                 {preview && (
                   <div className="mt-2">
                     <img
                       src={preview}
                       alt="Preview"
-                      className="w-32 h-40 object-cover rounded-lg"
+                      className="w-32 h-40 object-cover rounded-lg border-2 border-base-300"
                     />
                   </div>
                 )}
