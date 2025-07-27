@@ -88,12 +88,12 @@ const Notifications: React.FC = () => {
         ...data,
         created_by: adminUserId
       });
-      toast.success('Notification created successfully');
+      toast.success('Tạo thông báo thành công');
       setShowCreateModal(false);
       fetchNotifications(); // Refresh the list
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to create notification: ${errorMessage}`);
+      toast.error(`Tạo thông báo thất bại: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -106,12 +106,12 @@ const Notifications: React.FC = () => {
     setIsLoading(true);
     try {
       await updateNotification(selectedNotification._id, data);
-      toast.success('Notification updated successfully');
+      toast.success('Cập nhật thông báo thành công');
       setShowEditModal(false);
       setSelectedNotification(null);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to update notification: ${errorMessage}`);
+      toast.error(`Cập nhật thông báo thất bại: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -119,13 +119,13 @@ const Notifications: React.FC = () => {
   
   // Handle delete notification
   const handleDeleteNotification = async (notificationId: string) => {
-    if (window.confirm('Are you sure you want to delete this notification?')) {
+    if (window.confirm('Bạn có chắc muốn xóa thông báo này?')) {
       try {
         await deleteNotification(notificationId);
-        toast.success('Notification deleted successfully');
+        toast.success('Xóa thông báo thành công');
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        toast.error(`Failed to delete notification: ${errorMessage}`);
+        toast.error(`Xóa thông báo thất bại: ${errorMessage}`);
       }
     }
   };
@@ -134,10 +134,10 @@ const Notifications: React.FC = () => {
   const handleSendNotification = async (notificationId: string) => {
     try {
       await sendNotification(notificationId);
-      toast.success('Notification sent successfully');
+      toast.success('Gửi thông báo thành công');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to send notification: ${errorMessage}`);
+      toast.error(`Gửi thông báo thất bại: ${errorMessage}`);
     }
   };
   
@@ -145,32 +145,32 @@ const Notifications: React.FC = () => {
   const handleScheduleNotification = async (notificationId: string, scheduledAt: Date) => {
     try {
       await scheduleNotification(notificationId, scheduledAt);
-      toast.success('Notification scheduled successfully');
+      toast.success('Lên lịch gửi thông báo thành công');
       setShowScheduleModal(false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Failed to schedule notification: ${errorMessage}`);
+      toast.error(`Lên lịch gửi thông báo thất bại: ${errorMessage}`);
     }
   };
   
   // Handle bulk send
   const handleBulkSend = async () => {
     if (selectedNotifications.length === 0) {
-      toast.error('No notifications selected');
+      toast.error('Chưa chọn thông báo nào');
       return;
     }
     
-    if (window.confirm(`Are you sure you want to send ${selectedNotifications.length} notifications?`)) {
+    if (window.confirm(`Bạn có chắc muốn gửi các thông báo đã chọn?`)) {
       try {
         const result = await bulkSendNotifications();
-        toast.success(`Successfully sent ${result?.success_count || 0} notifications`);
+        toast.success(`Đã gửi thành công ${result?.success_count || 0} thông báo`);
         
         if (result?.failed_count) {
-          toast.error(`Failed to send ${result.failed_count} notifications`);
+          toast.error(`Gửi thất bại ${result.failed_count} thông báo`);
         }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        toast.error(`Failed to send notifications: ${errorMessage}`);
+        toast.error(`Gửi thông báo thất bại: ${errorMessage}`);
       }
     }
   };
@@ -178,21 +178,21 @@ const Notifications: React.FC = () => {
   // Handle bulk delete
   const handleBulkDelete = async () => {
     if (selectedNotifications.length === 0) {
-      toast.error('No notifications selected');
+      toast.error('Chưa chọn thông báo nào');
       return;
     }
     
-    if (window.confirm(`Are you sure you want to delete ${selectedNotifications.length} notifications?`)) {
+    if (window.confirm(`Bạn có chắc muốn xóa các thông báo đã chọn?`)) {
       try {
         const result = await bulkDeleteNotifications();
-        toast.success(`Successfully deleted ${result?.success_count || 0} notifications`);
+        toast.success(`Đã xóa thành công ${result?.success_count || 0} thông báo`);
         
         if (result?.failed_count) {
-          toast.error(`Failed to delete ${result.failed_count} notifications`);
+          toast.error(`Xóa thất bại ${result.failed_count} thông báo`);
         }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        toast.error(`Failed to delete notifications: ${errorMessage}`);
+        toast.error(`Xóa thông báo thất bại: ${errorMessage}`);
       }
     }
   };
@@ -237,7 +237,7 @@ const Notifications: React.FC = () => {
           <span>{error}</span>
         </div>
         <button onClick={fetchNotifications} className="btn btn-primary mt-4">
-          Try Again
+          Thử lại
         </button>
       </div>
     );
@@ -246,12 +246,12 @@ const Notifications: React.FC = () => {
   return (
     <div className="p-4 flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">📱 Push Notifications</h1>
+        <h1 className="text-2xl font-bold">📱 Quản lý thông báo</h1>
         <button
           className="btn btn-primary"
           onClick={() => setShowCreateModal(true)}
         >
-          + New Notification
+          + Tạo thông báo mới
         </button>
       </div>
 
@@ -266,31 +266,31 @@ const Notifications: React.FC = () => {
           className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
           onClick={() => handleTabChange('all')}
         >
-          All
+          Tất cả
         </button>
         <button 
           className={`tab ${activeTab === 'draft' ? 'tab-active' : ''}`}
           onClick={() => handleTabChange('draft')}
         >
-          Draft
+          Nháp
         </button>
         <button 
           className={`tab ${activeTab === 'scheduled' ? 'tab-active' : ''}`}
           onClick={() => handleTabChange('scheduled')}
         >
-          Scheduled
+          Đã lên lịch
         </button>
         <button 
           className={`tab ${activeTab === 'sent' ? 'tab-active' : ''}`}
           onClick={() => handleTabChange('sent')}
         >
-          Sent
+          Đã gửi
         </button>
         <button 
           className={`tab ${activeTab === 'failed' ? 'tab-active' : ''}`}
           onClick={() => handleTabChange('failed')}
         >
-          Failed
+          Thất bại
         </button>
       </div>
 
@@ -306,26 +306,26 @@ const Notifications: React.FC = () => {
       {selectedNotifications.length > 0 && (
         <div className="mb-4 p-2 bg-base-200 rounded-lg flex justify-between items-center">
           <span className="text-sm">
-            {selectedNotifications.length} notification(s) selected
+            {selectedNotifications.length} thông báo đã chọn
           </span>
           <div className="space-x-2">
             <button 
               className="btn btn-sm btn-primary"
               onClick={handleBulkSend}
             >
-              Send Selected
+              Gửi thông báo đã chọn
             </button>
             <button 
               className="btn btn-sm btn-error"
               onClick={handleBulkDelete}
             >
-              Delete Selected
+              Xóa thông báo đã chọn
             </button>
             <button 
               className="btn btn-sm btn-ghost"
               onClick={deselectAll}
             >
-              Cancel
+              Hủy
             </button>
           </div>
         </div>
@@ -357,7 +357,7 @@ const Notifications: React.FC = () => {
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateNotification}
         isLoading={isLoading}
-        title="Create New Notification"
+        title="Tạo thông báo mới"
       />
 
       {/* Edit Notification Modal */}
@@ -371,7 +371,7 @@ const Notifications: React.FC = () => {
           onSubmit={handleUpdateNotification}
           notification={selectedNotification}
           isLoading={isLoading}
-          title="Edit Notification"
+          title="Chỉnh sửa thông báo"
         />
       )}
 

@@ -14,23 +14,23 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
   
   // Status filter options
   const statusOptions = [
-    { value: 'draft', label: 'Draft' },
-    { value: 'scheduled', label: 'Scheduled' },
-    { value: 'sent', label: 'Sent' },
-    { value: 'failed', label: 'Failed' }
+    { value: 'draft', label: 'Nháp' },
+    { value: 'scheduled', label: 'Đã lên lịch' },
+    { value: 'sent', label: 'Đã gửi' },
+    { value: 'failed', label: 'Thất bại' }
   ];
   
   // Type filter options
   const typeOptions = [
-    { value: 'manual', label: 'Manual' },
-    { value: 'auto', label: 'Auto' }
+    { value: 'manual', label: 'Thủ công' },
+    { value: 'auto', label: 'Tự động' }
   ];
   
   // Target type filter options
   const targetTypeOptions = [
-    { value: 'all', label: 'All Users' },
-    { value: 'segment', label: 'Segment' },
-    { value: 'specific_users', label: 'Specific Users' }
+    { value: 'all', label: 'Tất cả người dùng' },
+    { value: 'segment', label: 'Phân nhóm' },
+    { value: 'specific_users', label: 'Người dùng cụ thể' }
   ];
   
   // Handle status filter change
@@ -144,7 +144,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
 
   return (
     <div className="bg-base-200 p-4 rounded-lg mb-4">
-      <h3 className="font-medium mb-3">Filters</h3>
+      <h3 className="font-medium mb-3">Bộ lọc</h3>
       
       {/* Search */}
       <div className="mb-4">
@@ -152,7 +152,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
           <div className="input-group">
             <input
               type="text"
-              placeholder="Search notifications..."
+              placeholder="Tìm kiếm thông báo..."
               className="input input-bordered w-full"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +171,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Status filter */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Status</h4>
+          <h4 className="text-sm font-medium mb-2">Trạng thái</h4>
           <div className="space-y-1">
             {statusOptions.map(option => (
               <div key={`status-${option.value}`} className="form-control">
@@ -192,7 +192,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
         
         {/* Type filter */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Type</h4>
+          <h4 className="text-sm font-medium mb-2">Loại</h4>
           <div className="space-y-1">
             {typeOptions.map(option => (
               <div key={`type-${option.value}`} className="form-control">
@@ -213,7 +213,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
         
         {/* Target type filter */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Target Type</h4>
+          <h4 className="text-sm font-medium mb-2">Đối tượng</h4>
           <div className="space-y-1">
             {targetTypeOptions.map(option => (
               <div key={`target-type-${option.value}`} className="form-control">
@@ -234,11 +234,11 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
         
         {/* Date filter */}
         <div>
-          <h4 className="text-sm font-medium mb-2">Date Range</h4>
+          <h4 className="text-sm font-medium mb-2">Khoảng ngày</h4>
           <div className="space-y-2">
             <div className="form-control">
               <label className="label py-0">
-                <span className="label-text">From</span>
+                <span className="label-text">Từ ngày</span>
               </label>
               <input
                 type="date"
@@ -249,7 +249,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
             </div>
             <div className="form-control">
               <label className="label py-0">
-                <span className="label-text">To</span>
+                <span className="label-text">Đến ngày</span>
               </label>
               <input
                 type="date"
@@ -265,7 +265,7 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
       {/* Clear filters */}
       <div className="mt-4 flex justify-end">
         <button className="btn btn-sm btn-ghost" onClick={clearFilters}>
-          Clear Filters
+          Xóa bộ lọc
         </button>
       </div>
     </div>

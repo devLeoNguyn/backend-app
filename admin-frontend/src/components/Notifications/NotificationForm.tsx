@@ -74,25 +74,25 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
     const newErrors: Record<string, string> = {};
     
     // Required fields
-    if (!formData.title) newErrors.title = 'Title is required';
-    if (!formData.body) newErrors.body = 'Body is required';
+    if (!formData.title) newErrors.title = 'Vui lòng nhập tiêu đề';
+    if (!formData.body) newErrors.body = 'Vui lòng nhập nội dung';
     
     // Validate lengths
     if (formData.title && formData.title.length > 100) {
-      newErrors.title = 'Title must be max 100 characters';
+      newErrors.title = 'Tiêu đề tối đa 100 ký tự';
     }
     
     if (formData.body && formData.body.length > 500) {
-      newErrors.body = 'Body must be max 500 characters';
+      newErrors.body = 'Nội dung tối đa 500 ký tự';
     }
     
     // Validate target_type specific fields
     if (formData.target_type === 'specific_users' && (!formData.target_users || formData.target_users.length === 0)) {
-      newErrors.target_users = 'Target users are required';
+      newErrors.target_users = 'Vui lòng chọn người dùng';
     }
     
     if (formData.target_type === 'segment' && !formData.segment) {
-      newErrors.segment = 'Segment is required';
+      newErrors.segment = 'Vui lòng chọn phân nhóm';
     }
     
     // Set errors
@@ -139,12 +139,12 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Title</span>
+                  <span className="label-text">Tiêu đề</span>
                 </label>
                 <input
                   type="text"
                   name="title"
-                  placeholder="Notification Title"
+                  placeholder="Nhập tiêu đề thông báo"
                   className={`input input-bordered w-full ${errors.title ? 'input-error' : ''}`}
                   value={formData.title}
                   onChange={handleChange}
@@ -159,11 +159,11 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Body</span>
+                  <span className="label-text">Nội dung</span>
                 </label>
                 <textarea
                   name="body"
-                  placeholder="Notification Body"
+                  placeholder="Nhập nội dung thông báo"
                   className={`textarea textarea-bordered w-full h-24 ${errors.body ? 'textarea-error' : ''}`}
                   value={formData.body}
                   onChange={handleChange}
@@ -178,7 +178,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Type</span>
+                  <span className="label-text">Loại</span>
                 </label>
                 <select
                   name="type"
@@ -186,8 +186,8 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.type}
                   onChange={handleChange}
                 >
-                  <option value="manual">Manual</option>
-                  <option value="auto">Auto</option>
+                  <option value="manual">Thủ công</option>
+                  <option value="auto">Tự động</option>
                 </select>
               </div>
             </div>
@@ -196,7 +196,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Target Type</span>
+                  <span className="label-text">Đối tượng</span>
                 </label>
                 <select
                   name="target_type"
@@ -204,16 +204,16 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.target_type}
                   onChange={handleChange}
                 >
-                  <option value="all">All Users</option>
-                  <option value="segment">User Segment</option>
-                  <option value="specific_users">Specific Users</option>
+                  <option value="all">Tất cả người dùng</option>
+                  <option value="segment">Phân nhóm người dùng</option>
+                  <option value="specific_users">Người dùng cụ thể</option>
                 </select>
               </div>
               
               {formData.target_type === 'segment' && (
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Segment</span>
+                    <span className="label-text">Phân nhóm</span>
                   </label>
                   <select
                     name="segment"
@@ -221,11 +221,11 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                     value={formData.segment}
                     onChange={handleChange}
                   >
-                    <option value="">Select a segment</option>
-                    <option value="new_users">New Users</option>
-                    <option value="active_users">Active Users</option>
-                    <option value="premium_users">Premium Users</option>
-                    <option value="inactive_users">Inactive Users</option>
+                    <option value="">Chọn phân nhóm</option>
+                    <option value="new_users">Người dùng mới</option>
+                    <option value="active_users">Người dùng hoạt động</option>
+                    <option value="premium_users">Người dùng trả phí</option>
+                    <option value="inactive_users">Người dùng không hoạt động</option>
                   </select>
                   {errors.segment && (
                     <label className="label">
@@ -237,12 +237,12 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Deep Link (Optional)</span>
+                  <span className="label-text">Deep Link (Không bắt buộc)</span>
                 </label>
                 <input
                   type="text"
                   name="deep_link"
-                  placeholder="e.g., movie/123"
+                  placeholder="Ví dụ: movie/123"
                   className="input input-bordered w-full"
                   value={formData.deep_link}
                   onChange={handleChange}
@@ -251,12 +251,12 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Image URL (Optional)</span>
+                  <span className="label-text">URL hình ảnh (Không bắt buộc)</span>
                 </label>
                 <input
                   type="text"
                   name="image_url"
-                  placeholder="e.g., https://example.com/image.jpg"
+                  placeholder="Ví dụ: https://example.com/image.jpg"
                   className="input input-bordered w-full"
                   value={formData.image_url}
                   onChange={handleChange}
@@ -265,7 +265,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Priority</span>
+                  <span className="label-text">Độ ưu tiên</span>
                 </label>
                 <select
                   name="priority"
@@ -273,9 +273,9 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.priority}
                   onChange={handleChange}
                 >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
+                  <option value="low">Thấp</option>
+                  <option value="normal">Bình thường</option>
+                  <option value="high">Cao</option>
                 </select>
               </div>
             </div>
@@ -288,7 +288,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               onClick={() => onClose()}
               disabled={isLoading}
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
@@ -298,10 +298,10 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               {isLoading ? (
                 <>
                   <span className="loading loading-spinner"></span>
-                  Saving...
+                  Đang lưu...
                 </>
               ) : (
-                notification ? 'Update Notification' : 'Create Notification'
+                notification ? 'Cập nhật thông báo' : 'Tạo thông báo'
               )}
             </button>
           </div>
