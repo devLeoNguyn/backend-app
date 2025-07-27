@@ -464,3 +464,168 @@ exports.getMovieEpisodesViewCount = async (req, res) => {
         });
     }
 }; 
+
+// Lấy tiến độ xem của user cho tất cả episodes của một movie
+exports.getMovieEpisodesProgress = async (req, res) => {
+    try {
+        console.log('🎬 [getMovieEpisodesProgress] Request received:', {
+            params: req.params,
+            query: req.query,
+            url: req.url,
+            method: req.method
+        });
+
+        const { movieId } = req.params;
+        const { userId } = req.query;
+        
+        console.log('🎬 [getMovieEpisodesProgress] Parsed parameters:', {
+            movieId,
+            userId
+        });
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId là bắt buộc'
+            });
+        }
+
+        if (!movieId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'movieId là bắt buộc'
+            });
+        }
+
+        // Validate movieId format
+        if (!mongoose.Types.ObjectId.isValid(movieId)) {
+            console.log('❌ [getMovieEpisodesProgress] Invalid movieId format:', movieId);
+            return res.status(400).json({
+                status: 'error',
+                message: 'movieId không hợp lệ'
+            });
+        }
+
+        // Validate userId format
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            console.log('❌ [getMovieEpisodesProgress] Invalid userId format:', userId);
+            return res.status(400).json({
+                status: 'error',
+                message: 'userId không hợp lệ'
+            });
+        }
+
+        console.log('🎬 [getMovieEpisodesProgress] Finding episodes for movie:', movieId);
+
+        // Kiểm tra movie có tồn tại không
+        const movie = await Movie.findById(movieId);
+        if (!movie) {
+            console.log('❌ [getMovieEpisodesProgress] Movie not found:', movieId);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phim'
+            });
+        }
+
+        console.log('✅ [getMovieEpisodesProgress] Movie found:', {
+            movieId,
+            movieTitle: movie.movie_title,
+            movieType: movie.movie_type
+        });
+
+        // Lấy tất cả episodes của movie
+        const episodes = await Episode.find({ movie_id: new mongoose.Types.ObjectId(movieId) })
+            .select('_id episode_number episode_title duration')
+            .sort({ episode_number: 1 });
+
+        console.log('🎬 [getMovieEpisodesProgress] Found episodes:', {
+            movieId,
+            episodesCount: episodes.length,
+            episodes: episodes.map(ep => ({
+                id: ep._id,
+                number: ep.episode_number,
+                title: ep.episode_title
+            }))
+        });
+
+        if (episodes.length === 0) {
+            console.log('❌ [getMovieEpisodesProgress] No episodes found for movie:', movieId);
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy episodes cho movie này'
+            });
+        }
+
+        // Lấy episode IDs
+        const episodeIds = episodes.map(ep => ep._id);
+
+        console.log('🎬 [getMovieEpisodesProgress] Finding watching progress for episodes:', {
+            userId,
+            episodeIds: episodeIds.map(id => id.toString())
+        });
+
+        // Lấy watching progress cho tất cả episodes
+        const watchingProgress = await Watching.find({
+            user_id: new mongoose.Types.ObjectId(userId),
+            episode_id: { $in: episodeIds }
+        }).select('episode_id current_time duration completed watch_percentage last_watched');
+
+        console.log('🎬 [getMovieEpisodesProgress] Found watching progress:', {
+            userId,
+            progressCount: watchingProgress.length,
+            progress: watchingProgress.map(p => ({
+                episodeId: p.episode_id,
+                currentTime: p.current_time,
+                completed: p.completed,
+                watchPercentage: p.watch_percentage
+            }))
+        });
+
+        // Tạo map để dễ truy cập
+        const progressMap = new Map();
+        watchingProgress.forEach(progress => {
+            progressMap.set(progress.episode_id.toString(), {
+                episodeId: progress.episode_id,
+                currentTime: progress.current_time,
+                duration: progress.duration,
+                completed: progress.completed,
+                watchPercentage: progress.watch_percentage,
+                lastWatched: progress.last_watched
+            });
+        });
+
+        // Format response với progress cho từng episode
+        const episodesWithProgress = episodes.map(episode => {
+            const progress = progressMap.get(episode._id.toString());
+            return {
+                episodeId: episode._id,
+                episodeNumber: episode.episode_number,
+                episodeTitle: episode.episode_title,
+                duration: episode.duration,
+                watchingProgress: progress || null
+            };
+        });
+
+        console.log('✅ [getMovieEpisodesProgress] Response prepared:', {
+            movieId,
+            episodesCount: episodesWithProgress.length,
+            episodesWithProgressCount: episodesWithProgress.filter(ep => ep.watchingProgress).length
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                movieId,
+                episodes: episodesWithProgress
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [getMovieEpisodesProgress] Error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi lấy tiến độ xem episodes',
+            error: error.message
+        });
+    }
+}; 
