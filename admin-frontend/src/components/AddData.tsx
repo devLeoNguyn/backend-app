@@ -392,7 +392,7 @@ const AddData: React.FC<AddDataProps> = ({
               </div>
 
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Loại phim <span className="text-error">*</span></span></label>
+                <label className="label"><span className="label-text">Kiểu nội dung<span className="text-error">*</span></span></label>
                 <select
                   className={`select select-bordered w-full ${errors.movieType ? 'select-error' : ''}`}
                   value={movieType}
@@ -414,9 +414,9 @@ const AddData: React.FC<AddDataProps> = ({
                     setErrors(newErrors);
                   }}
                 >
-                  <option value="">Chọn loại phim</option>
+                  <option value="">Chọn kiểu nội dung</option>
                   <option value="Phim lẻ">🎬 Phim lẻ</option>
-                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Phim bộ">🎬 Phim bộ</option>
                   <option value="Thể thao">⚽ Thể thao</option>
                 </select>
                 {errors.movieType && <span className="text-error text-xs">{errors.movieType}</span>}
