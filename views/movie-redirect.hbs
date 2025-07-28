@@ -81,6 +81,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const deeplink = urlParams.get('deeplink');
             
+
             // Try the provided deeplink first, then fallback to EAS Update
             const deepLinks = [
                 deeplink, // User provided deeplink

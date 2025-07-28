@@ -276,6 +276,7 @@ const getUserInteractionsSummary = async (req, res) => {
     }
 };
 
+
 // API lấy trạng thái mute notification
 const getNotificationMute = async (req, res) => {
   try {
@@ -322,6 +323,7 @@ const getNotificationMute = async (req, res) => {
 const updateNotificationMute = async (req, res) => {
   try {
     const { userId, isMuted, muteUntil } = req.body;
+
     
     // Validation
     if (!userId) {
@@ -344,6 +346,7 @@ const updateNotificationMute = async (req, res) => {
 
     console.log('🔄 Updating notification mute for user:', userId, { isMuted, muteUntil });
 
+
     let muteUntilValue = null;
     if (muteUntil && !isNaN(Number(muteUntil))) {
       const d = new Date(Number(muteUntil));
@@ -351,6 +354,8 @@ const updateNotificationMute = async (req, res) => {
         muteUntilValue = d;
       }
     }
+   
+
 
     // Cập nhật notificationMute
     const updatedUser = await User.findByIdAndUpdate(
@@ -409,6 +414,8 @@ module.exports = {
     getProfile,
     updateProfile,
     getUserInteractionsSummary,
+
     getNotificationMute,
+
     updateNotificationMute
 }; 

@@ -122,6 +122,10 @@ const userSchema = new mongoose.Schema({
         default: "08:00"
       }
     }
+  },
+  notificationMute: {
+    isMuted: { type: Boolean, default: false },
+    muteUntil: { type: Date, default: null }
   }
 }, {
   timestamps: true

@@ -381,6 +381,14 @@ class NotificationService {
       const userNotifications = [];
       
       for (const userId of targetUsers) {
+        // Check trạng thái mute trước khi gửi
+        const user = await User.findById(userId);
+        if (user && user.notificationMute && user.notificationMute.isMuted) {
+          if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
+            // Đang mute, bỏ qua gửi notification cho user này
+            continue;
+          }
+        }
         // Check if UserNotification already exists
         let userNotification = await UserNotification.findOne({
           user_id: userId,
