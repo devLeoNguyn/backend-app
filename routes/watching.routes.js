@@ -8,7 +8,8 @@ const {
     addView,
     getMovieViewCount,
     getEpisodeViewCount,
-    getMovieEpisodesViewCount
+    getMovieEpisodesViewCount,
+    getMovieEpisodesProgress
 } = require('../controllers/watching.controller');
 
 // UNIFIED: Update watching progress
@@ -58,5 +59,8 @@ router.get('/episodes/:episode_id/views', getEpisodeViewCount);
 
 // Get all episodes view count for a movie (public)
 router.get('/movies/:movie_id/episodes/views', getMovieEpisodesViewCount);
+
+// Get watching progress for all episodes of a movie
+router.get('/movie/:movieId/episodes', getMovieEpisodesProgress);
 
 module.exports = router; 
