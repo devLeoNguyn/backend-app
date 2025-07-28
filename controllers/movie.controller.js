@@ -779,7 +779,7 @@ const removeVietnameseTones = (str) => {
 };
 
 /**
- * Generate share link for a movie (Development Mode)
+ * Generate share link for a movie with deeplink support
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -795,16 +795,25 @@ const generateShareLink = async (req, res) => {
       });
     }
 
-    // Generate share URL with metadata
+    // Generate share URL with metadata and deeplink
     const shareUrl = `https://backend-app-lou3.onrender.com/movie/${movieId}`;
+    
+    // Create deeplink URLs for different environments
+    const deeplinks = {
+      expoGo: `exp://localhost:8081/--/movie/${movieId}`,
+      production: `movieapp://movie/${movieId}`,
+      web: shareUrl
+    };
     
     res.json({
       success: true,
       data: {
         shareUrl,
-        title: movie.title,
+        deeplinks,
+        title: movie.movie_title || movie.title,
         description: movie.description,
-        thumbnailUrl: movie.posterUrl
+        thumbnailUrl: movie.poster_path || movie.posterUrl,
+        movieId: movie._id
       }
     });
   } catch (error) {
