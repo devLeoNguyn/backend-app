@@ -58,21 +58,37 @@ const createMovieController = async (req, res) => {
             formattedMovie.event_status = newMovie.event_status;
         }
 
-        // Chỉ gửi push notification khi phim có trạng thái "released"
-        if (newMovie.release_status === 'released') {
-        try {
-                console.log('📢 Sending push notification for new released movie:', newMovie.movie_title);
-            await PushNotificationService.sendNewMovieNotification(
-                newMovie._id,
+        // Gửi push notification dựa trên 2 điều kiện:
+        // 1. Phim có trạng thái "released" (auto notification)
+        // 2. Admin bật flag send_notification (manual notification)
+        const shouldSendNotification = newMovie.release_status === 'released' || req.body.send_notification === true;
+        
+        if (shouldSendNotification) {
+            try {
+                console.log('📢 Sending push notification for new movie:', {
+                    movie_title: newMovie.movie_title,
+                    release_status: newMovie.release_status,
+                    send_notification: req.body.send_notification,
+                    reason: newMovie.release_status === 'released' ? 'auto_released' : 'manual_admin'
+                });
+                
+                await PushNotificationService.sendNewMovieNotification(
+                    newMovie._id,
                     newMovie.movie_title,
                     newMovie.poster_path
-            );
-        } catch (notificationError) {
-            console.error('Error sending push notification:', notificationError);
-            // Don't fail the movie creation if notification fails
+                );
+                
+                console.log('✅ Push notification sent successfully');
+            } catch (notificationError) {
+                console.error('Error sending push notification:', notificationError);
+                // Don't fail the movie creation if notification fails
             }
         } else {
-            console.log('🔇 Skipping push notification for movie with status:', newMovie.release_status);
+            console.log('🔇 Skipping push notification for movie:', {
+                movie_title: newMovie.movie_title,
+                release_status: newMovie.release_status,
+                send_notification: req.body.send_notification
+            });
         }
 
         res.status(201).json({
@@ -763,7 +779,7 @@ const removeVietnameseTones = (str) => {
 };
 
 /**
- * Generate share link for a movie (Development Mode)
+ * Generate share link for a movie with deeplink support
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -779,16 +795,27 @@ const generateShareLink = async (req, res) => {
       });
     }
 
-    // Generate share URL with metadata
+    // Generate share URL with metadata and deeplink
     const shareUrl = `https://backend-app-lou3.onrender.com/movie/${movieId}`;
+    
+    // Create EAS Update deeplink URL (works everywhere)
+    const deeplinks = {
+      // EAS Update URL (works everywhere)
+      easUpdate: `exp://u.expo.dev/c0f28dab-8c4b-4747-884f-0561ca44ab88/--/movie/${movieId}`,
+      
+      // Web fallback
+      web: shareUrl
+    };
     
     res.json({
       success: true,
       data: {
         shareUrl,
-        title: movie.title,
+        deeplinks,
+        title: movie.movie_title || movie.title,
         description: movie.description,
-        thumbnailUrl: movie.posterUrl
+        thumbnailUrl: movie.poster_path || movie.posterUrl,
+        movieId: movie._id
       }
     });
   } catch (error) {

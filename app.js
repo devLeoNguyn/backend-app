@@ -25,10 +25,10 @@ app.use(cors({
     'https://backend-app-lou3.onrender.com',
     'http://localhost:3003',
     'http://localhost:8081',
-    'http://192.168.5.22:3003',  // Backend URL
-    'http://192.168.5.22:8081',  // Frontend URL
-    'http://192.168.5.22:3003',  // Device access to backend
-    'http://192.168.5.22:8081',  // Device access to frontend
+    'http://192.168.8.87:3003',  // Backend URL
+    'http://192.168.8.87:8081',  // Frontend URL
+    'http://192.168.8.87:3003',  // Device access to backend
+    'http://192.168.8.87:8081',  // Device access to frontend
     // Expo mobile app origins
     'exp://192.168.5.22:8081',  
     'exp://localhost:8081',

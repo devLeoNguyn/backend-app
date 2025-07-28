@@ -251,6 +251,7 @@ export const createProduct = async (productData: {
     release_status: string; // "Đã phát hành" hoặc "Đã kết thúc"
     event_start_time: string; // Sẽ luôn là rỗng
     poster_file?: File;
+    send_notification?: boolean; // Thêm flag gửi notification
 }) => {
     const adminUserId = getAdminUserId();
     
@@ -315,6 +316,7 @@ export const createProduct = async (productData: {
         poster_path: posterUrl, // Use Cloudflare URL or placeholder
         genres: productData.genres, // <-- assign genres array directly
         event_start_time: null, // Không sử dụng event_start_time
+        send_notification: productData.send_notification || false, // Thêm flag gửi notification
         episodes: [
             {
                 episode_title: `${productData.title} - ${productData.movie_type === 'Phim lẻ' ? 'Full Movie' : 'Episode 1'}`,
@@ -327,7 +329,10 @@ export const createProduct = async (productData: {
         adminUserId // For admin authentication
     };
     
-    console.log('🎬 Creating new movie via admin API:', movieData);
+    console.log('🎬 Creating new movie via admin API:', {
+        ...movieData,
+        send_notification: movieData.send_notification
+    });
     
     try {
     const response = await axios.post(API_ENDPOINTS.ADMIN_MOVIES_CREATE, movieData, {
@@ -336,11 +341,14 @@ export const createProduct = async (productData: {
     
     console.log('✅ Movie created successfully:', response.data);
         
-        // Log về việc push notification (sẽ được xử lý ở backend)
-        if (mappedReleaseStatus === 'released') {
-            console.log('📢 Push notification sẽ được gửi vì phim có trạng thái "released"');
+        // Log về việc push notification
+        if (mappedReleaseStatus === 'released' || productData.send_notification) {
+            console.log('📢 Push notification sẽ được gửi:', {
+                reason: mappedReleaseStatus === 'released' ? 'auto_released' : 'manual_admin',
+                send_notification: productData.send_notification
+            });
         } else {
-            console.log('🔇 Không gửi push notification vì phim có trạng thái "ended"');
+            console.log('🔇 Không gửi push notification');
         }
         
         return response.data;
