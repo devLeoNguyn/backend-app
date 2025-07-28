@@ -276,8 +276,6 @@ const getUserInteractionsSummary = async (req, res) => {
     }
 };
 
-<<<<<<< Updated upstream
-=======
 // API lấy trạng thái mute notification
 const getNotificationMute = async (req, res) => {
   try {
@@ -393,7 +391,6 @@ const updateNotificationMute = async (req, res) => {
   }
 };
 
->>>>>>> Stashed changes
 // Helper function to format watch time
 const formatWatchTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -411,11 +408,7 @@ const formatWatchTime = (seconds) => {
 module.exports = {
     getProfile,
     updateProfile,
-<<<<<<< Updated upstream
-    getUserInteractionsSummary
-=======
     getUserInteractionsSummary,
     getNotificationMute,
     updateNotificationMute
->>>>>>> Stashed changes
 }; 
