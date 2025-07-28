@@ -56,6 +56,7 @@ tags:
     name: 'Movie Interactions'
     description: 'Các API tương tác với phim - Like, favorite, comment (Frontend)'
 paths:
+# asasas
   /api/auth/send-otp:
     post:
       tags:
