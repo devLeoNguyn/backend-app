@@ -276,6 +276,124 @@ const getUserInteractionsSummary = async (req, res) => {
     }
 };
 
+<<<<<<< Updated upstream
+=======
+// API lấy trạng thái mute notification
+const getNotificationMute = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    // Validation
+    if (!userId) {
+      console.error('❌ userId is required for getNotificationMute');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'userId is required' 
+      });
+    }
+
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(userId);
+    if (!user) {
+      console.error('❌ User not found:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    console.log('📱 Getting notification mute for user:', userId);
+
+    const muteStatus = user.notificationMute || { isMuted: false, muteUntil: null };
+    
+    res.json({ 
+      success: true, 
+      data: muteStatus
+    });
+  } catch (err) {
+    console.error('❌ Get mute failed:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Get mute failed',
+      error: err.message 
+    });
+  }
+};
+
+// API cập nhật trạng thái mute notification
+const updateNotificationMute = async (req, res) => {
+  try {
+    const { userId, isMuted, muteUntil } = req.body;
+    
+    // Validation
+    if (!userId) {
+      console.error('❌ userId is required for updateNotificationMute');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'userId is required' 
+      });
+    }
+
+    // Kiểm tra user có tồn tại không
+    const user = await User.findById(userId);
+    if (!user) {
+      console.error('❌ User not found:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    console.log('🔄 Updating notification mute for user:', userId, { isMuted, muteUntil });
+
+    let muteUntilValue = null;
+    if (muteUntil && !isNaN(Number(muteUntil))) {
+      const d = new Date(Number(muteUntil));
+      if (!isNaN(d.getTime())) {
+        muteUntilValue = d;
+      }
+    }
+
+    // Cập nhật notificationMute
+    const updatedUser = await User.findByIdAndUpdate(
+      userId, 
+      {
+        notificationMute: {
+          isMuted,
+          muteUntil: muteUntilValue
+        }
+      },
+      { new: true } // Trả về document đã được cập nhật
+    );
+
+    if (!updatedUser) {
+      console.error('❌ Failed to update user notification mute');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to update notification mute' 
+      });
+    }
+
+    console.log('✅ Notification mute updated successfully for user:', userId);
+    res.json({ 
+      success: true, 
+      message: 'Notification mute updated successfully',
+      data: {
+        isMuted: updatedUser.notificationMute.isMuted,
+        muteUntil: updatedUser.notificationMute.muteUntil
+      }
+    });
+  } catch (err) {
+    console.error('❌ Update mute failed:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Update mute failed',
+      error: err.message 
+    });
+  }
+};
+
+>>>>>>> Stashed changes
 // Helper function to format watch time
 const formatWatchTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -293,5 +411,11 @@ const formatWatchTime = (seconds) => {
 module.exports = {
     getProfile,
     updateProfile,
+<<<<<<< Updated upstream
     getUserInteractionsSummary
+=======
+    getUserInteractionsSummary,
+    getNotificationMute,
+    updateNotificationMute
+>>>>>>> Stashed changes
 }; 
