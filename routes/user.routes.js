@@ -4,9 +4,14 @@ const {
     getProfile,
     updateProfile,
     getUserInteractionsSummary,
+<<<<<<< Updated upstream
     getNotificationMute,
     updateNotificationMute
 
+=======
+    updateNotificationMute,
+    getNotificationMute
+>>>>>>> Stashed changes
 } = require('../controllers/user.controller');
 const { upload } = require('../utils/cloudflare.config');
 
@@ -22,6 +27,15 @@ router.get('/notification-mute', getNotificationMute);
 // Thêm route cập nhật trạng thái mute notification
 router.put('/notification-mute', updateNotificationMute);
 
+<<<<<<< Updated upstream
+=======
+// Thêm route lấy trạng thái mute notification
+router.get('/notification-mute', getNotificationMute);
+
+// ❌ REMOVED: Get comprehensive user interactions for a specific movie
+// Original: GET /api/users/{userId}/interactions/movie/{movieId}
+// Use instead: GET /api/movies/{id}/detail-with-interactions?userId={userId}
+>>>>>>> Stashed changes
 
 router.get('/:userId/interactions/summary', getUserInteractionsSummary);
 

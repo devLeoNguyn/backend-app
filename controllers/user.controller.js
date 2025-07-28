@@ -161,6 +161,47 @@ const updateProfile = async (req, res) => {
     }
 };
 
+
+const getNotificationMute = async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      // Validation
+      if (!userId) {
+        console.error('❌ userId is required for getNotificationMute');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'userId is required' 
+        });
+      }
+  
+      // Kiểm tra user có tồn tại không
+      const user = await User.findById(userId);
+      if (!user) {
+        console.error('❌ User not found:', userId);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'User not found' 
+        });
+      }
+  
+      console.log('📱 Getting notification mute for user:', userId);
+  
+      const muteStatus = user.notificationMute || { isMuted: false, muteUntil: null };
+      
+      res.json({ 
+        success: true, 
+        data: muteStatus
+      });
+    } catch (err) {
+      console.error('❌ Get mute failed:', err);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Get mute failed',
+        error: err.message 
+      });
+    }
+  };
 // ❌ REMOVED: getUserMovieInteractions function
 // Reason: Duplicate functionality with getMovieDetailWithInteractions
 // Use getMovieDetailWithInteractions instead for movie detail screen
@@ -409,6 +450,11 @@ module.exports = {
     getProfile,
     updateProfile,
     getUserInteractionsSummary,
+<<<<<<< Updated upstream
     getNotificationMute,
     updateNotificationMute
+=======
+    updateNotificationMute,
+    getNotificationMute
+>>>>>>> Stashed changes
 }; 
