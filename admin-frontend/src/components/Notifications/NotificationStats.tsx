@@ -74,11 +74,7 @@ const NotificationStats: React.FC<NotificationStatsProps> = ({ stats, loading })
       </div>
       
       {/* More stats */}
-      <div className="stat bg-base-200 rounded-lg shadow-sm">
-        <div className="stat-title">Delivery Rate</div>
-        <div className="stat-value">{Math.round(stats.delivery_success_rate * 100)}%</div>
-        <div className="stat-desc">Of notifications delivered</div>
-      </div>
+      {/* Đã xóa Delivery Rate */}
       
       <div className="stat bg-base-200 rounded-lg shadow-sm">
         <div className="stat-title">Read Rate</div>

@@ -104,37 +104,81 @@ class NotificationService {
       const userNotifications = await UserNotification.find({ user_id: userId })
         .sort({ created_at: -1 })
         .skip(skip)
-        .limit(limit);
-
-      // Get corresponding notifications
-      const notificationIds = userNotifications.map(un => un.notification_id);
-      const notifications = await Notification.find({ _id: { $in: notificationIds } });
-
-      // Combine notification with read status
-      const notificationsWithStatus = notifications.map(notification => {
-        const userNotification = userNotifications.find(un => 
-          un.notification_id.toString() === notification._id.toString()
-        );
-        
-        return {
-          ...notification.toObject(),
-          is_read: userNotification ? userNotification.is_read : false
-        };
-      });
+        .limit(limit)
+        .populate('notification_id'); // Populate để lấy thông tin notification
 
       // Get total count
       const total = await UserNotification.countDocuments({ user_id: userId });
+      
+      // Get unread count
+      const unreadCount = await UserNotification.countDocuments({ 
+        user_id: userId, 
+        is_read: false 
+      });
+
+      // Convert to proper format with populated notification data
+      const notificationsWithStatus = userNotifications.map(userNotification => {
+        const notification = userNotification.notification_id;
+        
+        // Handle case where notification might be null (deleted notification)
+        if (!notification) {
+          console.warn('⚠️ [Backend] Notification not found for userNotification:', userNotification._id);
+          return {
+            _id: userNotification._id,
+            user_id: userNotification.user_id,
+            notification_id: userNotification.notification_id,
+            is_read: userNotification.is_read,
+            read_at: userNotification.read_at,
+            created_at: userNotification.created_at,
+            notification: {
+              _id: 'unknown',
+              title: 'Thông báo đã bị xóa',
+              body: 'Nội dung thông báo không còn tồn tại',
+              type: 'manual',
+              event_type: null,
+              deep_link: null,
+              image_url: null,
+              priority: 'normal',
+              created_at: userNotification.created_at,
+              updated_at: userNotification.created_at,
+              sent_at: null
+            }
+          };
+        }
+        
+        return {
+          _id: userNotification._id,
+          user_id: userNotification.user_id,
+          notification_id: userNotification.notification_id._id,
+          is_read: userNotification.is_read,
+          read_at: userNotification.read_at,
+          created_at: userNotification.created_at,
+          notification: {
+            _id: notification._id,
+            title: notification.title,
+            body: notification.body,
+            type: notification.type,
+            event_type: notification.event_type,
+            deep_link: notification.deep_link,
+            image_url: notification.image_url,
+            priority: notification.priority,
+            created_at: notification.created_at,
+            updated_at: notification.updated_at,
+            sent_at: notification.sent_at
+          }
+        };
+      });
 
       return {
         notifications: notificationsWithStatus,
+        unread_count: unreadCount,
         pagination: {
-          totalDocs: total, // Add this for test compatibility
-          total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
-          hasNextPage: page * limit < total,
-          hasPrevPage: page > 1
+          total,
+          total_pages: Math.ceil(total / limit),
+          has_next: page * limit < total,
+          has_prev: page > 1
         }
       };
     } catch (error) {
@@ -148,25 +192,43 @@ class NotificationService {
    */
   async getNotificationById(notificationId, userId = null) {
     try {
-      const notification = await Notification.findById(notificationId);
+      // First try to find by UserNotification _id (frontend sends this)
+      let userNotification = null;
+      let notification = null;
+      
+      if (userId) {
+        userNotification = await UserNotification.findOne({
+          _id: notificationId,
+          user_id: userId
+        });
+        
+        if (userNotification) {
+          notification = await Notification.findById(userNotification.notification_id);
+        }
+      }
+      
+      // If not found, try to find by notification_id (admin sends this)
+      if (!notification) {
+        notification = await Notification.findById(notificationId);
+        
+        if (notification && userId) {
+          userNotification = await UserNotification.findOne({
+            notification_id: notificationId,
+            user_id: userId
+          });
+        }
+      }
       
       if (!notification) {
         return null;
       }
 
-      // If userId is provided, get user-specific data
-      if (userId) {
-        const userNotification = await UserNotification.findOne({
-          notification_id: notificationId,
-          user_id: userId
-        });
-
-        if (userNotification) {
-          return {
-            ...notification.toObject(),
-            is_read: userNotification.is_read
-          };
-        }
+      // If userId is provided, return with user-specific data
+      if (userId && userNotification) {
+        return {
+          ...notification.toObject(),
+          is_read: userNotification.is_read
+        };
       }
 
       return notification;
@@ -181,10 +243,19 @@ class NotificationService {
    */
   async markNotificationAsRead(notificationId, userId) {
     try {
-      const userNotification = await UserNotification.findOne({
-        notification_id: notificationId,
+      // First try to find by UserNotification _id (frontend sends this)
+      let userNotification = await UserNotification.findOne({
+        _id: notificationId,
         user_id: userId
       });
+      
+      // If not found, try to find by notification_id (admin sends this)
+      if (!userNotification) {
+        userNotification = await UserNotification.findOne({
+          notification_id: notificationId,
+          user_id: userId
+        });
+      }
       
       if (!userNotification) {
         // Throw error for non-existent notification
@@ -222,10 +293,19 @@ class NotificationService {
    */
   async deleteUserNotification(notificationId, userId) {
     try {
-      const result = await UserNotification.deleteOne({
-        notification_id: notificationId,
+      // First try to delete by UserNotification _id (frontend sends this)
+      let result = await UserNotification.deleteOne({
+        _id: notificationId,
         user_id: userId
       });
+      
+      // If not found, try to delete by notification_id (admin sends this)
+      if (result.deletedCount === 0) {
+        result = await UserNotification.deleteOne({
+          notification_id: notificationId,
+          user_id: userId
+        });
+      }
       
       return result.deletedCount > 0;
     } catch (error) {
@@ -269,18 +349,33 @@ class NotificationService {
       let targetUsers = [];
       
       if (notification.target_type === 'all') {
-        // Get all users
-        const users = await User.find({});
+        // Get all users with push tokens and notifications enabled
+        const users = await User.find({
+          expoPushToken: { $exists: true, $ne: null },
+          pushNotificationsEnabled: true
+        });
         targetUsers = users.map(user => user._id);
       } else if (notification.target_type === 'specific_users') {
-        targetUsers = notification.target_users || [];
+        // Get specific users with push tokens and notifications enabled
+        const users = await User.find({
+          _id: { $in: notification.target_users || [] },
+          expoPushToken: { $exists: true, $ne: null },
+          pushNotificationsEnabled: true
+        });
+        targetUsers = users.map(user => user._id);
       } else if (notification.target_type === 'segment') {
-        // Get users by segment (simplified)
+        // Get users by segment with push tokens and notifications enabled
         const segment = notification.segment;
         // Example implementation - replace with actual segment logic
-        const users = await User.find({ /* segment logic */ });
+        const users = await User.find({ 
+          expoPushToken: { $exists: true, $ne: null },
+          pushNotificationsEnabled: true
+          /* segment logic */ 
+        });
         targetUsers = users.map(user => user._id);
       }
+      
+      console.log(`📱 Found ${targetUsers.length} target users with push tokens`);
       
       // Create UserNotification records for each target user
       const userNotifications = [];
@@ -325,7 +420,7 @@ class NotificationService {
       }
       
       // Send push notifications
-      await pushNotificationService.sendBulkPushNotifications(
+      const pushResult = await pushNotificationService.sendBulkPushNotifications(
         notification,
         userNotifications
       );
@@ -333,7 +428,8 @@ class NotificationService {
       // Update notification status
       notification.status = 'sent';
       notification.sent_at = new Date();
-      notification.sent_count = targetUsers.length;
+      notification.sent_count = pushResult.success || 0;
+      notification.failed_count = pushResult.failure || 0;
       notification.total_target_count = targetUsers.length;
       notification.updated_at = new Date();
       
@@ -341,8 +437,8 @@ class NotificationService {
       
       return {
         success: true,
-        sentCount: targetUsers.length,
-        failedCount: 0
+        sentCount: pushResult.success || 0,
+        failedCount: pushResult.failure || 0
       };
     } catch (error) {
       console.error('Error sending notification:', error);

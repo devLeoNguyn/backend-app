@@ -157,6 +157,15 @@ const updateMovie = async (movieId, updateData) => {
     try {
         console.log('🔄 [MovieService] Updating movie:', { movieId, updateData });
         
+        // Get existing movie to see current state
+        const existingMovie = await Movie.findById(movieId).populate('genres');
+        if (!existingMovie) {
+            throw new Error('Không tìm thấy phim');
+        }
+        
+        console.log('🎬 [MovieService] BEFORE UPDATE - Current genres:', 
+            existingMovie.genres.map(g => ({ id: g._id.toString(), name: g.genre_name })));
+        
         // Validate update data if price is being updated
         if (updateData.price !== undefined) {
             updateData.price = validatePrice(updateData.price);
@@ -183,10 +192,10 @@ const updateMovie = async (movieId, updateData) => {
 
         console.log('📝 [MovieService] Final update data:', updateData);
 
-        // Update movie
+        // Update movie - Use explicit $set to ensure replacement
         const updatedMovie = await Movie.findByIdAndUpdate(
             movieId,
-            updateData,
+            { $set: updateData },
             { new: true, runValidators: false }
         ).populate('genres', 'genre_name description is_active');
 
@@ -195,6 +204,16 @@ const updateMovie = async (movieId, updateData) => {
         }
 
         console.log('✅ [MovieService] Movie updated successfully:', updatedMovie.movie_title);
+        console.log('🎬 [MovieService] AFTER UPDATE - Final genres:', 
+            updatedMovie.genres.map(g => ({ id: g._id.toString(), name: g.genre_name })));
+        
+        // Compare to verify replacement vs addition
+        const beforeGenreIds = existingMovie.genres.map(g => g._id.toString()).sort();
+        const afterGenreIds = updatedMovie.genres.map(g => g._id.toString()).sort();
+        console.log('📊 [MovieService] Genre comparison:');
+        console.log('   BEFORE:', beforeGenreIds);
+        console.log('   AFTER:', afterGenreIds);
+        console.log('   REPLACED?', JSON.stringify(beforeGenreIds) !== JSON.stringify(afterGenreIds));
 
         // Update episodes if provided
         let episodes = [];
@@ -230,7 +249,14 @@ const updateMovie = async (movieId, updateData) => {
 const getMovieById = async (movieId) => {
     try {
         const movie = await Movie.findById(movieId)
-            .populate('genres', 'genre_name description is_active');
+            .populate({
+                path: 'genres',
+                select: 'genre_name description is_active is_parent parent_genre',
+                populate: {
+                    path: 'parent_genre',
+                    select: 'genre_name is_parent'
+                }
+            });
 
         if (!movie) {
             throw new Error('Không tìm thấy phim');

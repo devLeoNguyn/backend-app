@@ -38,91 +38,89 @@ const NotificationList: React.FC<NotificationListProps> = ({
   const columns: GridColDef[] = [
     {
       field: 'id',
-      headerName: 'ID',
+      headerName: 'Mã',
       width: 100,
       valueGetter: (params: GridValueGetterParams) => params.row._id
     },
     {
       field: 'title',
-      headerName: 'Title',
+      headerName: 'Tiêu đề',
       minWidth: 200,
       flex: 1
     },
     {
       field: 'type',
-      headerName: 'Type',
+      headerName: 'Loại',
       width: 120,
       renderCell: (params) => {
         const type = params.value as string;
         return (
           <span className={`badge ${type === 'manual' ? 'badge-primary' : 'badge-secondary'}`}>
-            {type}
+            {type === 'manual' ? 'Thủ công' : 'Tự động'}
           </span>
         );
       }
     },
     {
       field: 'target_type',
-      headerName: 'Target',
+      headerName: 'Đối tượng',
       width: 120,
       renderCell: (params) => {
         const targetType = params.value as string;
         let badgeClass = 'badge-info';
-        
-        if (targetType === 'all') badgeClass = 'badge-success';
-        if (targetType === 'segment') badgeClass = 'badge-warning';
-        if (targetType === 'specific_users') badgeClass = 'badge-info';
-        
+        let label = '';
+        if (targetType === 'all') { badgeClass = 'badge-success'; label = 'Tất cả'; }
+        if (targetType === 'segment') { badgeClass = 'badge-warning'; label = 'Phân nhóm'; }
+        if (targetType === 'specific_users') { badgeClass = 'badge-info'; label = 'Người dùng cụ thể'; }
         return (
           <span className={`badge ${badgeClass}`}>
-            {targetType}
+            {label}
           </span>
         );
       }
     },
     {
       field: 'status',
-      headerName: 'Status',
+      headerName: 'Trạng thái',
       width: 120,
       renderCell: (params) => {
         const status = params.value as string;
         let badgeClass = 'badge-info';
-        
-        if (status === 'draft') badgeClass = 'badge-info';
-        if (status === 'scheduled') badgeClass = 'badge-warning';
-        if (status === 'sent') badgeClass = 'badge-success';
-        if (status === 'failed') badgeClass = 'badge-error';
-        
+        let label = '';
+        if (status === 'draft') { badgeClass = 'badge-info'; label = 'Nháp'; }
+        if (status === 'scheduled') { badgeClass = 'badge-warning'; label = 'Đã lên lịch'; }
+        if (status === 'sent') { badgeClass = 'badge-success'; label = 'Đã gửi'; }
+        if (status === 'failed') { badgeClass = 'badge-error'; label = 'Thất bại'; }
         return (
           <span className={`badge ${badgeClass}`}>
-            {status}
+            {label}
           </span>
         );
       }
     },
     {
       field: 'scheduled_at',
-      headerName: 'Scheduled',
+      headerName: 'Thời gian lên lịch',
       width: 160,
       valueGetter: (params: GridValueGetterParams) => 
         formatDate(params.row.scheduled_at)
     },
     {
       field: 'sent_at',
-      headerName: 'Sent',
+      headerName: 'Thời gian gửi',
       width: 160,
       valueGetter: (params: GridValueGetterParams) => 
         formatDate(params.row.sent_at)
     },
     {
       field: 'sent_count',
-      headerName: 'Sent Count',
+      headerName: 'Số lượng gửi',
       width: 120,
       type: 'number'
     },
     {
       field: 'created_at',
-      headerName: 'Created',
+      headerName: 'Ngày tạo',
       width: 160,
       valueGetter: (params: GridValueGetterParams) => 
         formatDate(params.row.created_at)
@@ -136,7 +134,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
     // Edit action for draft notifications
     if (notification.status === 'draft') {
       actions.push({
-        label: 'Edit',
+        label: 'Sửa',
         onClick: () => onEdit(notification)
       });
     }
@@ -144,7 +142,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
     // Schedule action for draft notifications
     if (notification.status === 'draft') {
       actions.push({
-        label: 'Schedule',
+        label: 'Lên lịch',
         onClick: () => onSchedule(notification)
       });
     }
@@ -152,14 +150,14 @@ const NotificationList: React.FC<NotificationListProps> = ({
     // Send action for draft and scheduled notifications
     if (['draft', 'scheduled'].includes(notification.status)) {
       actions.push({
-        label: 'Send Now',
+        label: 'Gửi ngay',
         onClick: () => onSend(notification._id)
       });
     }
     
     // Delete action for all notifications
     actions.push({
-      label: 'Delete',
+      label: 'Xóa',
       onClick: () => onDelete(notification._id)
     });
     

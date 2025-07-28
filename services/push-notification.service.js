@@ -83,17 +83,35 @@ class PushNotificationService {
             processedTokens.add(user.expoPushToken);
             
             // Create notification message
+            const notificationData = {
+              type: notification.event_type || notification.type,
+              deep_link: notification.deep_link,
+              notification_id: notification._id.toString(),
+              user_notification_id: userNotification._id.toString()
+            };
+            
+            // Add movie-specific data if available
+            if (notification.deep_link && notification.deep_link.includes('movie/')) {
+              const movieId = notification.deep_link.split('movie/')[1];
+              notificationData.movie_id = movieId;
+              notificationData.movie_title = notification.title.replace('🎬 Phim mới: ', '').replace('📺 ', '').split(' - ')[0];
+              notificationData.movie_poster = notification.image_url;
+              
+              // Add episode info if it's an episode notification
+              if (notification.event_type === 'new_episode') {
+                const episodeMatch = notification.title.match(/Tập (\d+)/);
+                if (episodeMatch) {
+                  notificationData.episode_number = parseInt(episodeMatch[1]);
+                }
+              }
+            }
+            
             messages.push({
               to: user.expoPushToken,
               sound: 'default',
               title: notification.title,
               body: notification.body,
-              data: {
-                type: notification.type,
-                deep_link: notification.deep_link,
-                notification_id: notification._id.toString(),
-                user_notification_id: userNotification._id.toString()
-              },
+              data: notificationData,
               priority: notification.priority || 'default'
             });
           }
@@ -205,6 +223,132 @@ class PushNotificationService {
       return user;
     } catch (error) {
       console.error('Error updating notification settings:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send new movie notification to all users
+   */
+  async sendNewMovieNotification(movieId, movieTitle, posterPath) {
+    try {
+      console.log('🎬 Sending new movie notification:', { movieId, movieTitle, posterPath });
+      
+      // Get all users with push tokens
+      const users = await User.find({
+        expoPushToken: { $exists: true, $ne: null },
+        pushNotificationsEnabled: true
+      });
+      
+      if (users.length === 0) {
+        console.log('⚠️ No users with push tokens found');
+        return { success: false, message: 'No users with push tokens' };
+      }
+      
+      console.log(`📱 Found ${users.length} users with push tokens`);
+      
+      // Create notification in database first
+      const notificationService = require('./notification.service');
+      const adminUser = await User.findOne({ role: 'admin' });
+      
+      if (!adminUser) {
+        console.error('❌ No admin user found for creating notification');
+        return { success: false, message: 'No admin user found' };
+      }
+      
+      // Create notification record in database
+      const notificationData = {
+        title: '🎬 Phim mới: ' + movieTitle,
+        body: 'Phim mới vừa được thêm vào hệ thống! Khám phá ngay!',
+        type: 'auto',
+        event_type: 'new_movie',
+        target_type: 'all',
+        deep_link: `movie/${movieId}`,
+        image_url: posterPath,
+        priority: 'high',
+        created_by: adminUser._id
+      };
+      
+      const notification = await notificationService.createNotification(notificationData);
+      console.log('✅ Notification created in database:', notification._id);
+      
+      // Send push notifications and create UserNotification records
+      const result = await notificationService.sendNotification(notification._id);
+      
+      console.log(`✅ New movie notification sent: ${result.sentCount} success, ${result.failedCount} failed`);
+      
+      return {
+        success: true,
+        notificationId: notification._id,
+        sentCount: result.sentCount,
+        failedCount: result.failedCount,
+        total: result.sentCount + result.failedCount
+      };
+    } catch (error) {
+      console.error('Error sending new movie notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send new episode notification to all users
+   */
+  async sendNewEpisodeNotification(movieId, movieTitle, episodeNumber, posterPath) {
+    try {
+      console.log('📺 Sending new episode notification:', { movieId, movieTitle, episodeNumber, posterPath });
+      
+      // Get all users with push tokens
+      const users = await User.find({
+        expoPushToken: { $exists: true, $ne: null },
+        pushNotificationsEnabled: true
+      });
+      
+      if (users.length === 0) {
+        console.log('⚠️ No users with push tokens found');
+        return { success: false, message: 'No users with push tokens' };
+      }
+      
+      console.log(`📱 Found ${users.length} users with push tokens`);
+      
+      // Create notification in database first
+      const notificationService = require('./notification.service');
+      const adminUser = await User.findOne({ role: 'admin' });
+      
+      if (!adminUser) {
+        console.error('❌ No admin user found for creating notification');
+        return { success: false, message: 'No admin user found' };
+      }
+      
+      // Create notification record in database
+      const notificationData = {
+        title: `📺 ${movieTitle} - Tập ${episodeNumber}`,
+        body: 'Tập phim mới vừa được cập nhật! Xem ngay!',
+        type: 'auto',
+        event_type: 'new_episode',
+        target_type: 'all',
+        deep_link: `movie/${movieId}`,
+        image_url: posterPath,
+        priority: 'high',
+        created_by: adminUser._id
+      };
+      
+      const notification = await notificationService.createNotification(notificationData);
+      console.log('✅ Episode notification created in database:', notification._id);
+      
+      // Send push notifications and create UserNotification records
+      const result = await notificationService.sendNotification(notification._id);
+      
+      console.log(`✅ New episode notification sent: ${result.sentCount} success, ${result.failedCount} failed`);
+      
+      return {
+        success: true,
+        notificationId: notification._id,
+        sentCount: result.sentCount,
+        failedCount: result.failedCount,
+        total: result.sentCount + result.failedCount
+      };
+    } catch (error) {
+      console.error('Error sending new episode notification:', error);
       throw error;
     }
   }

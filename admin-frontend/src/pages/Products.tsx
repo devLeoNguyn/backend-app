@@ -1,11 +1,26 @@
-import React from 'react';
+import { useState } from 'react';
 import { GridColDef } from '@mui/x-data-grid';
+import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable';
-import { fetchProducts } from '../api/ApiCollection';
-import { useQuery } from '@tanstack/react-query';
+import { fetchProducts, deleteProduct, fetchSingleProduct } from '../api/ApiCollection';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import AddData from '../components/AddData';
 import EditData from '../components/EditData';
+
+interface Genre {
+  _id: string;
+  genre_name: string;
+  parent_genre?: {
+    _id: string;
+    genre_name: string;
+  } | string | null;
+  is_parent: boolean;
+  children?: Genre[];
+  description?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
 
 interface MovieData {
   id: string;
@@ -18,54 +33,113 @@ interface MovieData {
   totalEpisodes: number;
   status: 'released' | 'ended' | string;
   img?: string;
+  // Thêm thông tin genres cho edit form
+  genres?: Genre[];
+  currentGenreIds?: string[];
 }
 
 const Products = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [isEditOpen, setIsEditOpen] = React.useState(false);
-  const [selectedMovie, setSelectedMovie] = React.useState<MovieData | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<MovieData | null>(null);
   
   const { isLoading, isError, data } = useQuery({
     queryKey: ['allproducts'],
     queryFn: fetchProducts,
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteProduct(id),
+    onSuccess: () => {
+      toast.success('Xóa phim thành công!');
+      queryClient.invalidateQueries({ queryKey: ['allproducts'] });
+    },
+    onError: () => {
+      toast.error('Có lỗi xảy ra khi xóa phim!');
+    },
+  });
+
   // Handler để mở modal edit với dữ liệu phim
-  const handleEditMovie = (rowData: Record<string, unknown>) => {
-    // Safe type assertion
+  const handleEditMovie = async (rowData: Record<string, unknown>) => {
     const movieData = rowData as unknown as MovieData;
-    setSelectedMovie(movieData);
-    setIsEditOpen(true);
+    
+    try {
+      // Invalidate cache trước khi fetch để đảm bảo fresh data
+      queryClient.invalidateQueries({ queryKey: ['singleProduct', movieData.id] });
+      
+      // Fetch dữ liệu đầy đủ của phim bao gồm genres
+      console.log('🎯 Fetching detailed movie data for edit:', movieData.id);
+      const fullMovieData = await fetchSingleProduct(movieData.id);
+      
+      console.log('🎯 Full movie data received:', fullMovieData);
+      console.log('🎯 Current genres in movie:', fullMovieData.genres);
+      console.log('🎯 Current genre IDs:', fullMovieData.currentGenreIds);
+      
+      setSelectedMovie(fullMovieData);
+      setIsEditOpen(true);
+    } catch (error) {
+      console.error('❌ Error fetching movie details:', error);
+      toast.error('Lỗi khi tải thông tin phim');
+    }
+  };
+
+  // Handler để xóa phim
+  const handleDeleteMovie = (rowData: Record<string, unknown>) => {
+    const movieData = rowData as unknown as MovieData;
+    if (window.confirm(`Bạn có chắc chắn muốn xóa phim "${movieData.title}"?`)) {
+      deleteMutation.mutate(movieData.id);
+    }
+  };
+
+  // Handler để chuyển đến trang quản lý episodes
+  const handleManageEpisodes = (rowData: Record<string, unknown>) => {
+    const movieData = rowData as unknown as MovieData;
+    navigate(`/admin/episodes?movieId=${movieData.id}`);
+  };
+
+  // Custom row actions
+  const getRowActions = (row: Record<string, unknown>) => {
+    const movie = row as unknown as MovieData;
+    return [
+      {
+        label: 'Manage Episodes',
+        onClick: () => handleManageEpisodes(row),
+        icon: '📺',
+        tooltip: `Manage episodes for ${movie.title}`
+      }
+    ];
   };
 
   const columns: GridColDef[] = [
     { 
       field: 'id', 
       headerName: 'ID', 
-      width: 90,
-      minWidth: 90,
+      width: 80,
+      minWidth: 80,
     },
     {
       field: 'img',
-      headerName: 'Movie',  
+      headerName: 'Thông tin phim',  
       minWidth: 250,
-      flex: 1,
+      flex: 1.2,
       renderCell: (params) => {
         return (
-          <div className="flex gap-2 items-center py-2">
-            <div className="w-12 h-16 overflow-hidden rounded">
+          <div className="flex gap-3 items-center py-2">
+            <div className="w-12 h-16 overflow-hidden rounded shadow-sm">
               <img
-                src={params.row.img || ''}
+                src={params.row.img || '/default-movie-poster.jpg'}
                 alt="movie-poster"
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-semibold truncate">
+            <div className="flex flex-col min-w-0 gap-1">
+              <span className="font-semibold truncate text-sm text-gray-800">
                 {params.row.title}
               </span>
-              <span className="text-xs text-gray-500 truncate">
-                {params.row.movieType} • {params.row.releaseYear}
+              <span className="text-xs text-gray-500">
+                {params.row.releaseYear}
               </span>
             </div>
           </div>
@@ -75,45 +149,63 @@ const Products = () => {
     {
       field: 'genre',
       type: 'string',
-      headerName: 'Genre',
+      headerName: 'Thể loại',
       minWidth: 120,
       flex: 0.8,
+      renderCell: (params) => {
+        return (
+          <div className="flex justify-center">
+            <span className="badge bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+              {params.row.genre || 'Chưa phân loại'}
+            </span>
+          </div>
+        );
+      },
     },
     {
       field: 'price',
       type: 'number',
-      headerName: 'Price',
+      headerName: 'Giá',
       minWidth: 100,
-      flex: 0.6,
+      flex: 0.7,
       renderCell: (params) => {
+        const price = params.row.price || 0;
         return (
-          <span className={params.row.price > 0 ? 'text-green-600 font-semibold' : 'text-gray-500'}>
-            {params.row.price > 0 ? `${params.row.price.toLocaleString()} đ` : 'Miễn phí'}
+          <span className={price > 0 ? 'text-green-600 font-semibold' : 'text-gray-500 font-semibold'}>
+            {price > 0 ? `${price.toLocaleString()}đ` : 'Miễn phí'}
           </span>
         );
       },
     },
     {
       field: 'status',
-      headerName: 'Status',
-      minWidth: 120,
-      flex: 0.6,
+      headerName: 'Trạng thái',
+      minWidth: 130,
+      flex: 0.8,
       renderCell: (params) => {
         const status = params.row.status;
         const isReleased = status === 'released';
+        const isEnded = status === 'ended';
+        
+        let gradientClass = 'from-yellow-400 to-orange-500';
+        let statusText = 'Đang sản xuất';
+        
+        if (isReleased) {
+          gradientClass = 'from-green-400 to-emerald-500';
+          statusText = 'Đã phát hành';
+        } else if (isEnded) {
+          gradientClass = 'from-red-400 to-pink-500';
+          statusText = 'Đã kết thúc';
+        }
+        
         return (
-          <span className={`badge ${isReleased ? 'badge-success' : 'badge-warning'} text-xs`}>
-            {isReleased ? '✅ Đã phát hành' : '🚫 Đã kết thúc'}
-          </span>
+          <div className="flex justify-center">
+            <span className={`badge bg-gradient-to-r ${gradientClass} text-white font-medium shadow-md hover:shadow-lg transition-all duration-200`}>
+              {statusText}
+            </span>
+          </div>
         );
       },
-    },
-    {
-      field: 'createdAt',
-      type: 'string',
-      headerName: 'Created',
-      minWidth: 100,
-      flex: 0.6,
     },
   ];
 
@@ -139,7 +231,7 @@ const Products = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">🎬 Quản lý phim</h1>
           <button
-          className="btn btn-primary"
+          className="btn btn-black elegant-black"
             onClick={() => setIsOpen(true)}
           >
           + Thêm phim mới
@@ -152,7 +244,9 @@ const Products = () => {
           rows={data || []} 
             slug="products"
             includeActionColumn={true}
-          onEdit={handleEditMovie} // Truyền handler edit
+          onEdit={handleEditMovie} // Handler để edit phim
+          onDelete={handleDeleteMovie} // Handler để xóa phim
+          getRowActions={getRowActions} // Custom actions cho quản lý episode
         />
             </div>
 

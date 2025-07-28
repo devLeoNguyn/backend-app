@@ -130,8 +130,16 @@ const Orders = () => {
         }
 
         return (
-          <div className="flex flex-col gap-1">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.text}`}>
+          <div className="flex flex-col gap-1 items-center">
+            <span className={`badge font-medium shadow-md transition-all duration-200 ${
+              status === 'active' 
+                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white'
+                : status === 'expired'
+                ? 'bg-gradient-to-r from-red-400 to-pink-500 text-white'
+                : status === 'cancelled'
+                ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white'
+                : 'bg-gradient-to-r from-gray-400 to-slate-500 text-white'
+            }`}>
               {statusConfig.icon} {statusConfig.label}
             </span>
             {params.row.remainingTime && (

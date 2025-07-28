@@ -7,10 +7,10 @@ import {
 } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiOutlinePencilSquare,
-  HiOutlineEye,
-  HiOutlineTrash,
-} from 'react-icons/hi2';
+  IoCreateOutline,
+  IoEyeOutline,
+  IoTrashOutline,
+} from 'react-icons/io5';
 import toast from 'react-hot-toast';
 
 interface DataTableProps {
@@ -19,6 +19,7 @@ interface DataTableProps {
   slug?: string;
   includeActionColumn?: boolean;
   onEdit?: (rowData: Record<string, unknown>) => void;
+  onDelete?: (rowData: Record<string, unknown>) => void;
   loading?: boolean;
   getRowId?: (row: Record<string, unknown>) => string;
   checkboxSelection?: boolean;
@@ -27,6 +28,8 @@ interface DataTableProps {
   getRowActions?: (row: Record<string, unknown>) => Array<{
     label: string;
     onClick: () => void;
+    icon?: string;
+    tooltip?: string;
   }>;
 }
 
@@ -36,6 +39,7 @@ const DataTable: React.FC<DataTableProps> = ({
   slug,
   includeActionColumn,
   onEdit,
+  onDelete,
   loading = false,
   getRowId,
   checkboxSelection = false,
@@ -59,31 +63,35 @@ const DataTable: React.FC<DataTableProps> = ({
             }}
             className="btn btn-square btn-ghost btn-sm"
           >
-            <HiOutlineEye />
+            <IoEyeOutline />
           </button>
           <button
             onClick={() => {
               if (onEdit) {
-                onEdit(params.row); // Sử dụng onEdit callback nếu có
+                onEdit(params.row);
               } else {
                 toast('Chức năng đang phát triển!', {
                   icon: '⚙️',
-              });
+                });
               }
             }}
             className="btn btn-square btn-ghost btn-sm"
           >
-            <HiOutlinePencilSquare />
+            <IoCreateOutline />
           </button>
           <button
             onClick={() => {
-              toast('Chức năng đang phát triển!', {
-                icon: '⚙️',
-              });
+              if (onDelete) {
+                onDelete(params.row);
+              } else {
+                toast('Chức năng đang phát triển!', {
+                  icon: '⚙️',
+                });
+              }
             }}
             className="btn btn-square btn-ghost btn-sm"
           >
-            <HiOutlineTrash />
+            <IoTrashOutline />
           </button>
         </div>
       );
@@ -105,8 +113,75 @@ const DataTable: React.FC<DataTableProps> = ({
               key={index}
               onClick={action.onClick}
               className="btn btn-xs btn-outline"
+              title={action.tooltip || action.label}
             >
-              {action.label}
+              {action.icon ? `${action.icon} ${action.label}` : action.label}
+            </button>
+          ))}
+        </div>
+      );
+    },
+  };
+
+  // Build enhanced actions column that includes both default and custom actions
+  const enhancedActionColumn: GridColDef = {
+    field: 'actions',
+    headerName: 'Actions',
+    minWidth: 200,
+    flex: 0.7,
+    renderCell: (params) => {
+      const customActions = getRowActions ? getRowActions(params.row) : [];
+      return (
+        <div className="flex items-center gap-2 flex-wrap p-1">
+          {/* Default actions */}
+          <button
+            onClick={() => {
+              navigate(`/admin/${slug}/${params.row.id}`);
+            }}
+            className="btn btn-sm btn-ghost btn-circle hover:btn-black transition-all duration-200"
+          >
+            <IoEyeOutline className="text-lg" />
+          </button>
+          
+          <button
+            onClick={() => {
+              if (onEdit) {
+                onEdit(params.row);
+              } else {
+                toast('Chức năng đang phát triển!', {
+                  icon: '⚙️',
+                });
+              }
+            }}
+            className="btn btn-sm btn-ghost btn-circle hover:btn-black transition-all duration-200"
+          >
+            <IoCreateOutline className="text-lg" />
+          </button>
+          
+          <button
+            onClick={() => {
+              if (onDelete) {
+                onDelete(params.row);
+              } else {
+                toast('Chức năng đang phát triển!', {
+                  icon: '⚙️',
+                });
+              }
+            }}
+            className="btn btn-sm btn-ghost btn-circle hover:btn-black transition-all duration-200"
+          >
+            <IoTrashOutline className="text-lg" />
+          </button>
+          
+          {/* Custom actions */}
+          {customActions.map((action, index) => (
+            <button
+              key={index}
+              onClick={action.onClick}
+              className="btn btn-sm btn-outline btn-black hover:btn-black transition-all duration-200"
+            >
+              <span className="text-xs">{action.icon || '📝'}</span>
+              <span className="hidden sm:inline text-xs">{action.label}</span>
             </button>
           ))}
         </div>
@@ -116,10 +191,14 @@ const DataTable: React.FC<DataTableProps> = ({
 
   // Determine which columns to show
   const finalColumns = (() => {
-    if (getRowActions) {
+    if (getRowActions && includeActionColumn) {
+      // Show enhanced actions (default + custom)
+      return [...columns, enhancedActionColumn];
+    } else if (getRowActions) {
+      // Show only custom actions
       return [...columns, customActionColumn];
-    }
-    if (includeActionColumn) {
+    } else if (includeActionColumn) {
+      // Show only default actions
       return [...columns, actionColumn];
     }
     return columns;
@@ -143,20 +222,20 @@ const DataTable: React.FC<DataTableProps> = ({
     checkboxSelection,
     onRowSelectionModelChange: handleRowSelectionModelChange,
     rowSelectionModel,
-    getRowHeight: () => 60,
+    getRowHeight: () => 80,
     initialState: {
-            pagination: {
-              paginationModel: {
-                pageSize: 10,
-              },
-            },
+      pagination: {
+        paginationModel: {
+          pageSize: 10,
+        },
+      },
     },
     slots: { toolbar: GridToolbar },
     slotProps: {
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 500 },
-            },
+      toolbar: {
+        showQuickFilter: true,
+        quickFilterProps: { debounceMs: 500 },
+      },
     },
     pageSizeOptions: [5, 10, 25, 50],
     disableRowSelectionOnClick: true,
@@ -184,7 +263,7 @@ const DataTable: React.FC<DataTableProps> = ({
       '& .MuiDataGrid-columnHeaders': {
         minHeight: '48px !important',
         backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            },
+      },
       '& .MuiDataGrid-toolbarContainer': {
         padding: '8px',
         gap: '8px',
@@ -202,8 +281,8 @@ const DataTable: React.FC<DataTableProps> = ({
       <div className="w-full overflow-auto">
         <DataGrid {...tableProps} />
       </div>
-      </div>
-    );
+    </div>
+  );
 };
 
 export default DataTable;

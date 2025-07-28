@@ -2,7 +2,13 @@ import React, { ChangeEvent, FormEvent } from 'react';
 import { HiOutlineXMark } from 'react-icons/hi2';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { updateProduct, fetchParentGenres, fetchChildGenres } from '../api/ApiCollection';
+import { updateProduct, fetchParentGenres } from '../api/ApiCollection';
+import { 
+  validateMovieForm, 
+  validateOnBlur, 
+  type ValidationErrors,
+  type MovieFormData
+} from '../validation/movieValidation';
 
 interface Genre {
   _id: string;
@@ -26,6 +32,9 @@ interface MovieData {
   totalEpisodes: number;
   status: 'released' | 'ended' | string;
   img?: string;
+  // Thêm thông tin genres cho form edit
+  genres?: Genre[];
+  currentGenreIds?: string[];
 }
 
 interface ProductData {
@@ -33,6 +42,7 @@ interface ProductData {
   description?: string;
   production_time?: string;
   genre?: string;
+  genres?: string[]; // Thêm field genres cho cập nhật
   producer?: string;
   price?: number;
   movie_type?: string;
@@ -67,8 +77,11 @@ const EditData: React.FC<EditDataProps> = ({
   // React Query setup
   const queryClient = useQueryClient();
   
-  // States cho genre selection
-  const [selectedParentGenre, setSelectedParentGenre] = React.useState('');
+  // States cho genre selection - theo flow AddData
+  // State for multiple parent genres
+  const [selectedParents, setSelectedParents] = React.useState<string[]>([]);
+  // State for selected child genre per parent
+  const [selectedChildren, setSelectedChildren] = React.useState<{ [parentId: string]: string }>({});
   
   // Fetch parent genres
   const { data: parentGenres = [] } = useQuery<Genre[]>({
@@ -76,12 +89,9 @@ const EditData: React.FC<EditDataProps> = ({
     queryFn: fetchParentGenres
   });
 
-  // Fetch child genres based on selected parent
-  const { data: childGenres = [] } = useQuery<Genre[]>({
-    queryKey: ['childGenres', selectedParentGenre],
-    queryFn: () => fetchChildGenres(selectedParentGenre),
-    enabled: !!selectedParentGenre
-  });
+  // Remove old single genre states
+  // const [selectedParentGenre, setSelectedParentGenre] = React.useState('');
+  // const [genre, setGenre] = React.useState('');
   
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
@@ -92,7 +102,6 @@ const EditData: React.FC<EditDataProps> = ({
   const [productionTime, setProductionTime] = React.useState(
     movieData?.createdAt ? movieData.createdAt.split('T')[0] : ''
   );
-  const [genre, setGenre] = React.useState('');
   const [producer, setProducer] = React.useState(movieData?.producer || '');
   const [price, setPrice] = React.useState(movieData?.price?.toString() || '0');
   const [movieType, setMovieType] = React.useState(movieData?.movieType || '');
@@ -103,6 +112,125 @@ const EditData: React.FC<EditDataProps> = ({
   );
   
   const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(false);
+  
+  // Validation states cho error messages
+  const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({});
+
+  // Hàm lấy tập giao các thể loại con theo genre_name giữa các parent đã chọn
+  const getCommonChildGenres = () => {
+    if (selectedParents.length < 2) return [];
+    const childrenArrays = selectedParents
+      .map(parentId => {
+        const parent = parentGenres.find(g => g._id === parentId);
+        return parent?.children || [];
+      });
+    if (childrenArrays.some(arr => arr.length === 0)) return [];
+    const genreNameCount: Record<string, number> = {};
+    childrenArrays.forEach(arr => {
+      arr.forEach(child => {
+        genreNameCount[child.genre_name] = (genreNameCount[child.genre_name] || 0) + 1;
+      });
+    });
+    const commonGenreNames = Object.entries(genreNameCount)
+      .filter(([, count]) => count === childrenArrays.length)
+      .map(([name]) => name);
+    const firstParentChildren = childrenArrays[0];
+    return firstParentChildren.filter(child => commonGenreNames.includes(child.genre_name));
+  };
+
+  // Validation function sử dụng movieValidation module
+  const validateForm = () => {
+    const formData: MovieFormData = {
+      title,
+      description,
+      productionTime,
+      producer,
+      price,
+      movieType,
+      episodeCount: totalEpisodes,
+      status: releaseStatus,
+      poster: file || undefined
+    };
+
+    const errors = validateMovieForm(formData);
+    
+    // Thêm validation cho genres
+    if (selectedParents.length === 0) {
+      errors.genres = 'Phải chọn ít nhất một thể loại chính';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle field blur for real-time validation
+  const handleFieldBlur = (fieldName: keyof MovieFormData, value: string | File | undefined) => {
+    const updatedErrors = validateOnBlur(fieldName, value, validationErrors);
+    setValidationErrors(updatedErrors);
+  };
+
+  // Handler for selecting/deselecting parent genres - theo AddData
+  const handleSelectParent = (parentId: string, checked: boolean) => {
+    console.log('🎯 handleSelectParent:', { parentId, checked, currentParents: selectedParents });
+    if (checked) {
+      setSelectedParents(prev => {
+        const newParents = [...prev, parentId];
+        console.log('🎯 Adding parent:', parentId, 'New parents:', newParents);
+        return newParents;
+      });
+    } else {
+      setSelectedParents(prev => {
+        const newParents = prev.filter(id => id !== parentId);
+        console.log('🎯 Removing parent:', parentId, 'New parents:', newParents);
+        return newParents;
+      });
+      setSelectedChildren(prev => {
+        const newChildren = { ...prev };
+        delete newChildren[parentId];
+        console.log('🎯 Removing children for parent:', parentId, 'New children:', newChildren);
+        return newChildren;
+      });
+    }
+  };
+
+  // Handler for selecting a child genre for a parent - sửa lại để gán cho tất cả parent có child cùng tên
+  const handleSelectChild = (parentId: string, childId: string) => {
+    // Tìm genre_name của child vừa chọn
+    const parent = parentGenres.find(g => g._id === parentId);
+    const childGenre = parent?.children?.find(child => child._id === childId);
+    if (!childGenre) return;
+
+    // Tìm tất cả parent đang được chọn có child cùng genre_name
+    const affectedParents = selectedParents.filter(pid => {
+      const p = parentGenres.find(g => g._id === pid);
+      return p?.children?.some(child => child.genre_name === childGenre.genre_name);
+    });
+
+    // Tìm đúng childId cho từng parent (có thể khác nhau nếu DB có nhiều child cùng tên)
+    const newSelectedChildren: { [parentId: string]: string } = { ...selectedChildren };
+    affectedParents.forEach(pid => {
+      const p = parentGenres.find(g => g._id === pid);
+      const matchingChild = p?.children?.find(child => child.genre_name === childGenre.genre_name);
+      if (matchingChild) {
+        newSelectedChildren[pid] = matchingChild._id;
+      }
+    });
+
+    setSelectedChildren(newSelectedChildren);
+  };
+
+  // Handler cho dropdown thể loại phụ chung
+  const handleSelectCommonChild = (genreName: string) => {
+    const newSelectedChildren = { ...selectedChildren };
+    selectedParents.forEach(parentId => {
+      const parent = parentGenres.find(g => g._id === parentId);
+      const matchingChild = parent?.children?.find(child => child.genre_name.toLowerCase() === genreName.toLowerCase());
+      if (matchingChild) {
+        newSelectedChildren[parentId] = matchingChild._id;
+      }
+    });
+    setSelectedChildren(newSelectedChildren);
+  };
 
   // Update form data when movieData changes
   React.useEffect(() => {
@@ -118,8 +246,128 @@ const EditData: React.FC<EditDataProps> = ({
         movieData.status === 'released' ? 'Đã phát hành' : 
         movieData.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành'
       );
+      
+      // Reset file và set preview từ movieData
+      setFile(null);
+      setPreview(movieData.img || null);
     }
   }, [movieData]);
+
+  // Reset genre states when modal opens/closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      // Reset genre selections khi modal đóng
+      setSelectedParents([]);
+      setSelectedChildren({});
+      // Reset image states khi đóng modal
+      setPreview(null);
+      setFile(null);
+    } else {
+      // Reset genre states when modal opens (before data loads)
+      console.log('🔄 Modal opened, resetting genre states...');
+      setSelectedParents([]);
+      setSelectedChildren({});
+    }
+  }, [isOpen]);
+
+  // Initialize genres khi cả movieData và parentGenres đều sẵn sàng
+  React.useEffect(() => {
+    // Chỉ initialize khi modal đang mở và có data mới
+    if (movieData?.genres && movieData.genres.length > 0 && parentGenres.length > 0 && isOpen) {
+      console.log('🎯 Initializing form with current genres:', movieData.genres);
+      console.log('🎯 Available parent genres:', parentGenres);
+      
+      // Log detailed structure
+      console.log('🔍 DETAILED MOVIE GENRES STRUCTURE:');
+      movieData.genres.forEach((genre, index) => {
+        console.log(`Genre ${index + 1}:`, {
+          id: genre._id,
+          name: genre.genre_name,
+          is_parent: genre.is_parent,
+          parent_genre: genre.parent_genre,
+          parent_genre_type: typeof genre.parent_genre,
+          parent_genre_structure: genre.parent_genre
+        });
+      });
+      
+      console.log('🔍 AVAILABLE PARENT GENRES FROM API:');
+      parentGenres.forEach((parent, index) => {
+        console.log(`Parent ${index + 1}:`, {
+          id: parent._id,
+          name: parent.genre_name,
+          is_parent: parent.is_parent,
+          children_count: parent.children?.length || 0,
+          children: parent.children?.map(c => ({ id: c._id, name: c.genre_name })) || []
+        });
+      });
+      
+      const currentGenres = movieData.genres;
+      const newSelectedParents: string[] = [];
+      const newSelectedChildren: { [parentId: string]: string } = {};
+      
+      // Phân loại parent và child genres
+      currentGenres.forEach(genre => {
+        console.log('🔍 Processing genre:', {
+          id: genre._id,
+          name: genre.genre_name,
+          is_parent: genre.is_parent,
+          parent_genre: genre.parent_genre
+        });
+        
+        if (genre.is_parent || !genre.parent_genre) {
+          // Đây là parent genre
+          newSelectedParents.push(genre._id);
+          console.log('✅ Added parent genre:', genre.genre_name, 'ID:', genre._id);
+        } else {
+          // Đây là child genre - tìm parent ID
+          const parentId = typeof genre.parent_genre === 'string' 
+            ? genre.parent_genre 
+            : genre.parent_genre?._id;
+          
+          if (parentId) {
+            newSelectedChildren[parentId] = genre._id;
+            console.log('✅ Added child genre:', genre.genre_name, 'ID:', genre._id, 'for parent ID:', parentId);
+            
+            // Đảm bảo parent cũng được chọn
+            if (!newSelectedParents.includes(parentId)) {
+              newSelectedParents.push(parentId);
+              console.log('✅ Also added parent ID:', parentId, 'for child');
+            }
+          } else {
+            console.warn('⚠️ Child genre without valid parent_genre:', genre);
+          }
+        }
+      });
+      
+      console.log('🎯 Final genre selection to set:', { 
+        newSelectedParents, 
+        newSelectedChildren,
+        parentCount: newSelectedParents.length,
+        childCount: Object.keys(newSelectedChildren).length 
+      });
+      
+      // Use functional update to avoid dependency issues
+      setSelectedParents(() => {
+        console.log('🔄 Setting selectedParents to:', newSelectedParents);
+        return newSelectedParents;
+      });
+      setSelectedChildren(() => {
+        console.log('🔄 Setting selectedChildren to:', newSelectedChildren);
+        return newSelectedChildren;
+      });
+      
+      console.log('🎯 State initialization completed');
+    } else {
+      console.log('🚫 Genre initialization skipped:', {
+        hasGenres: !!movieData?.genres?.length,
+        genresCount: movieData?.genres?.length || 0,
+        hasParentGenres: parentGenres.length > 0,
+        parentGenresCount: parentGenres.length,
+        isOpen
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movieData?.genres, parentGenres, isOpen, movieData?.id]); // Thêm movieData.id để re-init khi edit movie khác
 
   // Load image handler
   const loadImage = (e: ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +385,13 @@ const EditData: React.FC<EditDataProps> = ({
     onSuccess: (data: unknown) => {
       toast.success('🎬 Phim đã được cập nhật thành công!');
       setIsOpen(false);
+      
+      // Invalidate tất cả queries liên quan
       queryClient.invalidateQueries({ queryKey: ['allproducts'] });
+      // Invalidate single movie cache để force re-fetch khi edit lại
+      queryClient.invalidateQueries({ queryKey: ['singleProduct'] });
+      queryClient.invalidateQueries({ queryKey: ['movie'] });
+      
       console.log('✅ Movie updated:', data);
     },
     onError: (error: ApiError) => {
@@ -158,28 +412,47 @@ const EditData: React.FC<EditDataProps> = ({
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
+    // Validate form trước khi submit
+    if (!validateForm()) {
+      toast.error('Vui lòng kiểm tra lại thông tin đã nhập');
+      return;
+    }
+    
     if (slug === 'product') {
-      // Get genre name từ selected genre (child hoặc parent nếu không có child)
-      let selectedGenreName = '';
-      if (genre) {
-        const selectedChildGenre = childGenres.find(g => g._id === genre);
-        if (selectedChildGenre) {
-          selectedGenreName = selectedChildGenre.genre_name;
-        }
-      } else if (selectedParentGenre) {
-        const selectedParent = parentGenres.find(g => g._id === selectedParentGenre);
-        if (selectedParent) {
-          selectedGenreName = selectedParent.genre_name;
-        }
-      }
-      
+      // Xây dựng mảng genres IDs từ selections - LUÔN thêm tất cả parent và child, loại trùng
+      let selectedGenreIds: string[] = [];
+      selectedParents.forEach(parentId => selectedGenreIds.push(parentId));
+      Object.values(selectedChildren).forEach(childId => selectedGenreIds.push(childId));
+      selectedGenreIds = Array.from(new Set(selectedGenreIds)); // loại trùng
+
       // Chỉ gửi các field đã thay đổi
       const productData: ProductData = {};
       
       if (title !== movieData?.title) productData.title = title;
       if (description !== movieData?.description) productData.description = description;
       if (productionTime) productData.production_time = productionTime;
-      if (selectedGenreName) productData.genre = selectedGenreName;
+      
+      // LUÔN gửi genres để đảm bảo replace hoàn toàn
+      // So sánh với genres hiện tại để log thay đổi
+      const currentGenreIds = movieData?.currentGenreIds || [];
+      const hasGenreChanged = selectedGenreIds.length !== currentGenreIds.length || 
+                             !selectedGenreIds.every(id => currentGenreIds.includes(id));
+      
+      // Luôn gửi genres array để backend replace hoàn toàn
+      productData.genres = selectedGenreIds;
+      
+      console.log('🎯 Genre comparison:', {
+        current: currentGenreIds,
+        new: selectedGenreIds,
+        hasChanged: hasGenreChanged
+      });
+      
+      console.log('🚀 [SUBMIT] Final data being sent to API:', {
+        productData,
+        genres: productData.genres,
+        movieId: movieData?.id
+      });
+      
       if (producer !== movieData?.producer) productData.producer = producer;
       if (parseFloat(price) !== movieData?.price) productData.price = parseFloat(price) || 0;
       if (movieType !== movieData?.movieType) productData.movie_type = movieType;
@@ -198,11 +471,11 @@ const EditData: React.FC<EditDataProps> = ({
       
       console.log('🎬 Submitting movie update:', productData);
       console.log('🎯 Selected genre info:', {
-        genre,
-        selectedParentGenre,
-        selectedGenreName,
-        childGenres: childGenres.length,
-        parentGenres: parentGenres.length
+        selectedGenreIds,
+        selectedParents,
+        selectedChildren,
+        parentGenres: parentGenres.length,
+        hasGenreChanged: selectedGenreIds.length > 0
       });
       
       updateProductMutation.mutate({
@@ -212,25 +485,16 @@ const EditData: React.FC<EditDataProps> = ({
     }
   };
 
-  // Reset child genre khi parent thay đổi
+  // Validation - cập nhật để sử dụng new genre states và validation function
   React.useEffect(() => {
-    setGenre('');
-  }, [selectedParentGenre]);
-
-  // Set preview từ dữ liệu có sẵn
-  React.useEffect(() => {
-    if (movieData?.img && !preview) {
-      setPreview(movieData.img);
-    }
-  }, [movieData, preview]);
-
-  // Validation
-  React.useEffect(() => {
+    // Reset validation errors when form changes
+    setValidationErrors({});
+    
     const requiredFields = [title, producer, price, movieType, totalEpisodes, releaseStatus];
-    const hasValidGenre = genre || selectedParentGenre;
+    const hasValidGenre = selectedParents.length > 0; // At least one parent genre selected
     const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre;
     setFormProductIsEmpty(isFormEmpty);
-  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, genre, selectedParentGenre]);
+  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents]);
 
   if (!isOpen || slug !== 'product') return null;
 
@@ -258,109 +522,304 @@ const EditData: React.FC<EditDataProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Tên phim"
-                className="input input-bordered w-full"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              {/* Title Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Tên phim <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên phim"
+                  className={`input input-bordered w-full ${validationErrors.title ? 'input-error' : ''}`}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onBlur={() => handleFieldBlur('title', title)}
+                  maxLength={200}
+                />
+                {validationErrors.title && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.title}</span>
+                  </div>
+                )}
+              </div>
               
-              <textarea
-                placeholder="Mô tả phim"
-                className="textarea textarea-bordered w-full h-24"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              {/* Description Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Mô tả phim <span className="text-error">*</span></span>
+                </label>
+                <textarea
+                  placeholder="Nhập mô tả chi tiết về phim"
+                  className={`textarea textarea-bordered w-full h-24 ${validationErrors.description ? 'textarea-error' : ''}`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => handleFieldBlur('description', description)}
+                  maxLength={2000}
+                />
+                <div className="label">
+                  <span className="label-text-alt">{description.length}/2000 ký tự</span>
+                  {validationErrors.description && (
+                    <span className="label-text-alt text-error">{validationErrors.description}</span>
+                  )}
+                </div>
+              </div>
               
-              <input
-                type="date"
-                placeholder="Thời gian sản xuất"
-                className="input input-bordered w-full"
-                value={productionTime}
-                onChange={(e) => setProductionTime(e.target.value)}
-              />
+              {/* Production Time Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Thời gian sản xuất <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="date"
+                  className={`input input-bordered w-full ${validationErrors.productionTime ? 'input-error' : ''}`}
+                  value={productionTime}
+                  onChange={(e) => setProductionTime(e.target.value)}
+                  onBlur={() => handleFieldBlur('productionTime', productionTime)}
+                />
+                {validationErrors.productionTime && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.productionTime}</span>
+                  </div>
+                )}
+              </div>
               
-              {/* Genre Selection */}
-              <select
-                className="select select-bordered w-full"
-                value={selectedParentGenre}
-                onChange={(e) => setSelectedParentGenre(e.target.value)}
-              >
-                <option value="">Chọn thể loại chính</option>
-                {parentGenres.map((genre) => (
-                  <option key={genre._id} value={genre._id}>
-                    {genre.genre_name}
-                  </option>
-                ))}
-              </select>
-
-              {selectedParentGenre && childGenres.length > 0 && (
-                <select
-                  className="select select-bordered w-full"
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                >
-                  <option value="">Chọn thể loại phụ</option>
-                  {childGenres.map((genre) => (
-                    <option key={genre._id} value={genre._id}>
-                      {genre.genre_name}
-                    </option>
-                  ))}
-                </select>
+              {/* Current Genres Display - Based on current selection state */}
+              {(selectedParents.length > 0 || Object.keys(selectedChildren).length > 0) && (
+                <div className="bg-base-200 p-3 rounded-lg">
+                  <h4 className="text-sm font-semibold text-base-content mb-2">Thể loại hiện tại:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Show selected parent genres (only those without selected children) */}
+                    {selectedParents
+                      .filter(parentId => !selectedChildren[parentId])
+                      .map(parentId => {
+                        const parent = parentGenres.find(g => g._id === parentId);
+                        return parent ? (
+                          <span 
+                            key={`parent-${parent._id}`} 
+                            className="badge badge-primary badge-sm"
+                          >
+                            {parent.genre_name}
+                          </span>
+                        ) : null;
+                      })}
+                    
+                    {/* Show selected child genres với tên parent */}
+                    {Object.entries(selectedChildren).map(([parentId, childId]) => {
+                      // Find parent genre
+                      const parent = parentGenres.find(g => g._id === parentId);
+                      // Find child genre in parent's children
+                      const childGenre = parent?.children?.find(child => child._id === childId);
+                      
+                      if (!parent || !childGenre) return null;
+                      
+                      return (
+                        <span 
+                          key={`child-${childGenre._id}`} 
+                          className="badge badge-primary badge-sm"
+                          title={`Thể loại phụ của ${parent.genre_name}`}
+                        >
+                          {parent.genre_name} - {childGenre.genre_name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* Debug info - có thể xóa sau khi test */}
+                  <div className="text-xs text-base-content opacity-50 mt-2">
+                    Debug: Parents={selectedParents.length}, Children={Object.keys(selectedChildren).length}
+                  </div>
+                </div>
               )}
+
+              {/* Genre Selection - theo AddData flow */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Thể loại chính <span className="text-error">*</span></span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {parentGenres.map((parent) => (
+                    <label key={parent._id} className="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-primary checkbox-sm"
+                        checked={selectedParents.includes(parent._id)}
+                        onChange={e => handleSelectParent(parent._id, e.target.checked)}
+                      />
+                      <span className="text-sm">{parent.genre_name}</span>
+                    </label>
+                  ))}
+                </div>
+                {validationErrors.genres && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.genres}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* For each selected parent, render a child genre dropdown */}
+              {/* Nếu có nhiều parent và có child genre chung, render một dropdown duy nhất */}
+              {(() => {
+                const commonChildren = getCommonChildGenres();
+                if (selectedParents.length > 1 && commonChildren.length > 0) {
+                  // Dropdown duy nhất cho child genre chung
+                  return (
+                    <div className="form-control w-full mt-2">
+                      <label className="label"><span className="label-text">Thể loại phụ chung cho các thể loại chính đã chọn</span></label>
+                      <select
+                        className="select select-bordered w-full"
+                        value={(() => {
+                          const selectedNames = selectedParents
+                            .map(pid => {
+                              const childId = selectedChildren[pid];
+                              const parent = parentGenres.find(g => g._id === pid);
+                              const child = parent?.children?.find(c => c._id === childId);
+                              return child?.genre_name || '';
+                            })
+                            .filter(Boolean);
+                          if (
+                            selectedNames.length === selectedParents.length &&
+                            selectedNames.every(n => n === selectedNames[0])
+                          ) {
+                            return selectedNames[0];
+                          }
+                          return '';
+                        })()}
+                        onChange={e => handleSelectCommonChild(e.target.value)}
+                      >
+                        <option value="">Chọn thể loại phụ chung</option>
+                        {commonChildren.map(child => (
+                          <option key={child.genre_name} value={child.genre_name}>
+                            {child.genre_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                } else {
+                  // Render dropdown cho từng parent như cũ
+                  return selectedParents.map(parentId => {
+                    const parent = parentGenres.find(g => g._id === parentId);
+                    const children = parent?.children || [];
+                    if (children.length === 0) return null;
+                    return (
+                      <div key={parentId} className="form-control w-full mt-2">
+                        <label className="label"><span className="label-text">Thể loại phụ cho {parent?.genre_name}</span></label>
+                        <select
+                          className="select select-bordered w-full"
+                          value={selectedChildren[parentId] || ''}
+                          onChange={e => handleSelectChild(parentId, e.target.value)}
+                        >
+                          <option value="">Chọn thể loại phụ</option>
+                          {children.map(child => (
+                            <option
+                              key={child._id}
+                              value={child._id}
+                              disabled={Object.values(selectedChildren).includes(child._id) && selectedChildren[parentId] !== child._id}
+                            >
+                              {child.genre_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  });
+                }
+              })()}
             </div>
 
             {/* Right Column */}
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nhà sản xuất"
-                className="input input-bordered w-full"
-                value={producer}
-                onChange={(e) => setProducer(e.target.value)}
-              />
-
-              <input
-                type="number"
-                placeholder="Giá (VND)"
-                className="input input-bordered w-full"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                min="0"
-              />
-
-              <select
-                className="select select-bordered w-full"
-                value={movieType}
-                onChange={(e) => {
-                  const selectedType = e.target.value;
-                  setMovieType(selectedType);
-                  
-                  // Tự động điều chỉnh số tập dựa trên loại phim
-                  if (selectedType === 'Phim lẻ') {
-                    setTotalEpisodes('1');
-                  } else if (selectedType === 'Phim bộ') {
-                    // Chỉ điều chỉnh nếu hiện tại là 1 tập
-                    if (totalEpisodes === '1') {
-                      setTotalEpisodes('2');
-                    }
-                  } else if (selectedType === 'Thể thao') {
-                    setTotalEpisodes('1'); // Thể thao thường 1 trận
-                  }
-                }}
-              >
-                <option value="">Chọn loại phim</option>
-                <option value="Phim lẻ">🎬 Phim lẻ</option>
-                <option value="Phim bộ">📺 Phim bộ</option>
-                <option value="Thể thao">⚽ Thể thao</option>
-              </select>
-
+              {/* Producer Field */}
               <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Nhà sản xuất <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nhập tên nhà sản xuất"
+                  className={`input input-bordered w-full ${validationErrors.producer ? 'input-error' : ''}`}
+                  value={producer}
+                  onChange={(e) => setProducer(e.target.value)}
+                  onBlur={() => handleFieldBlur('producer', producer)}
+                  maxLength={100}
+                />
+                {validationErrors.producer && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.producer}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Giá phim (VND) <span className="text-error">*</span></span>
+                </label>
                 <input
                   type="number"
-                  placeholder="Số tập"
-                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''}`}
+                  placeholder="Nhập giá phim"
+                  className={`input input-bordered w-full ${validationErrors.price ? 'input-error' : ''}`}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  onBlur={() => handleFieldBlur('price', price)}
+                  min="0"
+                  max="1000000"
+                  step="1000"
+                />
+                <div className="label">
+                  <span className="label-text-alt">Giá từ 0 đến 1,000,000 VND</span>
+                  {validationErrors.price && (
+                    <span className="label-text-alt text-error">{validationErrors.price}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Movie Type Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Kiểu nội dung <span className="text-error">*</span></span>
+                </label>
+                <select
+                  className={`select select-bordered w-full ${validationErrors.movieType ? 'select-error' : ''}`}
+                  value={movieType}
+                  onChange={(e) => {
+                    const selectedType = e.target.value;
+                    setMovieType(selectedType);
+                    
+                    // Tự động điều chỉnh số tập dựa trên loại phim
+                    if (selectedType === 'Phim lẻ') {
+                      setTotalEpisodes('1');
+                    } else if (selectedType === 'Phim bộ') {
+                      // Chỉ điều chỉnh nếu hiện tại là 1 tập
+                      if (totalEpisodes === '1') {
+                        setTotalEpisodes('2');
+                      }
+                    } else if (selectedType === 'Thể thao') {
+                      setTotalEpisodes('1'); // Thể thao thường 1 trận
+                    }
+                  }}
+                  onBlur={() => handleFieldBlur('movieType', movieType)}
+                >
+                  <option value="">Chọn kiểu nội dung</option>
+                  <option value="Phim lẻ">🎬 Phim lẻ</option>
+                  <option value="Phim bộ">🎬 Phim bộ</option>
+                  <option value="Thể thao">⚽ Thể thao</option>
+                </select>
+                {validationErrors.movieType && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.movieType}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total Episodes Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Số tập <span className="text-error">*</span></span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="Nhập số tập"
+                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''} ${validationErrors.episodeCount ? 'input-error' : ''}`}
                   value={totalEpisodes}
                   disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
                   onChange={(e) => {
@@ -378,50 +837,76 @@ const EditData: React.FC<EditDataProps> = ({
                     
                     setTotalEpisodes(value);
                   }}
+                  onBlur={() => handleFieldBlur('episodeCount', totalEpisodes)}
                   min={movieType === 'Phim bộ' ? '2' : '1'}
-                  max={movieType === 'Phim lẻ' ? '1' : undefined}
+                  max={movieType === 'Phim lẻ' ? '1' : '1000'}
                   title={
                     movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
                     movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
                     'Số tập của phim'
                   }
                 />
-                {movieType && (
+                <div className="label">
+                  <span className="label-text-alt text-xs">
+                    {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
+                    {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập, tối đa 1000 tập'}
+                    {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
+                  </span>
+                  {validationErrors.episodeCount && (
+                    <span className="label-text-alt text-error">{validationErrors.episodeCount}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Release Status Field */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Trạng thái phát hành <span className="text-error">*</span></span>
+                </label>
+                <select
+                  className={`select select-bordered w-full ${validationErrors.status ? 'select-error' : ''}`}
+                  value={releaseStatus}
+                  onChange={(e) => setReleaseStatus(e.target.value)}
+                  onBlur={() => handleFieldBlur('status', releaseStatus)}
+                >
+                  <option value="Đã phát hành">✅ Đã phát hành</option>
+                  <option value="Đã kết thúc">🚫 Đã kết thúc</option>
+                </select>
+                {validationErrors.status && (
                   <div className="label">
-                    <span className="label-text-alt text-xs">
-                      {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
-                      {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập'}
-                      {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
-                    </span>
+                    <span className="label-text-alt text-error">{validationErrors.status}</span>
                   </div>
                 )}
               </div>
 
-              <select
-                className="select select-bordered w-full"
-                value={releaseStatus}
-                onChange={(e) => setReleaseStatus(e.target.value)}
-              >
-                <option value="Đã phát hành">✅ Đã phát hành</option>
-                <option value="Đã kết thúc">🚫 Đã kết thúc</option>
-              </select>
-
+              {/* Poster Field */}
               <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text">Poster phim</span>
+                  <span className="label-text-alt">JPG, PNG, WebP - Tối đa 10MB</span>
                 </label>
                 <input
                   type="file"
-                  className="file-input file-input-bordered w-full"
-                  accept="image/*"
-                  onChange={loadImage}
+                  className={`file-input file-input-bordered w-full ${validationErrors.poster ? 'file-input-error' : ''}`}
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={(e) => {
+                    loadImage(e);
+                    if (e.target.files && e.target.files[0]) {
+                      handleFieldBlur('poster', e.target.files[0]);
+                    }
+                  }}
                 />
+                {validationErrors.poster && (
+                  <div className="label">
+                    <span className="label-text-alt text-error">{validationErrors.poster}</span>
+                  </div>
+                )}
                 {preview && (
                   <div className="mt-2">
                     <img
                       src={preview}
                       alt="Preview"
-                      className="w-32 h-40 object-cover rounded-lg"
+                      className="w-32 h-40 object-cover rounded-lg border-2 border-base-300"
                     />
                   </div>
                 )}
@@ -458,4 +943,4 @@ const EditData: React.FC<EditDataProps> = ({
   );
 };
 
-export default EditData; 
+export default EditData;

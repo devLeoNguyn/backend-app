@@ -77,25 +77,46 @@
     
     <script>
         function openApp() {
-            // Try deep link first
-            const deepLink = 'tech5://movie/{{movie._id}}';
-            window.location.href = deepLink;
+            // Get deeplink from URL parameters if available
+            const urlParams = new URLSearchParams(window.location.search);
+            const deeplink = urlParams.get('deeplink');
             
-            // If deep link fails after delay, try Expo Go
-            setTimeout(function() {
-                const expoUrl = 'exp://backend-app-lou3.onrender.com/--/movie/{{movie._id}}';
-                window.location.href = expoUrl;
+
+            // Try the provided deeplink first, then fallback to EAS Update
+            const deepLinks = [
+                deeplink, // User provided deeplink
                 
-                // If both fail, redirect to store
-                setTimeout(function() {
+                // EAS Update URL with headers (works everywhere)
+                'exp://u.expo.dev/c0f28dab-8c4b-4747-884f-0561ca44ab88/--/movie/{{movie._id}}?runtime-version=exposdk:53.0.0&channel-name=v2&platform=ios'
+            ].filter(Boolean); // Remove null/undefined values
+            
+            let currentIndex = 0;
+            
+            function tryNextDeepLink() {
+                if (currentIndex >= deepLinks.length) {
+                    // All deeplinks failed, redirect to store
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                     if (isIOS) {
                         window.location.href = 'https://apps.apple.com/app/tech5-movies';
                     } else {
                         window.location.href = 'https://play.google.com/store/apps/details?id=com.tech5.movies';
                     }
+                    return;
+                }
+                
+                const currentDeepLink = deepLinks[currentIndex];
+                console.log('Trying deeplink:', currentDeepLink);
+                window.location.href = currentDeepLink;
+                
+                // Try next deeplink after 1 second
+                setTimeout(() => {
+                    currentIndex++;
+                    tryNextDeepLink();
                 }, 1000);
-            }, 1000);
+            }
+            
+            // Start trying deeplinks
+            tryNextDeepLink();
         }
         
         // Execute immediately when page loads

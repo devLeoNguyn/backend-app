@@ -1,0 +1,152 @@
+/* Custom Black Theme for Movie Management */
+:root {
+  --black-theme-primary: #000000;
+  --black-theme-primary-focus: #1a1a1a;
+  --black-theme-primary-content: #ffffff;
+  --black-theme-secondary: #333333;
+  --black-theme-secondary-focus: #4a4a4a;
+  --black-theme-accent: #666666;
+  --black-theme-neutral: #f5f5f5;
+  --black-theme-base-100: #ffffff;
+}
+
+/* Override DaisyUI primary colors */
+.btn-primary {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+.btn-primary:focus {
+  background-color: #1f2937;
+  border-color: #1f2937;
+}
+
+/* Navigation active state */
+.btn-active {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+/* Menu active links */
+.menu .active {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* NavLink active styling */
+.btn-primary.btn-block {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.btn-primary.btn-block:hover {
+  background-color: #1f2937;
+}
+
+/* Custom black theme for buttons */
+.btn-black {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.btn-black:hover {
+  background-color: #1f2937;
+  border-color: #1f2937;
+  color: #ffffff;
+}
+
+.btn-black:focus {
+  background-color: #1f2937;
+  border-color: #1f2937;
+}
+
+/* DataTable action buttons with black theme */
+.btn-circle.hover\:btn-black:hover {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+/* Outline buttons with black theme */
+.btn-outline.btn-black {
+  border-color: #000000;
+  color: #000000;
+  background-color: transparent;
+}
+
+.btn-outline.btn-black:hover {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+/* Custom primary color overrides */
+.text-primary {
+  color: #000000;
+}
+
+.border-primary {
+  border-color: #000000;
+}
+
+.bg-primary {
+  background-color: #000000;
+}
+
+/* Focus states */
+.focus\:ring-primary:focus {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Loading and accent states */
+.loading-primary {
+  color: #000000;
+}
+
+/* Custom elegant black styling */
+.elegant-black {
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  border: none;
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.elegant-black:hover {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+/* Hover states for black buttons */
+.hover\:btn-black:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Logo container styling */
+.logo-container {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.logo-container:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
