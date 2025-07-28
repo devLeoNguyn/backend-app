@@ -116,6 +116,28 @@ const EditData: React.FC<EditDataProps> = ({
   // Validation states cho error messages
   const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({});
 
+  // Hàm lấy tập giao các thể loại con theo genre_name giữa các parent đã chọn
+  const getCommonChildGenres = () => {
+    if (selectedParents.length < 2) return [];
+    const childrenArrays = selectedParents
+      .map(parentId => {
+        const parent = parentGenres.find(g => g._id === parentId);
+        return parent?.children || [];
+      });
+    if (childrenArrays.some(arr => arr.length === 0)) return [];
+    const genreNameCount: Record<string, number> = {};
+    childrenArrays.forEach(arr => {
+      arr.forEach(child => {
+        genreNameCount[child.genre_name] = (genreNameCount[child.genre_name] || 0) + 1;
+      });
+    });
+    const commonGenreNames = Object.entries(genreNameCount)
+      .filter(([, count]) => count === childrenArrays.length)
+      .map(([name]) => name);
+    const firstParentChildren = childrenArrays[0];
+    return firstParentChildren.filter(child => commonGenreNames.includes(child.genre_name));
+  };
+
   // Validation function sử dụng movieValidation module
   const validateForm = () => {
     const formData: MovieFormData = {
@@ -171,38 +193,43 @@ const EditData: React.FC<EditDataProps> = ({
     }
   };
 
-  // Handler for selecting a child genre for a parent - theo AddData
+  // Handler for selecting a child genre for a parent - sửa lại để gán cho tất cả parent có child cùng tên
   const handleSelectChild = (parentId: string, childId: string) => {
-    console.log('🎯 handleSelectChild:', { parentId, childId, currentChildren: selectedChildren });
-    
-    if (childId === '') {
-      // User selected "Chọn thể loại phụ" - remove child for this parent
-      setSelectedChildren(prev => {
-        const newChildren = { ...prev };
-        delete newChildren[parentId];
-        console.log('🎯 Removing child for parent:', parentId, 'New children:', newChildren);
-        return newChildren;
-      });
-      return;
-    }
+    // Tìm genre_name của child vừa chọn
+    const parent = parentGenres.find(g => g._id === parentId);
+    const childGenre = parent?.children?.find(child => child._id === childId);
+    if (!childGenre) return;
 
-    // Check if this child is already selected for a different parent
-    const isChildSelectedElsewhere = Object.entries(selectedChildren).some(
-      ([otherParentId, otherChildId]) => otherParentId !== parentId && otherChildId === childId
-    );
-    
-    if (isChildSelectedElsewhere) {
-      console.warn('Child genre already selected for another parent');
-      toast.error('Thể loại phụ này đã được chọn cho thể loại chính khác');
-      return;
-    }
-
-    // Set/replace the child for this parent
-    setSelectedChildren(prev => {
-      const newChildren = { ...prev, [parentId]: childId };
-      console.log('🎯 Setting child:', childId, 'for parent:', parentId, 'New children:', newChildren);
-      return newChildren;
+    // Tìm tất cả parent đang được chọn có child cùng genre_name
+    const affectedParents = selectedParents.filter(pid => {
+      const p = parentGenres.find(g => g._id === pid);
+      return p?.children?.some(child => child.genre_name === childGenre.genre_name);
     });
+
+    // Tìm đúng childId cho từng parent (có thể khác nhau nếu DB có nhiều child cùng tên)
+    const newSelectedChildren: { [parentId: string]: string } = { ...selectedChildren };
+    affectedParents.forEach(pid => {
+      const p = parentGenres.find(g => g._id === pid);
+      const matchingChild = p?.children?.find(child => child.genre_name === childGenre.genre_name);
+      if (matchingChild) {
+        newSelectedChildren[pid] = matchingChild._id;
+      }
+    });
+
+    setSelectedChildren(newSelectedChildren);
+  };
+
+  // Handler cho dropdown thể loại phụ chung
+  const handleSelectCommonChild = (genreName: string) => {
+    const newSelectedChildren = { ...selectedChildren };
+    selectedParents.forEach(parentId => {
+      const parent = parentGenres.find(g => g._id === parentId);
+      const matchingChild = parent?.children?.find(child => child.genre_name.toLowerCase() === genreName.toLowerCase());
+      if (matchingChild) {
+        newSelectedChildren[parentId] = matchingChild._id;
+      }
+    });
+    setSelectedChildren(newSelectedChildren);
   };
 
   // Update form data when movieData changes
@@ -229,7 +256,7 @@ const EditData: React.FC<EditDataProps> = ({
   // Reset genre states when modal opens/closes
   React.useEffect(() => {
     if (!isOpen) {
-      // Reset genre selections when modal closes
+      // Reset genre selections khi modal đóng
       setSelectedParents([]);
       setSelectedChildren({});
       // Reset image states khi đóng modal
@@ -392,32 +419,12 @@ const EditData: React.FC<EditDataProps> = ({
     }
     
     if (slug === 'product') {
-      // Xây dựng mảng genres IDs từ selections - FIXED: Thêm CẢ parent VÀ child
+      // Xây dựng mảng genres IDs từ selections - LUÔN thêm tất cả parent và child, loại trùng
       let selectedGenreIds: string[] = [];
-      
-      // LUÔN thêm tất cả parent genres được chọn
-      selectedParents.forEach(parentId => {
-        selectedGenreIds.push(parentId);
-        console.log('➕ Adding parent genre ID:', parentId);
-      });
-      
-      // LUÔN thêm tất cả child genres được chọn
-      Object.values(selectedChildren).forEach(childId => {
-        selectedGenreIds.push(childId);
-        console.log('➕ Adding child genre ID:', childId);
-      });
-      
-      // Remove duplicates just in case
-      selectedGenreIds = Array.from(new Set(selectedGenreIds));
-      
-      console.log('🎯 NEW Genre selection logic (both parent + child):', {
-        selectedParents,
-        selectedChildren, 
-        finalGenreIds: selectedGenreIds,
-        totalGenres: selectedGenreIds.length,
-        shouldHaveBothParentAndChild: Object.keys(selectedChildren).length > 0
-      });
-      
+      selectedParents.forEach(parentId => selectedGenreIds.push(parentId));
+      Object.values(selectedChildren).forEach(childId => selectedGenreIds.push(childId));
+      selectedGenreIds = Array.from(new Set(selectedGenreIds)); // loại trùng
+
       // Chỉ gửi các field đã thay đổi
       const productData: ProductData = {};
       
@@ -649,35 +656,74 @@ const EditData: React.FC<EditDataProps> = ({
               </div>
 
               {/* For each selected parent, render a child genre dropdown */}
-              {selectedParents.map(parentId => {
-                const parent = parentGenres.find(g => g._id === parentId);
-                const children = parent?.children || [];
-                
-                // Only render dropdown if parent has children
-                if (children.length === 0) return null;
-                
-                return (
-                  <div key={parentId} className="form-control w-full mt-2">
-                    <label className="label"><span className="label-text">Thể loại phụ cho {parent?.genre_name}</span></label>
-                    <select
-                      className="select select-bordered w-full"
-                      value={selectedChildren[parentId] || ''}
-                      onChange={e => handleSelectChild(parentId, e.target.value)}
-                    >
-                      <option value="">Chọn thể loại phụ</option>
-                      {children.map(child => (
-                        <option
-                          key={child._id}
-                          value={child._id}
-                          disabled={Object.values(selectedChildren).includes(child._id) && selectedChildren[parentId] !== child._id}
+              {/* Nếu có nhiều parent và có child genre chung, render một dropdown duy nhất */}
+              {(() => {
+                const commonChildren = getCommonChildGenres();
+                if (selectedParents.length > 1 && commonChildren.length > 0) {
+                  // Dropdown duy nhất cho child genre chung
+                  return (
+                    <div className="form-control w-full mt-2">
+                      <label className="label"><span className="label-text">Thể loại phụ chung cho các thể loại chính đã chọn</span></label>
+                      <select
+                        className="select select-bordered w-full"
+                        value={(() => {
+                          const selectedNames = selectedParents
+                            .map(pid => {
+                              const childId = selectedChildren[pid];
+                              const parent = parentGenres.find(g => g._id === pid);
+                              const child = parent?.children?.find(c => c._id === childId);
+                              return child?.genre_name || '';
+                            })
+                            .filter(Boolean);
+                          if (
+                            selectedNames.length === selectedParents.length &&
+                            selectedNames.every(n => n === selectedNames[0])
+                          ) {
+                            return selectedNames[0];
+                          }
+                          return '';
+                        })()}
+                        onChange={e => handleSelectCommonChild(e.target.value)}
+                      >
+                        <option value="">Chọn thể loại phụ chung</option>
+                        {commonChildren.map(child => (
+                          <option key={child.genre_name} value={child.genre_name}>
+                            {child.genre_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                } else {
+                  // Render dropdown cho từng parent như cũ
+                  return selectedParents.map(parentId => {
+                    const parent = parentGenres.find(g => g._id === parentId);
+                    const children = parent?.children || [];
+                    if (children.length === 0) return null;
+                    return (
+                      <div key={parentId} className="form-control w-full mt-2">
+                        <label className="label"><span className="label-text">Thể loại phụ cho {parent?.genre_name}</span></label>
+                        <select
+                          className="select select-bordered w-full"
+                          value={selectedChildren[parentId] || ''}
+                          onChange={e => handleSelectChild(parentId, e.target.value)}
                         >
-                          {child.genre_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })}
+                          <option value="">Chọn thể loại phụ</option>
+                          {children.map(child => (
+                            <option
+                              key={child._id}
+                              value={child._id}
+                              disabled={Object.values(selectedChildren).includes(child._id) && selectedChildren[parentId] !== child._id}
+                            >
+                              {child.genre_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  });
+                }
+              })()}
             </div>
 
             {/* Right Column */}
@@ -730,7 +776,7 @@ const EditData: React.FC<EditDataProps> = ({
               {/* Movie Type Field */}
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text">Loại phim <span className="text-error">*</span></span>
+                  <span className="label-text">Kiểu nội dung <span className="text-error">*</span></span>
                 </label>
                 <select
                   className={`select select-bordered w-full ${validationErrors.movieType ? 'select-error' : ''}`}
@@ -753,9 +799,9 @@ const EditData: React.FC<EditDataProps> = ({
                   }}
                   onBlur={() => handleFieldBlur('movieType', movieType)}
                 >
-                  <option value="">Chọn loại phim</option>
+                  <option value="">Chọn kiểu nội dung</option>
                   <option value="Phim lẻ">🎬 Phim lẻ</option>
-                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Phim bộ">🎬 Phim bộ</option>
                   <option value="Thể thao">⚽ Thể thao</option>
                 </select>
                 {validationErrors.movieType && (
@@ -897,4 +943,4 @@ const EditData: React.FC<EditDataProps> = ({
   );
 };
 
-export default EditData; 
+export default EditData;

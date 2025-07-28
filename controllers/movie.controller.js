@@ -58,21 +58,37 @@ const createMovieController = async (req, res) => {
             formattedMovie.event_status = newMovie.event_status;
         }
 
-        // Chỉ gửi push notification khi phim có trạng thái "released"
-        if (newMovie.release_status === 'released') {
-        try {
-                console.log('📢 Sending push notification for new released movie:', newMovie.movie_title);
-            await PushNotificationService.sendNewMovieNotification(
-                newMovie._id,
+        // Gửi push notification dựa trên 2 điều kiện:
+        // 1. Phim có trạng thái "released" (auto notification)
+        // 2. Admin bật flag send_notification (manual notification)
+        const shouldSendNotification = newMovie.release_status === 'released' || req.body.send_notification === true;
+        
+        if (shouldSendNotification) {
+            try {
+                console.log('📢 Sending push notification for new movie:', {
+                    movie_title: newMovie.movie_title,
+                    release_status: newMovie.release_status,
+                    send_notification: req.body.send_notification,
+                    reason: newMovie.release_status === 'released' ? 'auto_released' : 'manual_admin'
+                });
+                
+                await PushNotificationService.sendNewMovieNotification(
+                    newMovie._id,
                     newMovie.movie_title,
                     newMovie.poster_path
-            );
-        } catch (notificationError) {
-            console.error('Error sending push notification:', notificationError);
-            // Don't fail the movie creation if notification fails
+                );
+                
+                console.log('✅ Push notification sent successfully');
+            } catch (notificationError) {
+                console.error('Error sending push notification:', notificationError);
+                // Don't fail the movie creation if notification fails
             }
         } else {
-            console.log('🔇 Skipping push notification for movie with status:', newMovie.release_status);
+            console.log('🔇 Skipping push notification for movie:', {
+                movie_title: newMovie.movie_title,
+                release_status: newMovie.release_status,
+                send_notification: req.body.send_notification
+            });
         }
 
         res.status(201).json({
