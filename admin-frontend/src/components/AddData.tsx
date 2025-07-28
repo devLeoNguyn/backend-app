@@ -554,15 +554,15 @@ const AddData: React.FC<AddDataProps> = ({
                 <input
                   type="text"
                   placeholder="Nhà sản xuất"
-                  className={`input input-bordered w-full ${errors.producer ? 'input-error' : ''}`}
+                  className={`input input-bordered w-full ${validationErrors.producer ? 'input-error' : ''}`}
                   value={producer}
                   onChange={(e) => setProducer(e.target.value)}
                   onBlur={() => {
-                    const newErrors = validateOnBlur('producer', producer, errors);
-                    setErrors(newErrors);
+                    const newErrors = validateOnBlur('producer', producer, validationErrors);
+                    setValidationErrors(newErrors);
                   }}
                 />
-                {errors.producer && <span className="text-error text-xs">{errors.producer}</span>}
+                {validationErrors.producer && <span className="text-error text-xs">{validationErrors.producer}</span>}
               </div>
 
               <div className="form-control w-full">
@@ -570,16 +570,16 @@ const AddData: React.FC<AddDataProps> = ({
                 <input
                   type="number"
                   placeholder="Giá (VND)"
-                  className={`input input-bordered w-full ${errors.price ? 'input-error' : ''}`}
+                  className={`input input-bordered w-full ${validationErrors.price ? 'input-error' : ''}`}
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   onBlur={() => {
-                    const newErrors = validateOnBlur('price', price, errors);
-                    setErrors(newErrors);
+                    const newErrors = validateOnBlur('price', price, validationErrors);
+                    setValidationErrors(newErrors);
                   }}
                   min="0"
                 />
-                {errors.price && <span className="text-error text-xs">{errors.price}</span>}
+                {validationErrors.price && <span className="text-error text-xs">{validationErrors.price}</span>}
               </div>
 
               <div className="form-control w-full">

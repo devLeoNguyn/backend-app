@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/../.env' });
 
-const Genre = require('../models/Genre');
+// const Genre = require('../models/Genre');
 
 async function main() {
   await mongoose.connect(process.env.MONGO_URI);
