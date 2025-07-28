@@ -550,7 +550,6 @@ const AddData: React.FC<AddDataProps> = ({
 
               {/* Kiểu nội dung - CHUYỂN LÊN TRÊN ĐỂ CHỌN TRƯỚC */}
               <div className="form-control w-full">
-<<<<<<< Updated upstream
                 <label className="label"><span className="label-text">Nhà sản xuất <span className="text-error">*</span></span></label>
                 <input
                   type="text"
@@ -584,12 +583,12 @@ const AddData: React.FC<AddDataProps> = ({
               </div>
 
               <div className="form-control w-full">
-                <label className="label"><span className="label-text">Loại phim <span className="text-error">*</span></span></label>
-=======
+
+
                 <label className="label">
                   <span className="label-text">Kiểu nội dung<span className="text-error">*</span></span>
                 </label>
->>>>>>> Stashed changes
+
                 <select
                   className={`select select-bordered w-full ${validationErrors.movieType ? 'select-error' : ''}`}
                   value={movieType}
@@ -611,9 +610,9 @@ const AddData: React.FC<AddDataProps> = ({
                   }}
                   onBlur={() => handleFieldBlur('movieType', movieType)}
                 >
-                  <option value="">Chọn loại phim</option>
+                  <option value="">Chọn kiểu nội dung</option>
                   <option value="Phim lẻ">🎬 Phim lẻ</option>
-                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Phim bộ">🎬 Phim bộ</option>
                   <option value="Thể thao">⚽ Thể thao</option>
                 </select>
                 {validationErrors.movieType && (
