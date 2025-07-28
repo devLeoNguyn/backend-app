@@ -450,11 +450,6 @@ module.exports = {
     getProfile,
     updateProfile,
     getUserInteractionsSummary,
-<<<<<<< Updated upstream
-    getNotificationMute,
-    updateNotificationMute
-=======
     updateNotificationMute,
     getNotificationMute
->>>>>>> Stashed changes
 }; 
