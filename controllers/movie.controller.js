@@ -798,10 +798,10 @@ const generateShareLink = async (req, res) => {
     // Generate share URL with metadata and deeplink
     const shareUrl = `https://backend-app-lou3.onrender.com/movie/${movieId}`;
     
-    // Create EAS Update deeplink URL (works everywhere)
+    // Create EAS Update deeplink URL with headers (works everywhere)
     const deeplinks = {
-      // EAS Update URL (works everywhere)
-      easUpdate: `exp://u.expo.dev/c0f28dab-8c4b-4747-884f-0561ca44ab88/--/movie/${movieId}`,
+      // EAS Update URL with headers (works everywhere)
+      easUpdate: `exp://u.expo.dev/c0f28dab-8c4b-4747-884f-0561ca44ab88/--/movie/${movieId}?runtime-version=exposdk:53.0.0&channel-name=v2&platform=ios`,
       
       // Web fallback
       web: shareUrl
