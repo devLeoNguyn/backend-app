@@ -81,13 +81,13 @@
             const urlParams = new URLSearchParams(window.location.search);
             const deeplink = urlParams.get('deeplink');
             
-
-            // Try the provided deeplink first, then fallback to EAS Update
+            // Try the provided deeplink first, then fallback to our defaults
             const deepLinks = [
                 deeplink, // User provided deeplink
-                
-                // EAS Update URL (works everywhere)
-                'exp://u.expo.dev/c0f28dab-8c4b-4747-884f-0561ca44ab88/--/movie/{{movie._id}}'
+                'movieapp://movie/{{movie._id}}', // Production deeplink
+                'exp://localhost:8081/--/movie/{{movie._id}}', // Expo Go deeplink (localhost)
+                'exp://192.168.1.1:8081/--/movie/{{movie._id}}', // Common home network
+                'exp://10.0.0.1:8081/--/movie/{{movie._id}}' // Alternative network
             ].filter(Boolean); // Remove null/undefined values
             
             let currentIndex = 0;
