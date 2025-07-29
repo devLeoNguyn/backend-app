@@ -174,6 +174,8 @@ exports.getFavorites = async (req, res) => {
     try {
         const { userId } = req.query;
         
+        console.log('📊 [getFavorites] Request:', { userId, query: req.query });
+        
         if (!userId) {
             return res.status(400).json({
                 status: 'error',
@@ -192,18 +194,32 @@ exports.getFavorites = async (req, res) => {
         const favorites = await Favorite.find({ user_id })
             .populate({
                 path: 'movie_id',
-                select: 'movie_title description production_time producer movie_type price is_free price_display, poster_path genre'
+                select: 'movie_title description production_time producer movie_type price is_free price_display poster_path genres',
+                populate: {
+                    path: 'genres',
+                    select: 'genre_name'
+                }
             })
             .sort({ added_at: -1 })
             .skip(skip)
             .limit(limit);
 
+        // Filter out favorites where movie_id is null (deleted movies)
+        const validFavorites = favorites.filter(fav => fav.movie_id !== null);
+
         // Đếm tổng số item để check còn data không
         const total = await Favorite.countDocuments({ user_id });
-        const hasMore = total > skip + favorites.length;
+        const hasMore = total > skip + validFavorites.length;
+        
+        console.log('📊 [getFavorites] Query results:', {
+            totalFavorites: favorites.length,
+            validFavorites: validFavorites.length,
+            total,
+            hasMore
+        });
 
         // Format response phù hợp cho mobile
-        const formattedFavorites = favorites.map(fav => ({
+        const formattedFavorites = validFavorites.map(fav => ({
             _id: fav.movie_id._id,
             movie_title: fav.movie_id.movie_title,
             description: fav.movie_id.description,
@@ -214,7 +230,7 @@ exports.getFavorites = async (req, res) => {
             is_free: fav.movie_id.is_free,
             price_display: fav.movie_id.price_display,
             poster_path: fav.movie_id.poster_path,
-            genre: fav.movie_id.genre,
+            genres: fav.movie_id.genres?.map(genre => genre.genre_name) || [],
             added_at: fav.added_at
         }));
 
@@ -230,9 +246,10 @@ exports.getFavorites = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('❌ [getFavorites] Error:', error);
         res.status(500).json({
             status: 'error',
-            message: error.message
+            message: error.message || 'Internal server error'
         });
     }
 };
