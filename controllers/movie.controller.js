@@ -855,6 +855,250 @@ const getMovieRedirect = async (req, res) => {
   }
 };
 
+// 🎯 MOVIE RECOMMENDATIONS - Đề xuất phim dựa trên lịch sử xem
+const getMovieRecommendations = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const limit = parseInt(req.query.limit) || 10;
+
+        if (!userId) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User ID là bắt buộc'
+            });
+        }
+
+        console.log('🎯 [MovieRecommendations] Getting recommendations for userId:', userId);
+
+        // 1. Lấy lịch sử xem của user
+        const Watching = mongoose.model('Watching');
+        const userHistory = await Watching.find({ user_id: userId })
+            .populate({
+                path: 'episode_id',
+                populate: {
+                    path: 'movie_id',
+                    select: 'movie_title genres movie_type producer poster_path'
+                }
+            })
+            .sort({ last_watched: -1 })
+            .limit(50);
+
+        if (userHistory.length === 0) {
+            // Nếu user chưa có lịch sử xem, trả về phim trending
+            console.log('📊 [MovieRecommendations] No user history, returning trending movies');
+            const trendingMovies = await Movie.find({ release_status: 'released' })
+                .populate('genres', 'genre_name')
+                .sort({ view_count: -1, createdAt: -1 })
+                .limit(limit)
+                .select('_id movie_title poster_path movie_type producer genres');
+
+            const recommendations = trendingMovies.map(movie => ({
+                movieId: movie._id,
+                title: movie.movie_title,
+                poster: movie.poster_path,
+                movieType: movie.movie_type,
+                producer: movie.producer,
+                genres: movie.genres ? movie.genres.map(g => g.genre_name) : [],
+                reason: 'Phim thịnh hành'
+            }));
+
+            return res.json({
+                status: 'success',
+                data: {
+                    recommendations,
+                    total: recommendations.length,
+                    reason: 'Dựa trên phim thịnh hành'
+                }
+            });
+        }
+
+        // 2. Phân tích thể loại phim user thích
+        const genrePreferences = {};
+        const movieTypePreferences = {};
+        const producerPreferences = {};
+
+        userHistory.forEach(history => {
+            if (history.episode_id?.movie_id) {
+                const movie = history.episode_id.movie_id;
+                
+                // Đếm thể loại
+                if (movie.genres) {
+                    movie.genres.forEach(genre => {
+                        const genreName = genre.genre_name || genre;
+                        genrePreferences[genreName] = (genrePreferences[genreName] || 0) + 1;
+                    });
+                }
+
+                // Đếm loại phim
+                if (movie.movie_type) {
+                    movieTypePreferences[movie.movie_type] = (movieTypePreferences[movie.movie_type] || 0) + 1;
+                }
+
+                // Đếm nhà sản xuất
+                if (movie.producer) {
+                    producerPreferences[movie.producer] = (producerPreferences[movie.producer] || 0) + 1;
+                }
+            }
+        });
+
+        console.log('📊 [MovieRecommendations] User preferences:', {
+            genres: genrePreferences,
+            movieTypes: movieTypePreferences,
+            producers: producerPreferences
+        });
+
+        // 3. Tìm phim tương tự dựa trên preferences
+        const topGenres = Object.entries(genrePreferences)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3)
+            .map(([genre]) => genre);
+
+        const topMovieTypes = Object.entries(movieTypePreferences)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 2)
+            .map(([type]) => type);
+
+        const topProducers = Object.entries(producerPreferences)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 2)
+            .map(([producer]) => producer);
+
+        // 4. Query phim dựa trên preferences
+        const Movie = mongoose.model('Movie');
+        const Genre = mongoose.model('Genre');
+
+        // Lấy genre IDs từ tên
+        const genreIds = [];
+        if (topGenres.length > 0) {
+            const genres = await Genre.find({ genre_name: { $in: topGenres } });
+            genreIds.push(...genres.map(g => g._id));
+        }
+
+        // Tìm phim tương tự
+        const watchedMovieIds = userHistory
+            .map(h => h.episode_id?.movie_id?._id)
+            .filter(Boolean);
+
+        const similarMovies = await Movie.find({
+            release_status: 'released',
+            _id: { $nin: watchedMovieIds },
+            $or: [
+                { genres: { $in: genreIds } },
+                { movie_type: { $in: topMovieTypes } },
+                { producer: { $in: topProducers } }
+            ]
+        })
+        .populate('genres', 'genre_name')
+        .sort({ view_count: -1, createdAt: -1 })
+        .limit(limit * 2); // Lấy nhiều hơn để filter
+
+        // 5. Tính điểm recommendation cho từng phim
+        const scoredMovies = similarMovies.map(movie => {
+            let score = 0;
+            let reasons = [];
+
+            // Điểm cho genre match
+            if (movie.genres) {
+                const movieGenres = movie.genres.map(g => g.genre_name || g);
+                const genreMatches = movieGenres.filter(g => topGenres.includes(g));
+                if (genreMatches.length > 0) {
+                    score += genreMatches.length * 10;
+                    reasons.push(`Thể loại: ${genreMatches.join(', ')}`);
+                }
+            }
+
+            // Điểm cho movie type match
+            if (topMovieTypes.includes(movie.movie_type)) {
+                score += 5;
+                reasons.push(`Loại phim: ${movie.movie_type}`);
+            }
+
+            // Điểm cho producer match
+            if (topProducers.includes(movie.producer)) {
+                score += 3;
+                reasons.push(`Nhà sản xuất: ${movie.producer}`);
+            }
+
+            // Điểm cho view count
+            score += Math.min(movie.view_count || 0, 100) / 10;
+
+            return {
+                movie,
+                score,
+                reasons
+            };
+        });
+
+        // 6. Sort theo điểm và lấy top recommendations
+        let recommendations = [];
+        
+        if (scoredMovies.length > 0) {
+            recommendations = scoredMovies
+                .sort((a, b) => b.score - a.score)
+                .slice(0, limit)
+                .map(({ movie, reasons }) => ({
+                    movieId: movie._id,
+                    title: movie.movie_title,
+                    poster: movie.poster_path,
+                    movieType: movie.movie_type,
+                    producer: movie.producer,
+                    genres: movie.genres ? movie.genres.map(g => g.genre_name || g) : [],
+                    reason: reasons.length > 0 ? reasons[0] : 'Phim tương tự'
+                }));
+        } else {
+            // Fallback: lấy phim trending nếu không có phim tương tự
+            console.log('📊 [MovieRecommendations] No similar movies found, returning trending movies');
+            const trendingMovies = await Movie.find({ 
+                release_status: 'released',
+                _id: { $nin: watchedMovieIds }
+            })
+            .populate('genres', 'genre_name')
+            .sort({ view_count: -1, createdAt: -1 })
+            .limit(limit)
+            .select('_id movie_title poster_path movie_type producer genres');
+
+            recommendations = trendingMovies.map(movie => ({
+                movieId: movie._id,
+                title: movie.movie_title,
+                poster: movie.poster_path,
+                movieType: movie.movie_type,
+                producer: movie.producer,
+                genres: movie.genres ? movie.genres.map(g => g.genre_name) : [],
+                reason: 'Phim thịnh hành'
+            }));
+        }
+
+        console.log('✅ [MovieRecommendations] Generated recommendations:', {
+            total: recommendations.length,
+            topGenres,
+            topMovieTypes,
+            topProducers
+        });
+
+        res.json({
+            status: 'success',
+            data: {
+                recommendations,
+                total: recommendations.length,
+                reason: 'Dựa trên lịch sử xem của bạn',
+                preferences: {
+                    topGenres,
+                    topMovieTypes,
+                    topProducers
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [MovieRecommendations] Error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi tạo đề xuất phim',
+            error: error.message
+        });
+    }
+};
+
 // Export all controller functions
 module.exports = {
     getNewWeekMovies,
@@ -874,5 +1118,6 @@ module.exports = {
     getRelatedMovies,
     searchRegisteredMovies,
     generateShareLink,
-    getMovieRedirect
+    getMovieRedirect,
+    getMovieRecommendations
 };

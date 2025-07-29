@@ -51,7 +51,7 @@ const getNewReleases = async (req, res) => {
             genres: movie.genres ? movie.genres.slice(0, 3).map(g => g.genre_name) : []
         }));
 
-        // List phim cho grid "Phim dành cho bạn"
+        // List phim cho grid "Phim mới"
         const gridMovies = newReleases.slice(0, gridLimit).map(movie => ({
             movieId: movie._id,
             title: movie.movie_title,
@@ -70,9 +70,9 @@ const getNewReleases = async (req, res) => {
                     movies: bannerMovies
                 },
                 
-                // Grid section - "Phim dành cho bạn" 
-                recommended: {
-                    title: "Phim dành cho bạn",
+                // Grid section - "Phim mới" 
+                newMovies: {
+                    title: "Phim mới",
                     type: "grid",
                     movies: gridMovies
                 }
