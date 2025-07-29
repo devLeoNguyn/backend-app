@@ -17,7 +17,8 @@ const {
     getRelatedMovies,
     generateShareLink,
     getMovieRedirect,
-    searchRegisteredMovies
+    searchRegisteredMovies,
+    getMovieRecommendations
 } = require('../controllers/movie.controller');
 
 // === PUBLIC ROUTES (Không cần đăng nhập) ===
@@ -39,6 +40,9 @@ router.get('/search', searchMovies);
 
 // Tìm kiếm phim đã thuê
 router.get('/search-registered', searchRegisteredMovies);
+
+// 🎯 Movie recommendations based on watching history (MUST BE BEFORE /:id)
+router.get('/recommendations', getMovieRecommendations);
 
 // Get movie detail with all interactions - Public/Protected (MUST BE BEFORE /:id)
 router.get('/:id/detail-with-interactions', getMovieDetailWithInteractions);
