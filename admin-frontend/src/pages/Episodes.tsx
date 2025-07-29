@@ -203,6 +203,7 @@ const Episodes = () => {
           <button
             onClick={() => navigate('/admin/products')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+            title="Back to products"
           >
             <HiArrowLeft size={20} />
           </button>
