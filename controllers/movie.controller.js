@@ -426,6 +426,12 @@ const getMovieDetailWithInteractions = async (req, res) => {
                 isLike: comment.is_like,
                 createdAt: comment.createdAt
             }));
+
+            // Debug: Kiểm tra thứ tự bình luận
+            console.log(`🔍 [MovieDetail] Recent comments order for movie ${id}:`);
+            movieData.recentComments.forEach((comment, index) => {
+                console.log(`  ${index + 1}. ${comment.user.full_name}: "${comment.comment.substring(0, 30)}..." - ${comment.createdAt}`);
+            });
         }
 
         // === GUEST USER ===
