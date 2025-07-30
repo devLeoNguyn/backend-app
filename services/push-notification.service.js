@@ -70,15 +70,8 @@ class PushNotificationService {
       for (const userNotification of userNotifications) {
         try {
           const user = await User.findById(userNotification.user_id);
-          // Chặn gửi nếu user đang mute
-          if (user && user.notificationMute && user.notificationMute.isMuted) {
-            if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
-              // Đang mute, bỏ qua gửi notification cho user này
-              continue;
-            }
-          }
-          
-          if (user && user.expoPushToken && !processedTokens.has(user.expoPushToken)) {
+          // Chỉ gửi push notification nếu user không bị mute và UserNotification được đánh dấu là đã gửi
+          if (user && user.expoPushToken && !processedTokens.has(user.expoPushToken) && userNotification.is_sent) {
             // Add token to processed set to avoid duplicates
             processedTokens.add(user.expoPushToken);
             

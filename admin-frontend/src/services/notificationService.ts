@@ -17,6 +17,7 @@ export interface Notification {
   sent_count: number;
   failed_count: number;
   total_target_count: number;
+  muted_count?: number;
   deep_link?: string;
   image_url?: string;
   priority?: 'high' | 'normal' | 'low';
