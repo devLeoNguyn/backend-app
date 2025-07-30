@@ -260,4 +260,59 @@ router.post('/migrate-video', async (req, res) => {
     }
 });
 
+/**
+ * 🔧 Fix video URIs (migrate from Stream UID to full URI)
+ * POST /api/upload/fix-video-uris
+ */
+router.post('/fix-video-uris', async (req, res) => {
+    try {
+        const Episode = require('../models/Episode');
+        
+        // Tìm tất cả episodes có URI là Stream UID (32 ký tự hex)
+        const episodes = await Episode.find({
+            uri: { $regex: /^[a-f0-9]{32}$/i }
+        });
+        
+        if (episodes.length === 0) {
+            return res.json({
+                status: 'success',
+                message: 'Không có episodes nào cần fix URI',
+                data: {
+                    totalEpisodes: 0,
+                    fixedCount: 0
+                }
+            });
+        }
+        
+        let fixedCount = 0;
+        
+        for (const episode of episodes) {
+            const oldUri = episode.uri;
+            const newUri = `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${oldUri}/manifest/video.m3u8`;
+            
+            await Episode.findByIdAndUpdate(episode._id, {
+                uri: newUri
+            });
+            
+            fixedCount++;
+        }
+        
+        res.json({
+            status: 'success',
+            message: `Đã fix ${fixedCount} video URIs`,
+            data: {
+                totalEpisodes: episodes.length,
+                fixedCount
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Fix video URIs error:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi khi fix video URIs: ' + error.message
+        });
+    }
+});
+
 module.exports = router; 

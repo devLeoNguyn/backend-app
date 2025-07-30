@@ -162,21 +162,21 @@ class CloudflareStreamService {
             // 🔗 Tạo stream URLs tối ưu cho EXPO APP (mobile-first)
             const streamUrls = {
                 // 📱 HLS - PRIMARY cho Expo/React Native
-                hls: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.m3u8`,
+                hls: `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/manifest/video.m3u8`,
                 
                 // 🎬 MP4 fallback cho Expo Video component
-                mp4: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4`,
+                mp4: `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/manifest/video.mp4`,
                 
                 // 📱 Mobile-optimized MP4 qualities
                 mp4_mobile: {
-                    '360p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=360p`,
-                    '480p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=480p`,
-                    '720p': `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=720p`
+                    '360p': `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=360p`,
+                    '480p': `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=480p`,
+                    '720p': `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/manifest/video.mp4?quality=720p`
                 },
                 
                 // 🖼️ Thumbnails for mobile
-                thumbnail: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg`,
-                poster: `https://customer-${this.accountId}.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg?time=5s`
+                thumbnail: `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg`,
+                poster: `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${videoUid}/thumbnails/thumbnail.jpg?time=5s`
             };
 
             return {

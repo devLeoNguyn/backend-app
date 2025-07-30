@@ -91,10 +91,12 @@ const uploadVideoToStream = async (req, res) => {
             allowedOrigins: ['*']
         });
 
-        // 📝 Cập nhật Episode với Stream UID
+        // 📝 Cập nhật Episode với Cloudflare Stream URI đầy đủ
         const streamUid = uploadResult.uid;
+        const cloudflareUri = `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${streamUid}/manifest/video.m3u8`;
+        
         await Episode.findByIdAndUpdate(episodeId, {
-            uri: streamUid // Lưu Stream UID thay vì file path
+            uri: cloudflareUri // Lưu URI đầy đủ như yêu cầu
         });
 
         console.log('✅ Video uploaded successfully to Cloudflare Stream:', {
@@ -109,6 +111,7 @@ const uploadVideoToStream = async (req, res) => {
             data: {
                 episodeId,
                 streamUid,
+                uri: cloudflareUri, // Trả về URI đầy đủ
                 uploadStatus: uploadResult.status,
                 playback: uploadResult.playback,
                 preview: uploadResult.preview,
@@ -282,15 +285,21 @@ const deleteVideoFromStream = async (req, res) => {
             });
         }
 
-        // 🆔 Extract Stream UID
+        // 🆔 Extract Stream UID từ URI (hỗ trợ cả URI đầy đủ và Stream UID)
         function extractStreamUid(uri) {
+            if (!uri) return null;
+            
+            // Nếu là Stream UID thuần (32 ký tự hex)
             if (uri.match(/^[a-f0-9]{32}$/i)) {
                 return uri;
             }
+            
+            // Nếu là URI đầy đủ Cloudflare Stream
             if (uri.includes('cloudflarestream.com')) {
                 const matches = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
                 return matches ? matches[1] : null;
             }
+            
             return null;
         }
 
@@ -375,9 +384,12 @@ const uploadVideoFromUrl = async (req, res) => {
             }
         });
 
-        // 📝 Cập nhật Episode
+        // 📝 Cập nhật Episode với Cloudflare Stream URI đầy đủ
+        const streamUid = uploadResult.uid;
+        const cloudflareUri = `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${streamUid}/manifest/video.m3u8`;
+        
         await Episode.findByIdAndUpdate(episodeId, {
-            uri: uploadResult.uid
+            uri: cloudflareUri
         });
 
         res.json({
@@ -386,6 +398,7 @@ const uploadVideoFromUrl = async (req, res) => {
             data: {
                 episodeId,
                 streamUid: uploadResult.uid,
+                uri: cloudflareUri, // Trả về URI đầy đủ
                 status: uploadResult.status,
                 sourceUrl: url
             }

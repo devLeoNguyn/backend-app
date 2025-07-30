@@ -112,13 +112,18 @@ const EpisodeVideoUpload = ({
       });
 
       if (response.data.status === 'success') {
-        const videoUrl = response.data.data.streamUid || response.data.data.playbackUrl;
+        // Sử dụng URI đầy đủ từ response hoặc tạo từ streamUid
+        const streamUid = response.data.data.streamUid;
+        const videoUrl = response.data.data.uri || `https://customer-xir3z8gmfm10bn16.cloudflarestream.com/${streamUid}/manifest/video.m3u8`;
         
         // Update episode with video URL
         updateMutation.mutate({
           id: episode.id,
           data: { uri: videoUrl }
         });
+        
+        toast.success('Video uploaded successfully!');
+        onSuccess();
       } else {
         throw new Error('Upload failed');
       }

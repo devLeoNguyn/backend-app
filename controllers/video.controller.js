@@ -351,18 +351,18 @@ const getVideoStatus = async (req, res) => {
 
 /**
  * 🆔 Extract Stream UID từ URI
- * @param {string} uri - URI có thể chứa Stream UID hoặc path cũ
+ * @param {string} uri - URI có thể chứa Stream UID hoặc URI đầy đủ
  * @returns {string|null} - Stream UID
  */
 function extractStreamUid(uri) {
     if (!uri) return null;
     
-    // 🎬 Nếu là Cloudflare Stream UID (format: 36 ký tự hex)
+    // 🎬 Nếu là Cloudflare Stream UID (format: 32 ký tự hex)
     if (uri.match(/^[a-f0-9]{32}$/i)) {
         return uri;
     }
     
-    // 🔗 Nếu là URL chứa Stream UID
+    // 🔗 Nếu là URI đầy đủ Cloudflare Stream
     if (uri.includes('cloudflarestream.com')) {
         const matches = uri.match(/cloudflarestream\.com\/([a-f0-9]{32})/i);
         return matches ? matches[1] : null;

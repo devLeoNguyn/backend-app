@@ -402,20 +402,28 @@ const AddData: React.FC<AddDataProps> = ({
       // Tự động set số tập = 1 cho thể thao
       const finalEpisodeCount = movieType === 'Thể thao' ? 1 : parseInt(totalEpisodes) || 1;
 
-      const productData = {
+      const productData: any = {
         title,
         description,
-        production_time: releaseStatus === 'Sắp phát hành' ? productionTime : '', // Chỉ gửi khi cần thiết
         genres: selectedGenreIds, // <-- send array of genre ids
         producer,
         price: parseFloat(price) || 0,
         movie_type: movieType,
         total_episodes: finalEpisodeCount,
         release_status: releaseStatus,
-        event_start_time: movieType === 'Thể thao' && releaseStatus === 'Sắp phát hành' ? eventStartTime : '',
         poster_file: file || undefined,
         send_notification: sendNotification // Thêm flag gửi notification
       };
+
+      // Chỉ thêm production_time khi cần thiết
+      if (releaseStatus === 'Sắp phát hành' && productionTime) {
+        productData.production_time = productionTime;
+      }
+
+      // Chỉ thêm event_start_time khi cần thiết
+      if (movieType === 'Thể thao' && releaseStatus === 'Sắp phát hành' && eventStartTime) {
+        productData.event_start_time = eventStartTime;
+      }
 
       console.log('🎬 Submitting new movie:', productData);
       console.log('🎯 Selected genre info:', {
@@ -934,12 +942,9 @@ const AddData: React.FC<AddDataProps> = ({
 
               {/* Thông báo cho thể thao khi ẩn field số tập */}
               {movieType === 'Thể thao' && (
-                <div className="alert alert-info">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span>⚽ Thể thao: Tự động ghi nhận 1 trận đấu</span>
-              </div>
+                <div className="text-xs text-base-content opacity-70">
+                  ⚽ Thể thao: Tự động ghi nhận 1 trận đấu
+                </div>
               )}
 
               <div className="form-control w-full">

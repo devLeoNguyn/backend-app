@@ -263,10 +263,13 @@ export const createProduct = async (productData: {
 
     const mappedReleaseStatus = releaseStatusMap[productData.release_status] || 'released';
     
-    // Convert production_time to proper date format
-    const productionDate = new Date(productData.production_time);
-    if (isNaN(productionDate.getTime())) {
-        throw new Error('Production time phải là ngày hợp lệ');
+    // Convert production_time to proper date format - chỉ validate khi có giá trị
+    let productionDate = null;
+    if (productData.production_time && productData.production_time.trim() !== '') {
+        productionDate = new Date(productData.production_time);
+        if (isNaN(productionDate.getTime())) {
+            throw new Error('Production time phải là ngày hợp lệ');
+        }
     }
     
     // 🖼️ Upload poster to Cloudflare Images first
@@ -307,7 +310,7 @@ export const createProduct = async (productData: {
     const movieData = {
         movie_title: productData.title,
         description: productData.description,
-        production_time: productionDate.toISOString(),
+        production_time: productionDate ? productionDate.toISOString() : null,
         producer: productData.producer,
         price: productData.price,
         movie_type: productData.movie_type,
@@ -391,8 +394,8 @@ export const updateProduct = async (productId: string, productData: {
     }
     
     // Convert production_time to proper date format nếu có
-    let productionDate;
-    if (productData.production_time) {
+    let productionDate = null;
+    if (productData.production_time && productData.production_time.trim() !== '') {
         productionDate = new Date(productData.production_time);
         if (isNaN(productionDate.getTime())) {
             throw new Error('Production time phải là ngày hợp lệ');
@@ -449,8 +452,11 @@ export const updateProduct = async (productId: string, productData: {
         console.log('🏷️ Using single genre:', productData.genre);
     }
     
-    if (productData.event_start_time) {
-        movieUpdateData.event_start_time = productData.event_start_time ? new Date(productData.event_start_time).toISOString() : null;
+    if (productData.event_start_time && productData.event_start_time.trim() !== '') {
+        const eventDate = new Date(productData.event_start_time);
+        if (!isNaN(eventDate.getTime())) {
+            movieUpdateData.event_start_time = eventDate.toISOString();
+        }
     }
     
     // Không cần gửi adminUserId trong body, sẽ gửi qua query params

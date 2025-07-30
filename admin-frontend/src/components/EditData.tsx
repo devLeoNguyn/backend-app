@@ -116,9 +116,7 @@ const EditData: React.FC<EditDataProps> = ({
   // Form states - Khởi tạo với dữ liệu từ movieData
   const [title, setTitle] = React.useState(movieData?.title || '');
   const [description, setDescription] = React.useState(movieData?.description || '');
-  const [productionTime, setProductionTime] = React.useState(
-    movieData?.createdAt ? movieData.createdAt.slice(0, 16) : ''
-  );
+  const [productionTime, setProductionTime] = React.useState('');
   const [producer, setProducer] = React.useState(movieData?.producer || '');
   const [price, setPrice] = React.useState(movieData?.price?.toString() || '0');
   const [movieType, setMovieType] = React.useState(movieData?.movieType || '');
@@ -249,7 +247,14 @@ const EditData: React.FC<EditDataProps> = ({
 
   // Hàm kiểm tra có cần hiển thị field ngày sản xuất không
   const shouldShowProductionDateField = () => {
-    return releaseStatus === 'Sắp phát hành';
+    const shouldShow = releaseStatus === 'Sắp phát hành';
+    console.log('🔍 shouldShowProductionDateField:', { 
+      releaseStatus, 
+      shouldShow,
+      movieType,
+      productionTime 
+    });
+    return shouldShow;
   };
 
   // Hàm kiểm tra có cần hiển thị field thời gian bắt đầu không
@@ -374,9 +379,21 @@ const EditData: React.FC<EditDataProps> = ({
   // Update form data when movieData changes
   React.useEffect(() => {
     if (movieData) {
+      console.log('🔄 Loading movie data into form:', {
+        title: movieData.title,
+        movieType: movieData.movieType,
+        totalEpisodes: movieData.totalEpisodes,
+        status: movieData.status,
+        createdAt: movieData.createdAt
+      });
+      
       setTitle(movieData.title || '');
       setDescription(movieData.description || '');
-      setProductionTime(movieData.createdAt ? movieData.createdAt.slice(0, 16) : '');
+      
+      // Chỉ set productionTime nếu status là "Sắp phát hành" hoặc có createdAt
+      const shouldSetProductionTime = movieData.status === 'upcoming' || movieData.createdAt;
+      setProductionTime(shouldSetProductionTime && movieData.createdAt ? movieData.createdAt.slice(0, 16) : '');
+      
       setProducer(movieData.producer || '');
       setPrice(movieData.price?.toString() || '0');
       setMovieType(movieData.movieType || '');
@@ -394,6 +411,8 @@ const EditData: React.FC<EditDataProps> = ({
       // Reset file và set preview từ movieData
       setFile(null);
       setPreview(movieData.img || null);
+      
+      console.log('✅ Form data loaded successfully');
     }
   }, [movieData]);
 
@@ -420,6 +439,7 @@ const EditData: React.FC<EditDataProps> = ({
       setProductionTime('');
       setEventStartTime('');
       setSendNotification(false);
+      // KHÔNG reset movieType và totalEpisodes - để giữ lại giá trị hiện tại
     }
   }, [isOpen]);
 
@@ -608,8 +628,15 @@ const EditData: React.FC<EditDataProps> = ({
       
       if (producer !== movieData?.producer) productData.producer = producer;
       if (parseFloat(price) !== movieData?.price) productData.price = parseFloat(price) || 0;
-      if (movieType !== movieData?.movieType) productData.movie_type = movieType;
+      
+      // Luôn gửi movie_type để đảm bảo cập nhật
+      if (movieType !== movieData?.movieType) {
+        console.log('🎯 Movie type will be updated:', { from: movieData?.movieType, to: movieType });
+        productData.movie_type = movieType;
+      }
+      
       if (parseInt(totalEpisodes) !== movieData?.totalEpisodes) {
+        console.log('🎯 Total episodes will be updated:', { from: movieData?.totalEpisodes, to: parseInt(totalEpisodes) });
         productData.total_episodes = parseInt(totalEpisodes) || 1;
       }
       
@@ -629,6 +656,14 @@ const EditData: React.FC<EditDataProps> = ({
         selectedChildren,
         parentGenres: parentGenres.length,
         hasGenreChanged: selectedGenreIds.length > 0
+      });
+      console.log('🎯 Form state before submit:', {
+        movieType,
+        totalEpisodes,
+        releaseStatus,
+        title,
+        producer,
+        price
       });
       
       updateProductMutation.mutate({
@@ -656,6 +691,18 @@ const EditData: React.FC<EditDataProps> = ({
     const hasValidEpisodes = movieType === 'Thể thao' ? true : !!totalEpisodes;
     
     const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || !hasValidProductionTime || !hasValidEventTime || !hasValidEpisodes;
+    
+    console.log('🔍 Form validation check:', {
+      requiredFields: requiredFields.map(f => f ? 'filled' : 'empty'),
+      hasValidGenre,
+      hasValidProductionTime,
+      hasValidEventTime,
+      hasValidEpisodes,
+      isFormEmpty,
+      movieType,
+      totalEpisodes
+    });
+    
     setFormProductIsEmpty(isFormEmpty);
   }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents, productionTime, eventStartTime]);
 
@@ -986,18 +1033,19 @@ const EditData: React.FC<EditDataProps> = ({
                   value={movieType}
                   onChange={(e) => {
                     const selectedType = e.target.value;
-                    setMovieType(selectedType);
+                    console.log('🎯 Movie type changed:', { from: movieType, to: selectedType });
                     
-                    // Reset totalEpisodes khi thay đổi loại nội dung
-                    setTotalEpisodes('');
+                    setMovieType(selectedType);
                     
                     // Tự động điều chỉnh số tập dựa trên loại phim
                     if (selectedType === 'Phim lẻ') {
                       setTotalEpisodes('1');
                     } else if (selectedType === 'Phim bộ') {
-                      setTotalEpisodes('2'); // Mặc định 2 tập cho phim bộ
+                      // Giữ lại số tập hiện tại nếu hợp lệ, ngược lại set mặc định
+                      const currentEpisodes = parseInt(totalEpisodes) || 0;
+                      setTotalEpisodes(currentEpisodes >= 2 ? totalEpisodes : '2');
                     } else if (selectedType === 'Thể thao') {
-                      setTotalEpisodes('1'); // Thể thao thường 1 trận
+                      setTotalEpisodes('1');
                     }
                     
                     // Tự động chọn thể loại dựa trên loại nội dung
@@ -1067,11 +1115,8 @@ const EditData: React.FC<EditDataProps> = ({
 
               {/* Thông báo cho thể thao khi ẩn field số tập */}
               {movieType === 'Thể thao' && (
-                <div className="alert alert-info">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span>⚽ Thể thao: Tự động ghi nhận 1 trận đấu</span>
+                <div className="text-xs text-base-content opacity-70">
+                  ⚽ Thể thao: Tự động ghi nhận 1 trận đấu
                 </div>
               )}
 
@@ -1096,6 +1141,11 @@ const EditData: React.FC<EditDataProps> = ({
                     if (newStatus === 'Đã phát hành' && releaseStatus === 'Sắp phát hành') {
                       setEventStartTime('');
                       setSendNotification(false);
+                    }
+                    
+                    // Reset production time khi chuyển từ "Đã phát hành" sang "Sắp phát hành"
+                    if (newStatus === 'Sắp phát hành' && releaseStatus === 'Đã phát hành') {
+                      setProductionTime('');
                     }
                   }}
                   onBlur={() => handleFieldBlur('status', releaseStatus)}
@@ -1166,28 +1216,35 @@ const EditData: React.FC<EditDataProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-2">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setIsOpen(false)}
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={formProductIsEmpty || updateProductMutation.isPending}
-            >
-              {updateProductMutation.isPending ? (
-                <>
-                  <span className="loading loading-spinner"></span>
-                  Đang lưu...
-                </>
-              ) : (
-                'Lưu thay đổi'
-              )}
-            </button>
+          <div className="mt-6 flex justify-between items-center">
+            {/* Debug info */}
+            <div className="text-xs text-base-content opacity-50">
+              Debug: movieType={movieType}, totalEpisodes={totalEpisodes}
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setIsOpen(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={formProductIsEmpty || updateProductMutation.isPending}
+              >
+                {updateProductMutation.isPending ? (
+                  <>
+                    <span className="loading loading-spinner"></span>
+                    Đang lưu...
+                  </>
+                ) : (
+                  'Lưu thay đổi'
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
