@@ -849,48 +849,6 @@ const AddData: React.FC<AddDataProps> = ({
 
             {/* Right Column */}
             <div className="space-y-4">
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">{labels.producer} <span className="text-error">*</span></span>
-                </label>
-                <input
-                  type="text"
-                  placeholder={movieType === 'Thể thao' ? 'Nhập tên đơn vị tổ chức' : 'Nhà sản xuất'}
-                  className={`input input-bordered w-full ${validationErrors.producer ? 'input-error' : ''}`}
-                  value={producer}
-                  onChange={(e) => setProducer(e.target.value)}
-                  onBlur={() => handleFieldBlur('producer', producer)}
-                  maxLength={100}
-                />
-                {validationErrors.producer && (
-                  <div className="label">
-                    <span className="label-text-alt text-error">{validationErrors.producer}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Giá (VND) <span className="text-error">*</span></span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="Giá (VND)"
-                  className={`input input-bordered w-full ${validationErrors.price ? 'input-error' : ''}`}
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  onBlur={() => handleFieldBlur('price', price)}
-                  min="0"
-                  max="1000000"
-                  step="1000"
-                />
-                <div className="label">
-                  <span className="label-text-alt">Giá từ 0 đến 1,000,000 VND</span>
-                  {validationErrors.price && (
-                    <span className="label-text-alt text-error">{validationErrors.price}</span>
-                  )}
-              </div>
-              </div>
 
               {/* Field số tập - CHỈ HIỂN THỊ KHI ĐÃ CHỌN TYPE_MOVIE VÀ KHÔNG PHẢI THỂ THAO */}
               {shouldShowEpisodesField() && (
