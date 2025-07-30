@@ -388,7 +388,10 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     return await Watching.findOne({ user_id: userId, episode_id: { $in: episodeIds } })
                         .sort({ last_watched: -1 });
                 })(),
-                Rating.find({ movie_id: id, comment: { $exists: true, $ne: '' } })
+                Rating.find({ 
+                    movie_id: id, 
+                    comment: { $exists: true, $ne: '', $ne: null } 
+                })
                     .populate('user_id', 'full_name email avatar')
                     .sort({ updatedAt: -1 })
             ]);
@@ -422,7 +425,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     email: comment.user_id?.email || '',
                     avatar: comment.user_id?.avatar || null
                 },
-                comment: comment.comment,
+                comment: comment.comment || '',
                 isLike: comment.is_like,
                 createdAt: comment.createdAt
             }));
@@ -430,7 +433,9 @@ const getMovieDetailWithInteractions = async (req, res) => {
             // Debug: Kiểm tra thứ tự bình luận
             console.log(`🔍 [MovieDetail] Recent comments order for movie ${id}:`);
             movieData.recentComments.forEach((comment, index) => {
-                console.log(`  ${index + 1}. ${comment.user.full_name}: "${comment.comment.substring(0, 30)}..." - ${comment.createdAt}`);
+                const commentText = comment.comment || '';
+                const truncatedComment = commentText.length > 30 ? commentText.substring(0, 30) + '...' : commentText;
+                console.log(`  ${index + 1}. ${comment.user.full_name}: "${truncatedComment}" - ${comment.createdAt}`);
             });
         }
 
@@ -438,7 +443,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         else {
             const recentComments = await Rating.find({ 
                 movie_id: id, 
-                comment: { $exists: true, $ne: '' } 
+                comment: { $exists: true, $ne: '', $ne: null } 
             }).populate('user_id', 'full_name email avatar')
               .sort({ updatedAt: -1 });
 
@@ -450,7 +455,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
                     email: comment.user_id?.email || '',
                     avatar: comment.user_id?.avatar || null
                 },
-                comment: comment.comment,
+                comment: comment.comment || '',
                 isLike: comment.is_like,
                 createdAt: comment.createdAt
             }));
