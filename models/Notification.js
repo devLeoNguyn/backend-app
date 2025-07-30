@@ -62,6 +62,10 @@ const notificationSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  muted_count: {
+    type: Number,
+    default: 0
+  },
   deep_link: {
     type: String,
     trim: true,

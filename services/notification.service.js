@@ -381,14 +381,11 @@ class NotificationService {
       const userNotifications = [];
       
       for (const userId of targetUsers) {
-        // Check trạng thái mute trước khi gửi
+        // Check trạng thái mute để quyết định có gửi push notification hay không
         const user = await User.findById(userId);
-        if (user && user.notificationMute && user.notificationMute.isMuted) {
-          if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
-            // Đang mute, bỏ qua gửi notification cho user này
-            continue;
-          }
-        }
+        const isUserMuted = user && user.notificationMute && user.notificationMute.isMuted && 
+                           (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil);
+        
         // Check if UserNotification already exists
         let userNotification = await UserNotification.findOne({
           user_id: userId,
@@ -401,17 +398,17 @@ class NotificationService {
             user_id: userId,
             notification_id: notification._id,
             is_read: false,
-            is_sent: true,
-            sent_at: new Date(),
-            delivery_status: 'sent',
+            is_sent: !isUserMuted, // Chỉ đánh dấu là đã gửi nếu không mute
+            sent_at: isUserMuted ? null : new Date(),
+            delivery_status: isUserMuted ? 'muted' : 'sent',
             created_at: new Date(),
             updated_at: new Date()
           });
         } else {
           // Update existing UserNotification
-          userNotification.is_sent = true;
-          userNotification.sent_at = new Date();
-          userNotification.delivery_status = 'sent';
+          userNotification.is_sent = !isUserMuted;
+          userNotification.sent_at = isUserMuted ? null : new Date();
+          userNotification.delivery_status = isUserMuted ? 'muted' : 'sent';
           userNotification.updated_at = new Date();
           await userNotification.save();
         }
@@ -425,12 +422,18 @@ class NotificationService {
         userNotifications
       );
       
+      // Đếm số lượng UserNotification thực sự được tạo (bao gồm cả muted)
+      const totalUserNotifications = userNotifications.length;
+      const mutedCount = userNotifications.filter(un => un.delivery_status === 'muted').length;
+      const sentCount = userNotifications.filter(un => un.delivery_status === 'sent').length;
+      
       // Update notification status
       notification.status = 'sent';
       notification.sent_at = new Date();
-      notification.sent_count = pushResult.success || 0;
+      notification.sent_count = pushResult.success || 0; // Số push notification thực sự gửi
       notification.failed_count = pushResult.failure || 0;
-      notification.total_target_count = targetUsers.length;
+      notification.total_target_count = totalUserNotifications; // Tổng số UserNotification được tạo
+      notification.muted_count = mutedCount; // Số user bị mute
       notification.updated_at = new Date();
       
       await notification.save();
