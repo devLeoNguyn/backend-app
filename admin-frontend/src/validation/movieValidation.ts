@@ -28,7 +28,7 @@ const VALIDATION_RULES = {
     maxLength: 2000
   },
   productionTime: {
-    required: true,
+    required: false, // Will be validated conditionally based on status
     minYear: 1900,
     maxYear: new Date().getFullYear() + 1
   },
@@ -53,7 +53,7 @@ const VALIDATION_RULES = {
   },
   status: {
     required: true,
-    allowedValues: ['Đã phát hành', 'Đã kết thúc']
+    allowedValues: ['Sắp phát hành', 'Đã phát hành', 'Đã kết thúc']
   },
   poster: {
     required: false,
@@ -74,6 +74,14 @@ export const validateField = (
   // Required field validation
   if (rules.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
     return `${getFieldLabel(fieldName)} là bắt buộc`;
+  }
+
+  // Special handling for productionTime - skip validation if empty
+  if (fieldName === 'productionTime') {
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      console.log('⏭️ Skipping productionTime validation - field is empty');
+      return ''; // Don't show error if productionTime is empty
+    }
   }
 
   if (typeof value === 'string') {
@@ -105,15 +113,15 @@ export const validateField = (
 
     // Date validation for productionTime
     if (fieldName === 'productionTime') {
-      // Check if it's a valid date format (YYYY-MM-DD)
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(trimmedValue)) {
-        return `${getFieldLabel(fieldName)} phải có định dạng ngày hợp lệ (YYYY-MM-DD)`;
+      // Check if it's a valid datetime-local format (YYYY-MM-DDTHH:MM)
+      const dateTimeRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+      if (!dateTimeRegex.test(trimmedValue)) {
+        return `${getFieldLabel(fieldName)} phải có định dạng ngày giờ hợp lệ (YYYY-MM-DDTHH:MM)`;
       }
       
       const date = new Date(trimmedValue);
       if (isNaN(date.getTime())) {
-        return `${getFieldLabel(fieldName)} phải là ngày hợp lệ`;
+        return `${getFieldLabel(fieldName)} phải là ngày giờ hợp lệ`;
       }
       
       const year = date.getFullYear();
@@ -151,8 +159,16 @@ export const validateField = (
 export const validateMovieForm = (formData: MovieFormData): ValidationErrors => {
   const errors: ValidationErrors = {};
 
-  // Validate all fields
+  console.log('🔍 validateMovieForm called with status:', formData.status);
+
+  // Validate all fields except productionTime (will be handled conditionally)
   Object.keys(formData).forEach((fieldName) => {
+    // Skip productionTime validation here - will be handled conditionally
+    if (fieldName === 'productionTime') {
+      console.log('⏭️ Skipping productionTime validation in main loop');
+      return;
+    }
+    
     const fieldValue = formData[fieldName as keyof MovieFormData];
     const error = validateField(fieldName as keyof MovieFormData, fieldValue);
     if (error) {
@@ -160,6 +176,19 @@ export const validateMovieForm = (formData: MovieFormData): ValidationErrors => 
     }
   });
 
+  // Conditional validation for productionTime
+  // Only validate if status is "Sắp phát hành" (upcoming)
+  if (formData.status === 'Sắp phát hành') {
+    console.log('✅ Validating productionTime because status is "Sắp phát hành"');
+    const productionTimeError = validateField('productionTime', formData.productionTime);
+    if (productionTimeError) {
+      errors.productionTime = productionTimeError;
+    }
+  } else {
+    console.log('⏭️ Skipping productionTime validation because status is not "Sắp phát hành"');
+  }
+
+  console.log('📋 validateMovieForm errors:', errors);
   return errors;
 };
 
@@ -201,8 +230,17 @@ export const validateOnBlur = (
   value: string | File | undefined,
   currentErrors: ValidationErrors
 ): ValidationErrors => {
-  const error = validateField(fieldName, value);
   const newErrors = { ...currentErrors };
+  
+  // Special handling for productionTime - skip validation if empty
+  if (fieldName === 'productionTime') {
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      delete newErrors[fieldName]; // Remove error if empty
+      return newErrors;
+    }
+  }
+  
+  const error = validateField(fieldName, value);
   
   if (error) {
     newErrors[fieldName] = error;

@@ -13,7 +13,7 @@ const movieSchema = new mongoose.Schema({
   },
   production_time: {
     type: Date,
-    required: true
+    required: false
   },
   poster_path: {
     type: String,

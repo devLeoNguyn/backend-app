@@ -30,6 +30,19 @@ interface AddDataProps {
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+/**
+ * 🎬 AddData Component - Updated with new requirements:
+ * 1. Production date now uses datetime-local format (YYYY-MM-DDTHH:MM) instead of date only
+ * 2. Production date field is only shown when release status is "Sắp phát hành" (upcoming)
+ * 3. Episodes field is only shown after movie type is selected and not for sports
+ * 
+ * Key changes:
+ * - shouldShowProductionDateField(): Shows production date only for upcoming movies
+ * - shouldShowEpisodesField(): Shows episodes only after movie type selection
+ * - Updated validation to handle datetime-local format
+ * - Added logic to reset fields when status/movie type changes
+ */
+
 const AddData: React.FC<AddDataProps> = ({
   slug,
   isOpen,
@@ -185,9 +198,14 @@ const AddData: React.FC<AddDataProps> = ({
     return releaseStatus === 'Sắp phát hành';
   };
 
+  // Hàm kiểm tra có cần hiển thị field ngày sản xuất không
+  const shouldShowProductionDateField = () => {
+    return releaseStatus === 'Sắp phát hành';
+  };
+
   // Hàm kiểm tra có cần hiển thị field số tập không
   const shouldShowEpisodesField = () => {
-    return movieType !== 'Thể thao';
+    return movieType && movieType !== 'Thể thao';
   };
 
   // Hàm kiểm tra có cần hiển thị toggle notification không
@@ -323,6 +341,13 @@ const AddData: React.FC<AddDataProps> = ({
       poster: file || undefined
     };
     
+    console.log('🔍 Validating form with data:', {
+      releaseStatus,
+      productionTime,
+      movieType,
+      eventStartTime
+    });
+    
     const errors = validateMovieForm(formData);
 
     // Thêm validation cho genres
@@ -330,11 +355,23 @@ const AddData: React.FC<AddDataProps> = ({
       errors.genres = 'Phải chọn ít nhất một thể loại chính';
     }
 
+    // Thêm validation cho production_time khi trạng thái là "Sắp phát hành"
+    if (releaseStatus === 'Sắp phát hành' && !productionTime) {
+      errors.productionTime = 'Vui lòng nhập ngày sản xuất cho phim sắp phát hành';
+    }
+
+    // Clear productionTime error if status is not "Sắp phát hành"
+    if (releaseStatus !== 'Sắp phát hành' && errors.productionTime) {
+      console.log('🧹 Clearing productionTime error because status is not "Sắp phát hành"');
+      delete errors.productionTime;
+    }
+
     // Thêm validation cho event_start_time khi cần thiết
     if (releaseStatus === 'Sắp phát hành' && movieType === 'Thể thao' && !eventStartTime) {
       errors.eventStartTime = 'Vui lòng nhập thời gian bắt đầu sự kiện';
     }
 
+    console.log('📋 Final validation errors:', errors);
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -368,7 +405,7 @@ const AddData: React.FC<AddDataProps> = ({
       const productData = {
         title,
         description,
-        production_time: productionTime,
+        production_time: releaseStatus === 'Sắp phát hành' ? productionTime : '', // Chỉ gửi khi cần thiết
         genres: selectedGenreIds, // <-- send array of genre ids
         producer,
         price: parseFloat(price) || 0,
@@ -404,6 +441,8 @@ const AddData: React.FC<AddDataProps> = ({
       setFile(null);
       // Reset event start time
       setEventStartTime('');
+      // Reset production time
+      setProductionTime('');
       // Reset notification toggle
       setSendNotification(false);
     } else {
@@ -412,17 +451,20 @@ const AddData: React.FC<AddDataProps> = ({
       setSelectedParents([]);
       setSelectedChildren({});
       setEventStartTime('');
+      setProductionTime('');
       setSendNotification(false);
     }
   }, [isOpen]);
 
   // Updated validation for movie form - theo EditData
   React.useEffect(() => {
-    // Reset validation errors when form changes
-    setValidationErrors({});
+    console.log('🔄 Form validation useEffect triggered');
     
     const requiredFields = [title, producer, price, movieType, releaseStatus];
     const hasValidGenre = selectedParents.length > 0; // At least one parent genre selected
+    
+    // Thêm validation cho production_time khi trạng thái là "Sắp phát hành"
+    const hasValidProductionTime = releaseStatus === 'Sắp phát hành' ? !!productionTime : true;
     
     // Thêm validation cho event_start_time khi cần thiết
     const hasValidEventTime = releaseStatus === 'Sắp phát hành' && movieType === 'Thể thao' ? !!eventStartTime : true;
@@ -430,9 +472,19 @@ const AddData: React.FC<AddDataProps> = ({
     // Thêm validation cho totalEpisodes khi không phải thể thao
     const hasValidEpisodes = movieType === 'Thể thao' ? true : !!totalEpisodes;
     
-    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || !hasValidEventTime || !hasValidEpisodes;
+    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || !hasValidProductionTime || !hasValidEventTime || !hasValidEpisodes;
+    
+    console.log('📊 Form validation status:', {
+      requiredFields: requiredFields.map(f => f ? 'filled' : 'empty'),
+      hasValidGenre,
+      hasValidProductionTime,
+      hasValidEventTime,
+      hasValidEpisodes,
+      isFormEmpty
+    });
+    
     setFormProductIsEmpty(isFormEmpty);
-  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents, eventStartTime]);
+  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents, eventStartTime, productionTime]);
 
   if (!isOpen || slug !== 'product') return null;
 
@@ -524,29 +576,29 @@ const AddData: React.FC<AddDataProps> = ({
                     </div>
                   )}
                 </div>
-              ) : (
-                // Field thời gian sản xuất cho phim hoặc thể thao đã phát hành
-              <div className="form-control w-full">
+              ) : shouldShowProductionDateField() ? (
+                // Field ngày sản xuất cho phim upcoming với datetime-local
+                <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text">Ngày sản xuất <span className="text-error">*</span></span>
                   </label>
-                <input
-                  type="date"
-                  placeholder="Thời gian sản xuất"
+                  <input
+                    type="datetime-local"
+                    placeholder="Thời gian sản xuất"
                     className={`input input-bordered w-full ${validationErrors.productionTime ? 'input-error' : ''}`}
-                  value={productionTime}
-                  onChange={(e) => setProductionTime(e.target.value)}
+                    value={productionTime}
+                    onChange={(e) => setProductionTime(e.target.value)}
                     onBlur={() => handleFieldBlur('productionTime', productionTime)}
-                  min="1900-01-01"
-                  max={`${new Date().getFullYear() + 1}-12-31`}
-                />
+                    min="1900-01-01T00:00"
+                    max={`${new Date().getFullYear() + 1}-12-31T23:59`}
+                  />
                   {validationErrors.productionTime && (
                     <div className="label">
                       <span className="label-text-alt text-error">{validationErrors.productionTime}</span>
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {/* Kiểu nội dung - CHUYỂN LÊN TRÊN ĐỂ CHỌN TRƯỚC */}
               <div className="form-control w-full">
@@ -595,6 +647,9 @@ const AddData: React.FC<AddDataProps> = ({
                   onChange={(e) => {
                     const selectedType = e.target.value;
                     setMovieType(selectedType);
+                    
+                    // Reset totalEpisodes khi thay đổi loại nội dung
+                    setTotalEpisodes('');
                     
                     // Tự động điều chỉnh số tập dựa trên loại phim
                     if (selectedType === 'Phim lẻ') {
@@ -829,7 +884,7 @@ const AddData: React.FC<AddDataProps> = ({
               </div>
               </div>
 
-              {/* Field số tập - CHỈ HIỂN THỊ KHI KHÔNG PHẢI THỂ THAO */}
+              {/* Field số tập - CHỈ HIỂN THỊ KHI ĐÃ CHỌN TYPE_MOVIE VÀ KHÔNG PHẢI THỂ THAO */}
               {shouldShowEpisodesField() && (
               <div className="form-control w-full">
                   <label className="label">
@@ -878,7 +933,7 @@ const AddData: React.FC<AddDataProps> = ({
                 )}
 
               {/* Thông báo cho thể thao khi ẩn field số tập */}
-              {!shouldShowEpisodesField() && (
+              {movieType === 'Thể thao' && (
                 <div className="alert alert-info">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -894,7 +949,20 @@ const AddData: React.FC<AddDataProps> = ({
                 <select
                   className="select select-bordered w-full"
                   value={releaseStatus}
-                  onChange={(e) => setReleaseStatus(e.target.value)}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    setReleaseStatus(newStatus);
+                    
+                    // Reset production time khi chuyển từ "Sắp phát hành" sang "Đã phát hành"
+                    if (newStatus === 'Đã phát hành' && releaseStatus === 'Sắp phát hành') {
+                      setProductionTime('');
+                    }
+                    
+                    // Reset event start time khi chuyển từ "Sắp phát hành" sang "Đã phát hành"
+                    if (newStatus === 'Đã phát hành' && releaseStatus === 'Sắp phát hành') {
+                      setEventStartTime('');
+                    }
+                  }}
                 >
                   <option value="Sắp phát hành">⏰ Sắp phát hành</option>
                   <option value="Đã phát hành">✅ Đã phát hành</option>

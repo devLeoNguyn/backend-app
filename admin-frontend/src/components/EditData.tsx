@@ -68,6 +68,23 @@ interface EditDataProps {
   movieData: MovieData;
 }
 
+/**
+ * ✏️ EditData Component - Updated with same logic as AddData:
+ * 1. Production date uses datetime-local format (YYYY-MM-DDTHH:MM)
+ * 2. Production date field only shown when release status is "Sắp phát hành" (upcoming)
+ * 3. Episodes field only shown after movie type is selected and not for sports
+ * 4. Added event start time field for sports events
+ * 5. Added notification toggle for released movies
+ * 
+ * Key features:
+ * - shouldShowProductionDateField(): Shows production date only for upcoming movies
+ * - shouldShowEpisodesField(): Shows episodes only after movie type selection
+ * - shouldShowStartTimeField(): Shows event start time for sports
+ * - shouldShowNotificationToggle(): Shows notification toggle for released movies
+ * - Updated validation to handle all new fields
+ * - Added logic to reset fields when status/movie type changes
+ */
+
 const EditData: React.FC<EditDataProps> = ({
   slug,
   isOpen,
@@ -100,7 +117,7 @@ const EditData: React.FC<EditDataProps> = ({
   const [title, setTitle] = React.useState(movieData?.title || '');
   const [description, setDescription] = React.useState(movieData?.description || '');
   const [productionTime, setProductionTime] = React.useState(
-    movieData?.createdAt ? movieData.createdAt.split('T')[0] : ''
+    movieData?.createdAt ? movieData.createdAt.slice(0, 16) : ''
   );
   const [producer, setProducer] = React.useState(movieData?.producer || '');
   const [price, setPrice] = React.useState(movieData?.price?.toString() || '0');
@@ -108,8 +125,11 @@ const EditData: React.FC<EditDataProps> = ({
   const [totalEpisodes, setTotalEpisodes] = React.useState(movieData?.totalEpisodes?.toString() || '1');
   const [releaseStatus, setReleaseStatus] = React.useState(
     movieData?.status === 'released' ? 'Đã phát hành' : 
-    movieData?.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành'
+    movieData?.status === 'ended' ? 'Đã kết thúc' : 
+    movieData?.status === 'upcoming' ? 'Sắp phát hành' : 'Đã phát hành'
   );
+  const [eventStartTime, setEventStartTime] = React.useState(''); // Thêm field cho thể thao
+  const [sendNotification, setSendNotification] = React.useState(false); // Toggle notification
   
   const [formProductIsEmpty, setFormProductIsEmpty] = React.useState(false);
   
@@ -138,6 +158,115 @@ const EditData: React.FC<EditDataProps> = ({
     return firstParentChildren.filter(child => commonGenreNames.includes(child.genre_name));
   };
 
+  // Hàm tìm genre theo tên
+  const findGenreByName = (genreName: string): Genre | undefined => {
+    return parentGenres.find(genre => 
+      genre.genre_name.toLowerCase() === genreName.toLowerCase()
+    );
+  };
+
+  // Hàm tự động chọn thể loại dựa trên loại nội dung
+  const autoSelectGenreByMovieType = (selectedType: string) => {
+    console.log('🎯 Auto-selecting genre for movie type:', selectedType);
+    
+    // Reset genre selections trước
+    setSelectedParents([]);
+    setSelectedChildren({});
+    
+    let targetGenreName = '';
+    
+    switch (selectedType) {
+      case 'Phim bộ':
+        targetGenreName = 'Phim bộ';
+        break;
+      case 'Phim lẻ':
+        targetGenreName = 'Phim lẻ';
+        break;
+      case 'Thể thao':
+        targetGenreName = 'Thể thao';
+        break;
+      default:
+        console.log('⚠️ Unknown movie type:', selectedType);
+        return;
+    }
+    
+    // Tìm genre tương ứng
+    const targetGenre = findGenreByName(targetGenreName);
+    if (targetGenre) {
+      console.log('✅ Found and auto-selecting genre:', targetGenre.genre_name, 'ID:', targetGenre._id);
+      setSelectedParents([targetGenre._id]);
+    } else {
+      console.warn('⚠️ Genre not found for movie type:', selectedType, 'Genre name:', targetGenreName);
+    }
+  };
+
+  // Hàm lọc genres để hiển thị dựa trên loại nội dung
+  const getFilteredGenres = () => {
+    if (movieType === 'Thể thao') {
+      // Chỉ hiển thị genre "Thể thao"
+      return parentGenres.filter(genre => 
+        genre.genre_name.toLowerCase().includes('thể thao')
+      );
+    } else if (movieType === 'Phim lẻ') {
+      // Bỏ "Phim bộ" và "Thể thao", giữ các thể loại khác
+      return parentGenres.filter(genre => 
+        !genre.genre_name.toLowerCase().includes('phim bộ') &&
+        !genre.genre_name.toLowerCase().includes('thể thao')
+      );
+    } else if (movieType === 'Phim bộ') {
+      // Bỏ "Phim lẻ", "Phim chiếu rạp" và "Thể thao", giữ các thể loại khác
+      return parentGenres.filter(genre => 
+        !genre.genre_name.toLowerCase().includes('phim lẻ') &&
+        !genre.genre_name.toLowerCase().includes('phim chiếu rạp') &&
+        !genre.genre_name.toLowerCase().includes('thể thao')
+      );
+    }
+    // Hiển thị tất cả genres cho các loại khác hoặc chưa chọn
+    return parentGenres;
+  };
+
+  // Hàm lấy label phù hợp với ngữ cảnh
+  const getContextualLabels = () => {
+    if (movieType === 'Thể thao') {
+      return {
+        title: 'Tên sự kiện thể thao',
+        description: 'Mô tả sự kiện thể thao',
+        producer: 'Đơn vị tổ chức',
+        genre: 'Loại thể thao',
+        subGenre: 'Môn thể thao cụ thể',
+        timeField: 'Thời gian bắt đầu sự kiện'
+      };
+    }
+    return {
+      title: 'Tên phim',
+      description: 'Mô tả phim',
+      producer: 'Nhà sản xuất',
+      genre: 'Thể loại chính',
+      subGenre: 'Thể loại phụ',
+      timeField: 'Thời gian sản xuất'
+    };
+  };
+
+  // Hàm kiểm tra có cần hiển thị field ngày sản xuất không
+  const shouldShowProductionDateField = () => {
+    return releaseStatus === 'Sắp phát hành';
+  };
+
+  // Hàm kiểm tra có cần hiển thị field thời gian bắt đầu không
+  const shouldShowStartTimeField = () => {
+    return releaseStatus === 'Sắp phát hành';
+  };
+
+  // Hàm kiểm tra có cần hiển thị field số tập không
+  const shouldShowEpisodesField = () => {
+    return movieType && movieType !== 'Thể thao';
+  };
+
+  // Hàm kiểm tra có cần hiển thị toggle notification không
+  const shouldShowNotificationToggle = () => {
+    return releaseStatus === 'Đã phát hành';
+  };
+
   // Validation function sử dụng movieValidation module
   const validateForm = () => {
     const formData: MovieFormData = {
@@ -157,6 +286,16 @@ const EditData: React.FC<EditDataProps> = ({
     // Thêm validation cho genres
     if (selectedParents.length === 0) {
       errors.genres = 'Phải chọn ít nhất một thể loại chính';
+    }
+
+    // Thêm validation cho production_time khi trạng thái là "Sắp phát hành"
+    if (releaseStatus === 'Sắp phát hành' && !productionTime) {
+      errors.productionTime = 'Vui lòng nhập ngày sản xuất cho phim sắp phát hành';
+    }
+
+    // Thêm validation cho event_start_time khi cần thiết
+    if (releaseStatus === 'Sắp phát hành' && movieType === 'Thể thao' && !eventStartTime) {
+      errors.eventStartTime = 'Vui lòng nhập thời gian bắt đầu sự kiện';
     }
 
     setValidationErrors(errors);
@@ -237,15 +376,20 @@ const EditData: React.FC<EditDataProps> = ({
     if (movieData) {
       setTitle(movieData.title || '');
       setDescription(movieData.description || '');
-      setProductionTime(movieData.createdAt ? movieData.createdAt.split('T')[0] : '');
+      setProductionTime(movieData.createdAt ? movieData.createdAt.slice(0, 16) : '');
       setProducer(movieData.producer || '');
       setPrice(movieData.price?.toString() || '0');
       setMovieType(movieData.movieType || '');
       setTotalEpisodes(movieData.totalEpisodes?.toString() || '1');
       setReleaseStatus(
         movieData.status === 'released' ? 'Đã phát hành' : 
-        movieData.status === 'ended' ? 'Đã kết thúc' : 'Đã phát hành'
+        movieData.status === 'ended' ? 'Đã kết thúc' : 
+        movieData.status === 'upcoming' ? 'Sắp phát hành' : 'Đã phát hành'
       );
+      
+      // Reset event start time và notification toggle
+      setEventStartTime('');
+      setSendNotification(false);
       
       // Reset file và set preview từ movieData
       setFile(null);
@@ -262,11 +406,20 @@ const EditData: React.FC<EditDataProps> = ({
       // Reset image states khi đóng modal
       setPreview(null);
       setFile(null);
+      // Reset production time
+      setProductionTime('');
+      // Reset event start time
+      setEventStartTime('');
+      // Reset notification toggle
+      setSendNotification(false);
     } else {
       // Reset genre states when modal opens (before data loads)
       console.log('🔄 Modal opened, resetting genre states...');
       setSelectedParents([]);
       setSelectedChildren({});
+      setProductionTime('');
+      setEventStartTime('');
+      setSendNotification(false);
     }
   }, [isOpen]);
 
@@ -490,11 +643,21 @@ const EditData: React.FC<EditDataProps> = ({
     // Reset validation errors when form changes
     setValidationErrors({});
     
-    const requiredFields = [title, producer, price, movieType, totalEpisodes, releaseStatus];
+    const requiredFields = [title, producer, price, movieType, releaseStatus];
     const hasValidGenre = selectedParents.length > 0; // At least one parent genre selected
-    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre;
+    
+    // Thêm validation cho production_time khi trạng thái là "Sắp phát hành"
+    const hasValidProductionTime = releaseStatus === 'Sắp phát hành' ? !!productionTime : true;
+    
+    // Thêm validation cho event_start_time khi cần thiết
+    const hasValidEventTime = releaseStatus === 'Sắp phát hành' && movieType === 'Thể thao' ? !!eventStartTime : true;
+    
+    // Thêm validation cho totalEpisodes khi không phải thể thao
+    const hasValidEpisodes = movieType === 'Thể thao' ? true : !!totalEpisodes;
+    
+    const isFormEmpty = requiredFields.some(field => field === '') || !hasValidGenre || !hasValidProductionTime || !hasValidEventTime || !hasValidEpisodes;
     setFormProductIsEmpty(isFormEmpty);
-  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents]);
+  }, [title, producer, price, movieType, totalEpisodes, releaseStatus, selectedParents, productionTime, eventStartTime]);
 
   if (!isOpen || slug !== 'product') return null;
 
@@ -564,29 +727,56 @@ const EditData: React.FC<EditDataProps> = ({
                 </div>
               </div>
               
-              {/* Production Time Field */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Thời gian sản xuất <span className="text-error">*</span></span>
-                </label>
-                <input
-                  type="date"
-                  className={`input input-bordered w-full ${validationErrors.productionTime ? 'input-error' : ''}`}
-                  value={productionTime}
-                  onChange={(e) => setProductionTime(e.target.value)}
-                  onBlur={() => handleFieldBlur('productionTime', productionTime)}
-                />
-                {validationErrors.productionTime && (
-                  <div className="label">
-                    <span className="label-text-alt text-error">{validationErrors.productionTime}</span>
-                  </div>
-                )}
-              </div>
+              {/* Field thời gian - hiển thị khác nhau tùy theo loại nội dung và trạng thái */}
+              {movieType === 'Thể thao' && shouldShowStartTimeField() ? (
+                // Field thời gian bắt đầu sự kiện cho thể thao upcoming với datetime-local
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Thời gian bắt đầu sự kiện <span className="text-error">*</span></span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className={`input input-bordered w-full ${validationErrors.eventStartTime ? 'input-error' : ''}`}
+                    value={eventStartTime}
+                    onChange={(e) => setEventStartTime(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  {validationErrors.eventStartTime && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{validationErrors.eventStartTime}</span>
+                    </div>
+                  )}
+                </div>
+              ) : shouldShowProductionDateField() ? (
+                // Field ngày sản xuất cho phim upcoming với datetime-local
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Ngày sản xuất <span className="text-error">*</span></span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    placeholder="Thời gian sản xuất"
+                    className={`input input-bordered w-full ${validationErrors.productionTime ? 'input-error' : ''}`}
+                    value={productionTime}
+                    onChange={(e) => setProductionTime(e.target.value)}
+                    onBlur={() => handleFieldBlur('productionTime', productionTime)}
+                    min="1900-01-01T00:00"
+                    max={`${new Date().getFullYear() + 1}-12-31T23:59`}
+                  />
+                  {validationErrors.productionTime && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{validationErrors.productionTime}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
               
               {/* Current Genres Display - Based on current selection state */}
               {(selectedParents.length > 0 || Object.keys(selectedChildren).length > 0) && (
                 <div className="bg-base-200 p-3 rounded-lg">
-                  <h4 className="text-sm font-semibold text-base-content mb-2">Thể loại hiện tại:</h4>
+                  <h4 className="text-sm font-semibold text-base-content mb-2">
+                    {movieType === 'Thể thao' ? 'Loại thể thao hiện tại:' : 'Thể loại hiện tại:'}
+                  </h4>
                   <div className="flex flex-wrap gap-2">
                     {/* Show selected parent genres (only those without selected children) */}
                     {selectedParents
@@ -616,7 +806,7 @@ const EditData: React.FC<EditDataProps> = ({
                         <span 
                           key={`child-${childGenre._id}`} 
                           className="badge badge-primary badge-sm"
-                          title={`Thể loại phụ của ${parent.genre_name}`}
+                          title={movieType === 'Thể thao' ? `Môn thể thao của ${parent.genre_name}` : `Thể loại phụ của ${parent.genre_name}`}
                         >
                           {parent.genre_name} - {childGenre.genre_name}
                         </span>
@@ -630,30 +820,32 @@ const EditData: React.FC<EditDataProps> = ({
                 </div>
               )}
 
-              {/* Genre Selection - theo AddData flow */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Thể loại chính <span className="text-error">*</span></span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {parentGenres.map((parent) => (
-                    <label key={parent._id} className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-primary checkbox-sm"
-                        checked={selectedParents.includes(parent._id)}
-                        onChange={e => handleSelectParent(parent._id, e.target.checked)}
-                      />
-                      <span className="text-sm">{parent.genre_name}</span>
-                    </label>
-                  ))}
-                </div>
-                {validationErrors.genres && (
-                  <div className="label">
-                    <span className="label-text-alt text-error">{validationErrors.genres}</span>
+              {/* Genre Selection - CHỈ HIỂN THỊ KHI ĐÃ CHỌN LOẠI NỘI DUNG */}
+              {movieType && (
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">{getContextualLabels().genre} <span className="text-error">*</span></span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {getFilteredGenres().map((parent) => (
+                      <label key={parent._id} className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-primary checkbox-sm"
+                          checked={selectedParents.includes(parent._id)}
+                          onChange={e => handleSelectParent(parent._id, e.target.checked)}
+                        />
+                        <span className="text-sm">{parent.genre_name}</span>
+                      </label>
+                    ))}
                   </div>
-                )}
-              </div>
+                  {validationErrors.genres && (
+                    <div className="label">
+                      <span className="label-text-alt text-error">{validationErrors.genres}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* For each selected parent, render a child genre dropdown */}
               {/* Nếu có nhiều parent và có child genre chung, render một dropdown duy nhất */}
@@ -663,7 +855,9 @@ const EditData: React.FC<EditDataProps> = ({
                   // Dropdown duy nhất cho child genre chung
                   return (
                     <div className="form-control w-full mt-2">
-                      <label className="label"><span className="label-text">Thể loại phụ chung cho các thể loại chính đã chọn</span></label>
+                      <label className="label"><span className="label-text">
+                        {movieType === 'Thể thao' ? 'Môn thể thao chung cho các loại thể thao đã chọn' : 'Thể loại phụ chung cho các thể loại chính đã chọn'}
+                      </span></label>
                       <select
                         className="select select-bordered w-full"
                         value={(() => {
@@ -685,7 +879,9 @@ const EditData: React.FC<EditDataProps> = ({
                         })()}
                         onChange={e => handleSelectCommonChild(e.target.value)}
                       >
-                        <option value="">Chọn thể loại phụ chung</option>
+                        <option value="">
+                          {movieType === 'Thể thao' ? 'Chọn môn thể thao chung' : 'Chọn thể loại phụ chung'}
+                        </option>
                         {commonChildren.map(child => (
                           <option key={child.genre_name} value={child.genre_name}>
                             {child.genre_name}
@@ -702,13 +898,20 @@ const EditData: React.FC<EditDataProps> = ({
                     if (children.length === 0) return null;
                     return (
                       <div key={parentId} className="form-control w-full mt-2">
-                        <label className="label"><span className="label-text">Thể loại phụ cho {parent?.genre_name}</span></label>
+                        <label className="label"><span className="label-text">
+                          {movieType === 'Thể thao' 
+                            ? `Môn thể thao cho ${parent?.genre_name}` 
+                            : `Thể loại phụ cho ${parent?.genre_name}`
+                          }
+                        </span></label>
                         <select
                           className="select select-bordered w-full"
                           value={selectedChildren[parentId] || ''}
                           onChange={e => handleSelectChild(parentId, e.target.value)}
                         >
-                          <option value="">Chọn thể loại phụ</option>
+                          <option value="">
+                            {movieType === 'Thể thao' ? 'Chọn môn thể thao' : 'Chọn thể loại phụ'}
+                          </option>
                           {children.map(child => (
                             <option
                               key={child._id}
@@ -785,17 +988,20 @@ const EditData: React.FC<EditDataProps> = ({
                     const selectedType = e.target.value;
                     setMovieType(selectedType);
                     
+                    // Reset totalEpisodes khi thay đổi loại nội dung
+                    setTotalEpisodes('');
+                    
                     // Tự động điều chỉnh số tập dựa trên loại phim
                     if (selectedType === 'Phim lẻ') {
                       setTotalEpisodes('1');
                     } else if (selectedType === 'Phim bộ') {
-                      // Chỉ điều chỉnh nếu hiện tại là 1 tập
-                      if (totalEpisodes === '1') {
-                        setTotalEpisodes('2');
-                      }
+                      setTotalEpisodes('2'); // Mặc định 2 tập cho phim bộ
                     } else if (selectedType === 'Thể thao') {
                       setTotalEpisodes('1'); // Thể thao thường 1 trận
                     }
+                    
+                    // Tự động chọn thể loại dựa trên loại nội dung
+                    autoSelectGenreByMovieType(selectedType);
                   }}
                   onBlur={() => handleFieldBlur('movieType', movieType)}
                 >
@@ -811,52 +1017,63 @@ const EditData: React.FC<EditDataProps> = ({
                 )}
               </div>
 
-              {/* Total Episodes Field */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Số tập <span className="text-error">*</span></span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="Nhập số tập"
-                  className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''} ${validationErrors.episodeCount ? 'input-error' : ''}`}
-                  value={totalEpisodes}
-                  disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const numValue = parseInt(value) || 1;
-                    
-                    // Kiểm tra ràng buộc dựa trên loại phim
-                    if (movieType === 'Phim lẻ' && numValue > 1) {
-                      // Phim lẻ chỉ được 1 tập
-                      return;
-                    } else if (movieType === 'Phim bộ' && numValue < 2) {
-                      // Phim bộ tối thiểu 2 tập
-                      return;
+              {/* Total Episodes Field - CHỈ HIỂN THỊ KHI ĐÃ CHỌN TYPE_MOVIE VÀ KHÔNG PHẢI THỂ THAO */}
+              {shouldShowEpisodesField() && (
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text">Số tập <span className="text-error">*</span></span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Nhập số tập"
+                    className={`input input-bordered w-full ${movieType === 'Phim lẻ' ? 'input-disabled' : ''} ${validationErrors.episodeCount ? 'input-error' : ''}`}
+                    value={totalEpisodes}
+                    disabled={movieType === 'Phim lẻ'} // Disable cho phim lẻ vì luôn là 1
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const numValue = parseInt(value) || 1;
+                      
+                      // Kiểm tra ràng buộc dựa trên loại phim
+                      if (movieType === 'Phim lẻ' && numValue > 1) {
+                        // Phim lẻ chỉ được 1 tập
+                        return;
+                      } else if (movieType === 'Phim bộ' && numValue < 2) {
+                        // Phim bộ tối thiểu 2 tập
+                        return;
+                      }
+                      
+                      setTotalEpisodes(value);
+                    }}
+                    onBlur={() => handleFieldBlur('episodeCount', totalEpisodes)}
+                    min={movieType === 'Phim bộ' ? '2' : '1'}
+                    max={movieType === 'Phim lẻ' ? '1' : '1000'}
+                    title={
+                      movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
+                      movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
+                      'Số tập của phim'
                     }
-                    
-                    setTotalEpisodes(value);
-                  }}
-                  onBlur={() => handleFieldBlur('episodeCount', totalEpisodes)}
-                  min={movieType === 'Phim bộ' ? '2' : '1'}
-                  max={movieType === 'Phim lẻ' ? '1' : '1000'}
-                  title={
-                    movieType === 'Phim lẻ' ? 'Phim lẻ luôn là 1 tập (không thể thay đổi)' :
-                    movieType === 'Phim bộ' ? 'Phim bộ tối thiểu 2 tập' :
-                    'Số tập của phim'
-                  }
-                />
-                <div className="label">
-                  <span className="label-text-alt text-xs">
-                    {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
-                    {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập, tối đa 1000 tập'}
-                    {movieType === 'Thể thao' && '⚽ Thể thao: thường 1 trận đấu'}
-                  </span>
-                  {validationErrors.episodeCount && (
-                    <span className="label-text-alt text-error">{validationErrors.episodeCount}</span>
-                  )}
+                  />
+                  <div className="label">
+                    <span className="label-text-alt text-xs">
+                      {movieType === 'Phim lẻ' && '🎬 Phim lẻ: luôn 1 tập (tự động)'}
+                      {movieType === 'Phim bộ' && '📺 Phim bộ: tối thiểu 2 tập, tối đa 1000 tập'}
+                    </span>
+                    {validationErrors.episodeCount && (
+                      <span className="label-text-alt text-error">{validationErrors.episodeCount}</span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Thông báo cho thể thao khi ẩn field số tập */}
+              {movieType === 'Thể thao' && (
+                <div className="alert alert-info">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span>⚽ Thể thao: Tự động ghi nhận 1 trận đấu</span>
+                </div>
+              )}
 
               {/* Release Status Field */}
               <div className="form-control w-full">
@@ -866,9 +1083,24 @@ const EditData: React.FC<EditDataProps> = ({
                 <select
                   className={`select select-bordered w-full ${validationErrors.status ? 'select-error' : ''}`}
                   value={releaseStatus}
-                  onChange={(e) => setReleaseStatus(e.target.value)}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    setReleaseStatus(newStatus);
+                    
+                    // Reset production time khi chuyển từ "Sắp phát hành" sang "Đã phát hành"
+                    if (newStatus === 'Đã phát hành' && releaseStatus === 'Sắp phát hành') {
+                      setProductionTime('');
+                    }
+                    
+                    // Reset event start time khi chuyển từ "Sắp phát hành" sang "Đã phát hành"
+                    if (newStatus === 'Đã phát hành' && releaseStatus === 'Sắp phát hành') {
+                      setEventStartTime('');
+                      setSendNotification(false);
+                    }
+                  }}
                   onBlur={() => handleFieldBlur('status', releaseStatus)}
                 >
+                  <option value="Sắp phát hành">⏰ Sắp phát hành</option>
                   <option value="Đã phát hành">✅ Đã phát hành</option>
                   <option value="Đã kết thúc">🚫 Đã kết thúc</option>
                 </select>
@@ -878,6 +1110,26 @@ const EditData: React.FC<EditDataProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Toggle notification - CHỈ HIỂN THỊ KHI TRẠNG THÁI LÀ "ĐÃ PHÁT HÀNH" */}
+              {shouldShowNotificationToggle() && (
+                <div className="form-control">
+                  <label className="label cursor-pointer">
+                    <span className="label-text">📢 Gửi thông báo ngay đến người dùng</span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary"
+                      checked={sendNotification}
+                      onChange={(e) => setSendNotification(e.target.checked)}
+                    />
+                  </label>
+                  <div className="label">
+                    <span className="label-text-alt text-xs">
+                      Khi bật, hệ thống sẽ gửi push notification ngay lập tức đến tất cả người dùng
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Poster Field */}
               <div className="form-control w-full">
