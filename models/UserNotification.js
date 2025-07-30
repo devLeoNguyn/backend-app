@@ -29,7 +29,7 @@ const userNotificationSchema = new mongoose.Schema({
   },
   delivery_status: {
     type: String,
-    enum: ['pending', 'sent', 'delivered', 'failed'],
+    enum: ['pending', 'sent', 'delivered', 'failed', 'muted'],
     default: 'pending'
   },
   error_message: {
