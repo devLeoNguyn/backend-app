@@ -27,7 +27,7 @@ const getNewReleases = async (req, res) => {
         const showAll = req.query.showAll === 'true'; // Option để hiển thị tất cả
         const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5); // List phim cho banner
         const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6); // Phim cho grid "Phim dành cho bạn"
-        const days = parseInt(req.query.days) || 30;
+        const days = parseInt(req.query.days) || 90;
 
         // Lấy phim mới nhất cho banner và grid - chỉ dùng field có sẵn trong schema
         const newReleases = await Movie.find({
