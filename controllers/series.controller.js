@@ -59,7 +59,7 @@ const getBannerSeries = async (req, res) => {
         const showAll = req.query.showAll === 'true';
         const bannerLimit = parseInt(req.query.bannerLimit) || (showAll ? 20 : 5);
         const gridLimit = parseInt(req.query.limit) || (showAll ? 20 : 6);
-        const days = parseInt(req.query.days) || 30;
+        const days = parseInt(req.query.days) || 90;
 
         const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
