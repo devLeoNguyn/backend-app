@@ -6,6 +6,7 @@ import { fetchProducts, deleteProduct, fetchSingleProduct } from '../api/ApiColl
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import AddData from '../components/AddData';
+import AddSportsEvent from '../components/AddSportsEvent';
 import EditData from '../components/EditData';
 
 interface Genre {
@@ -42,6 +43,7 @@ const Products = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [isSportsOpen, setIsSportsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<MovieData | null>(null);
   
@@ -230,13 +232,21 @@ const Products = () => {
     <div className="w-full h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">🎬 Quản lý phim</h1>
+        <div className="flex gap-2">
           <button
-          className="btn btn-black elegant-black"
+            className="btn btn-black elegant-black"
             onClick={() => setIsOpen(true)}
           >
-          + Thêm phim mới
+            + Thêm phim mới
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setIsSportsOpen(true)}
+          >
+            ⚽ Thêm sự kiện thể thao
           </button>
         </div>
+      </div>
 
       <div className="flex-1">
           <DataTable
@@ -251,11 +261,18 @@ const Products = () => {
             </div>
 
       {/* Add Data Modal */}
-          <AddData
+      <AddData
         slug="product" 
-            isOpen={isOpen}
-            setIsOpen={setIsOpen}
-          />
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+      />
+
+      {/* Add Sports Event Modal */}
+      <AddSportsEvent
+        slug="product" 
+        isOpen={isSportsOpen}
+        setIsOpen={setIsSportsOpen}
+      />
 
       {/* Edit Data Modal */}
       {selectedMovie && (

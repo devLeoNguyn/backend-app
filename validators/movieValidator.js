@@ -98,39 +98,26 @@ const determineMovieType = (maxEpisodeNumber) => {
     return maxEpisodeNumber > 1 ? 'Phim bộ' : 'Phim lẻ';
 };
 
-// Validation cho Sports Events
+// Validation cho Sports Events - sử dụng production_time thay vì event_start_time
 const validateSportsEvent = (movieData) => {
-    const { movie_type, event_start_time, event_status } = movieData;
+    const { movie_type, production_time } = movieData;
     
     // Chỉ validate khi là thể thao
     if (movie_type !== 'Thể thao') {
         return movieData;
     }
     
-    // Validate event_start_time - bắt buộc cho sự kiện thể thao
-    if (!event_start_time) {
-        throw new Error('event_start_time is required for sports events');
+    // Validate production_time cho sự kiện thể thao
+    if (production_time) {
+        const startTime = new Date(production_time);
+        if (isNaN(startTime.getTime())) {
+            throw new Error('production_time must be a valid date');
+        }
     }
-    
-    const startTime = new Date(event_start_time);
-    if (isNaN(startTime.getTime())) {
-        throw new Error('event_start_time must be a valid date');
-    }
-    
-    // Validate event_status
-    const validStatuses = ['upcoming', 'ended'];
-    if (event_status && !validStatuses.includes(event_status)) {
-        throw new Error('event_status must be either "upcoming" or "ended"');
-    }
-    
-    // Tự động xác định event_status nếu không có
-    const now = new Date();
-    const autoStatus = startTime > now ? 'upcoming' : 'ended';
     
     return {
         ...movieData,
-        event_start_time: startTime,
-        event_status: event_status || autoStatus,
+        production_time: production_time ? new Date(production_time) : null,
         // Sports events mặc định có 1 episode (trận đấu)
         total_episodes: 1,
         movie_type: 'Thể thao'
