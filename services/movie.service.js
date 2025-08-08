@@ -66,8 +66,6 @@ const createMovieComprehensive = async (movieData) => {
             movie_type,
             poster_path,
             genres = [],
-            event_start_time,
-            event_status,
             maxEpisodeNumber
         } = validatedData;
 
@@ -89,11 +87,7 @@ const createMovieComprehensive = async (movieData) => {
             is_free: price === 0
         };
 
-        // Handle sports events special fields
-        if (movie_type === 'Thể thao') {
-            movieCreateData.event_start_time = event_start_time;
-            movieCreateData.event_status = event_status;
-        }
+        // Gỡ bỏ logic event_start_time và event_status
 
         // Create movie
         const newMovie = new Movie(movieCreateData);

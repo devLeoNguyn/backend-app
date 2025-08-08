@@ -52,11 +52,7 @@ const createMovieController = async (req, res) => {
         // Format response using schema method
         const formattedMovie = newMovie.formatMovieResponse(episodes);
 
-        // Add special information for sports events
-        if (newMovie.movie_type === 'Thể thao') {
-            formattedMovie.event_start_time = newMovie.event_start_time;
-            formattedMovie.event_status = newMovie.event_status;
-        }
+        // Gỡ bỏ logic event_start_time và event_status
 
         // Gửi push notification dựa trên 2 điều kiện:
         // 1. Phim có trạng thái "released" (auto notification)
@@ -115,8 +111,6 @@ const createSportsEvent = async (req, res) => {
 
         // Format response
         const formattedMovie = newMovie.formatMovieResponse(episodes);
-        formattedMovie.event_start_time = newMovie.event_start_time;
-        formattedMovie.event_status = newMovie.event_status;
 
         res.status(201).json({
             status: 'success',
