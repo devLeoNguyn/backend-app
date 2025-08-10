@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const MovieRental = require('../models/MovieRental');
 const Notification = require('../models/Notification');
 const notificationService = require('./notification.service');
+const pushNotificationService = require('./push-notification.service');
 
 class CronService {
     
@@ -98,9 +99,6 @@ class CronService {
 
                 for (const rental of expiringRentals) {
                     try {
-                        // Ở đây có thể tích hợp với notification service
-                        // Ví dụ: gửi email, push notification, SMS, etc.
-                        
                         const remainingHours = Math.ceil(rental.remainingTime / (1000 * 60 * 60));
                         console.log(`Rental expiring soon: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.title} - ${remainingHours}h remaining`);
                         
@@ -108,13 +106,13 @@ class CronService {
                         await rental.markNotificationSent();
                         notificationCount++;
 
-                        // Send actual notification using notification service
-                        await notificationService.createAutoNotification('rental_expiry', {
-                            userId: rental.userId._id,
-                            movieId: rental.movieId._id,
-                            movieTitle: rental.movieId.title,
-                            remainingHours: remainingHours
-                        }, process.env.SYSTEM_ADMIN_ID || '6478b131b260ba24b5a8183e'); // Use a system admin ID
+                        // Send push notification using push notification service
+                        await pushNotificationService.sendRentalExpiryNotification(
+                            rental.userId._id,
+                            rental.movieId._id,
+                            rental.movieId.title,
+                            remainingHours
+                        );
 
                     } catch (error) {
                         console.error(`Error processing expiring rental ${rental._id}:`, error);
@@ -300,15 +298,16 @@ class CronService {
      */
     async sendExpiringNotification(rental) {
         try {
-            const message = `Phim "${rental.movieId.title}" của bạn sắp hết hạn trong ${Math.ceil(rental.remainingTime / (1000 * 60 * 60))} giờ nữa.`;
+            const remainingHours = Math.ceil(rental.remainingTime / (1000 * 60 * 60));
+            const message = `Phim "${rental.movieId.title}" của bạn sắp hết hạn trong ${remainingHours} giờ nữa.`;
             
-            // Use notification service to send expiry notification
-            await notificationService.createAutoNotification('rental_expiry', {
-                userId: rental.userId._id,
-                movieId: rental.movieId._id,
-                movieTitle: rental.movieId.title,
-                remainingHours: Math.ceil(rental.remainingTime / (1000 * 60 * 60))
-            }, process.env.SYSTEM_ADMIN_ID || '6478b131b260ba24b5a8183e');
+            // Use push notification service to send expiry notification
+            await pushNotificationService.sendRentalExpiryNotification(
+                rental.userId._id,
+                rental.movieId._id,
+                rental.movieId.title,
+                remainingHours
+            );
             
             console.log(`Sent notification to ${rental.userId.email}: ${message}`);
             return true;

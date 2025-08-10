@@ -3,7 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/auth');
 const loginController = require('../controllers/auth/login.controller');
 const pushTokenController = require('../controllers/auth/push-token.controller');
-const { validatePushToken, validateNotificationSettings } = require('../validators/notification.validator');
+const { validateFCMToken, validateNotificationSettings } = require('../validators/notification.validator');
 
 // === FLOW MỚI: 1 MÀN HÌNH DUY NHẤT ===
 // Gửi OTP (tự động detect đăng ký hay đăng nhập)
@@ -25,7 +25,10 @@ router.post('/login', loginController.traditionalLogin);
 
 // === PUSH NOTIFICATION ROUTES ===
 // Đăng ký push token cho user (không cần auth middleware, dùng userId)
-router.post('/push-token', validatePushToken, pushTokenController.registerPushToken);
+router.post('/push-token', validateFCMToken, pushTokenController.registerPushToken);
+
+// Đăng ký FCM token cho user (không cần auth middleware, dùng userId)
+router.post('/fcm-token', validateFCMToken, pushTokenController.registerFCMToken);
 
 // Cập nhật notification settings (không cần auth middleware, dùng userId)
 router.put('/notification-settings', validateNotificationSettings, pushTokenController.updateNotificationSettings);

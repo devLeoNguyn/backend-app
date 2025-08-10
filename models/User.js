@@ -50,6 +50,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     sparse: true // Cho phép null và unique khi có giá trị
   },
+  fcmToken: {
+    type: String,
+    sparse: true // Cho phép null và unique khi có giá trị
+  },
   notificationSettings: {
     newMovies: {
       type: Boolean,
