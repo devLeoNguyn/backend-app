@@ -1,5 +1,6 @@
 const rentalService = require('../services/rental.service');
 const cronService = require('../services/cron.service');
+const MovieRental = require('../models/MovieRental');
 const { validationResult } = require('express-validator');
 
 class RentalController {

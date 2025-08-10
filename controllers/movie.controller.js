@@ -805,8 +805,7 @@ const generateShareLink = async (req, res) => {
     
     // Create deeplink URLs for different environments
     const deeplinks = {
-      expoGo: `exp://localhost:8081/--/movie/${movieId}`,
-      production: `movieapp://movie/${movieId}`,
+      app: `datn2025v2://movie/${movieId}`,
       web: shareUrl
     };
     

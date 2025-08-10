@@ -349,26 +349,26 @@ class NotificationService {
       let targetUsers = [];
       
       if (notification.target_type === 'all') {
-        // Get all users with push tokens and notifications enabled
+        // Get all users with FCM tokens and notifications enabled
         const users = await User.find({
-          expoPushToken: { $exists: true, $ne: null },
+          fcmToken: { $exists: true, $ne: null },
           pushNotificationsEnabled: true
         });
         targetUsers = users.map(user => user._id);
       } else if (notification.target_type === 'specific_users') {
-        // Get specific users with push tokens and notifications enabled
+        // Get specific users with FCM tokens and notifications enabled
         const users = await User.find({
           _id: { $in: notification.target_users || [] },
-          expoPushToken: { $exists: true, $ne: null },
+          fcmToken: { $exists: true, $ne: null },
           pushNotificationsEnabled: true
         });
         targetUsers = users.map(user => user._id);
       } else if (notification.target_type === 'segment') {
-        // Get users by segment with push tokens and notifications enabled
+        // Get users by segment with FCM tokens and notifications enabled
         const segment = notification.segment;
         // Example implementation - replace with actual segment logic
         const users = await User.find({ 
-          expoPushToken: { $exists: true, $ne: null },
+          fcmToken: { $exists: true, $ne: null },
           pushNotificationsEnabled: true
           /* segment logic */ 
         });

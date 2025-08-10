@@ -20,3 +20,6 @@ npm-debug.log*
 
 # aws
 keys/*.pem
+
+# Firebase service account key
+datn-5837c-firebase-adminsdk-fbsvc-505d5b6a2a.json

@@ -273,19 +273,20 @@ const validateBulkOperation = [
   handleValidationErrors
 ];
 
-// Validate push token registration
-const validatePushToken = [
+
+// Validate FCM token registration
+const validateFCMToken = [
   body('userId')
     .notEmpty()
     .withMessage('userId là bắt buộc')
     .isMongoId()
     .withMessage('userId phải là ObjectId hợp lệ'),
     
-  body('expoPushToken')
+  body('fcmToken')
     .notEmpty()
-    .withMessage('expoPushToken là bắt buộc')
+    .withMessage('fcmToken là bắt buộc')
     .isString()
-    .withMessage('expoPushToken phải là chuỗi'),
+    .withMessage('fcmToken phải là chuỗi'),
     
   body('platform')
     .optional()
@@ -347,6 +348,6 @@ module.exports = {
   validateNotificationId,
   validateScheduleNotification,
   validateBulkOperation,
-  validatePushToken,
+  validateFCMToken,
   validateNotificationSettings
 };

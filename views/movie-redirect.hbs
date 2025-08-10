@@ -12,7 +12,7 @@
     <meta property="og:type" content="video.movie">
     
     <!-- App Deep Linking -->
-    <meta name="apple-itunes-app" content="app-id=com.tech5.movies,app-argument=tech5://movie/{{movie._id}}">
+    <meta name="apple-itunes-app" content="app-id=com.tech5.movies,app-argument=datn2025v2://movie/{{movie._id}}">
     <meta name="google-play-app" content="app-id=com.tech5.movies">
     
     <style>
@@ -84,10 +84,8 @@
             // Try the provided deeplink first, then fallback to our defaults
             const deepLinks = [
                 deeplink, // User provided deeplink
-                'movieapp://movie/{{movie._id}}', // Production deeplink
-                'exp://localhost:8081/--/movie/{{movie._id}}', // Expo Go deeplink (localhost)
-                'exp://192.168.1.1:8081/--/movie/{{movie._id}}', // Common home network
-                'exp://10.0.0.1:8081/--/movie/{{movie._id}}' // Alternative network
+                'datn2025v2://movie/{{movie._id}}', // App scheme deeplink
+                'https://backend-app-lou3.onrender.com/movie/{{movie._id}}' // Universal link fallback
             ].filter(Boolean); // Remove null/undefined values
             
             let currentIndex = 0;

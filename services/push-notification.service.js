@@ -1,9 +1,6 @@
-const { Expo } = require('expo-server-sdk');
 const User = require('../models/User');
 const UserNotification = require('../models/UserNotification');
-
-// Initialize Expo SDK
-const expo = new Expo();
+const fcmService = require('./fcm.service');
 
 class PushNotificationService {
   /**
@@ -11,44 +8,24 @@ class PushNotificationService {
    */
   async sendPushNotification(userToken, notification) {
     try {
-      // Lấy user theo token để kiểm tra trạng thái mute
-      const user = await User.findOne({ expoPushToken: userToken });
+      // Lấy user theo FCM token để kiểm tra trạng thái mute
+      const user = await User.findOne({ fcmToken: userToken });
+      
       if (user && user.notificationMute && user.notificationMute.isMuted) {
         if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
           // Đang mute, không gửi notification
           return { success: false, error: 'User is muted' };
         }
       }
-      if (!Expo.isExpoPushToken(userToken)) {
-        console.error(`Invalid Expo push token: ${userToken}`);
-        return { success: false, error: 'Invalid push token' };
+
+      // Gửi notification qua FCM
+      if (user && user.fcmToken === userToken) {
+        console.log('🔥 [PushNotificationService] Sending via FCM');
+        return await fcmService.sendToToken(userToken, notification);
       }
 
-      const message = {
-        to: userToken,
-        sound: 'default',
-        title: notification.title,
-        body: notification.body,
-        data: {
-          type: notification.type,
-          deep_link: notification.deep_link,
-          notification_id: notification._id.toString()
-        }
-      };
-
-      const chunks = expo.chunkPushNotifications([message]);
-      const tickets = [];
-
-      for (const chunk of chunks) {
-        try {
-          const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-          tickets.push(...ticketChunk);
-        } catch (error) {
-          console.error('Error sending push notification chunk:', error);
-        }
-      }
-
-      return { success: true, tickets };
+      console.error(`Invalid FCM token: ${userToken}`);
+      return { success: false, error: 'Invalid FCM token' };
     } catch (error) {
       console.error('Error sending push notification:', error);
       return { success: false, error: error.message };
@@ -61,52 +38,52 @@ class PushNotificationService {
    */
   async sendBulkPushNotifications(notification, userNotifications) {
     try {
-      const messages = [];
+      const fcmTokens = [];
       const processedTokens = new Set(); // Deduplicate push tokens
       let sentCount = 0;
       let failedCount = 0;
+
+      // Create base notification data
+      const baseNotificationData = {
+        type: notification.event_type || notification.type,
+        deep_link: notification.deep_link,
+        notification_id: notification._id.toString()
+      };
+      
+      // Convert web deep link to app deep link if needed
+      if (baseNotificationData.deep_link && baseNotificationData.deep_link.startsWith('movie/')) {
+        const movieId = baseNotificationData.deep_link.split('movie/')[1];
+        baseNotificationData.deep_link = `datn2025v2://movie/${movieId}`;
+      }
+      
+      // Add movie-specific data if available
+      if (notification.deep_link && notification.deep_link.includes('movie/')) {
+        const movieId = notification.deep_link.split('movie/')[1];
+        baseNotificationData.movie_id = movieId;
+        baseNotificationData.movie_title = notification.title.replace('🎬 Phim mới: ', '').replace('📺 ', '').split(' - ')[0];
+        baseNotificationData.movie_poster = notification.image_url;
+        
+        // Add episode info if it's an episode notification
+        if (notification.event_type === 'new_episode') {
+          const episodeMatch = notification.title.match(/Tập (\d+)/);
+          if (episodeMatch) {
+            baseNotificationData.episode_number = parseInt(episodeMatch[1]);
+          }
+        }
+      }
 
       // Get user tokens for all the target users
       for (const userNotification of userNotifications) {
         try {
           const user = await User.findById(userNotification.user_id);
           // Chỉ gửi push notification nếu user không bị mute và UserNotification được đánh dấu là đã gửi
-          if (user && user.expoPushToken && !processedTokens.has(user.expoPushToken) && userNotification.is_sent) {
-            // Add token to processed set to avoid duplicates
-            processedTokens.add(user.expoPushToken);
-            
-            // Create notification message
-            const notificationData = {
-              type: notification.event_type || notification.type,
-              deep_link: notification.deep_link,
-              notification_id: notification._id.toString(),
-              user_notification_id: userNotification._id.toString()
-            };
-            
-            // Add movie-specific data if available
-            if (notification.deep_link && notification.deep_link.includes('movie/')) {
-              const movieId = notification.deep_link.split('movie/')[1];
-              notificationData.movie_id = movieId;
-              notificationData.movie_title = notification.title.replace('🎬 Phim mới: ', '').replace('📺 ', '').split(' - ')[0];
-              notificationData.movie_poster = notification.image_url;
-              
-              // Add episode info if it's an episode notification
-              if (notification.event_type === 'new_episode') {
-                const episodeMatch = notification.title.match(/Tập (\d+)/);
-                if (episodeMatch) {
-                  notificationData.episode_number = parseInt(episodeMatch[1]);
-                }
-              }
+          if (user && userNotification.is_sent) {
+            // Chỉ sử dụng FCM token
+            if (user.fcmToken && !processedTokens.has(user.fcmToken)) {
+              processedTokens.add(user.fcmToken);
+              fcmTokens.push(user.fcmToken);
+              console.log('🔥 [PushNotificationService] Added FCM token for user:', user._id);
             }
-            
-            messages.push({
-              to: user.expoPushToken,
-              sound: 'default',
-              title: notification.title,
-              body: notification.body,
-              data: notificationData,
-              priority: notification.priority || 'default'
-            });
           }
         } catch (error) {
           failedCount++;
@@ -114,46 +91,65 @@ class PushNotificationService {
         }
       }
 
-      // Send notifications in chunks
-      if (messages.length > 0) {
-        const chunks = expo.chunkPushNotifications(messages);
-        const tickets = [];
-
-        for (const chunk of chunks) {
-          try {
-            const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-            tickets.push(...ticketChunk);
-          } catch (error) {
-            failedCount += chunk.length;
-            console.error('Error sending push notification chunk:', error);
+      // Send FCM notifications
+      if (fcmTokens.length > 0) {
+        console.log(`🔥 [PushNotificationService] Sending ${fcmTokens.length} FCM notifications`);
+        
+        // Create proper notification object for FCM
+        const fcmNotification = {
+          title: notification.title,
+          body: notification.body,
+          data: baseNotificationData
+        };
+        
+        const fcmResults = await fcmService.sendToTokens(fcmTokens, fcmNotification);
+        
+        // Handle FCM results
+        if (fcmResults.summary) {
+          // New format with summary
+          sentCount = fcmResults.summary.success;
+          failedCount = fcmResults.summary.failed;
+        } else if (Array.isArray(fcmResults)) {
+          // Array format
+          for (const result of fcmResults) {
+            if (result.success) {
+              sentCount += result.sent || 0;
+            } else {
+              failedCount += result.tokens?.length || 0;
+            }
           }
-        }
-
-        // Process tickets
-        for (const ticket of tickets) {
-          if (ticket.status === 'ok') {
-            sentCount++;
+        } else {
+          // Single result object
+          if (fcmResults.success) {
+            sentCount += fcmResults.sent || 0;
           } else {
-            failedCount++;
+            failedCount += fcmResults.tokens?.length || 0;
           }
         }
       }
 
       return {
-        success: sentCount,
-        failure: failedCount,
-        total: userNotifications.length
+        success: true,
+        sentCount: sentCount,
+        failedCount: failedCount,
+        total: sentCount + failedCount
       };
     } catch (error) {
       console.error('Error sending bulk push notifications:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.message,
+        sentCount: 0,
+        failedCount: 0,
+        total: 0
+      };
     }
   }
 
   /**
-   * Register push token for user
+   * Register FCM token for user
    */
-  async registerPushToken(userId, token) {
+  async registerFCMToken(userId, fcmToken) {
     try {
       const user = await User.findById(userId);
       
@@ -161,14 +157,18 @@ class PushNotificationService {
         throw new Error('User not found');
       }
       
-      user.expoPushToken = token;
+      // Cập nhật FCM token và xóa Expo token cũ
+      user.fcmToken = fcmToken;
+      user.expoPushToken = null; // Xóa expo token cũ
       user.pushNotificationsEnabled = true;
+      
+      console.log('✅ [PushNotificationService] FCM token registered and expo token removed for user:', userId);
       
       await user.save();
       
       return user;
     } catch (error) {
-      console.error('Error registering push token:', error);
+      console.error('Error registering FCM token:', error);
       throw error;
     }
   }
@@ -227,18 +227,18 @@ class PushNotificationService {
     try {
       console.log('🎬 Sending new movie notification:', { movieId, movieTitle, posterPath });
       
-      // Get all users with push tokens
+      // Get all users with FCM tokens
       const users = await User.find({
-        expoPushToken: { $exists: true, $ne: null },
+        fcmToken: { $exists: true, $ne: null },
         pushNotificationsEnabled: true
       });
       
       if (users.length === 0) {
-        console.log('⚠️ No users with push tokens found');
-        return { success: false, message: 'No users with push tokens' };
+        console.log('⚠️ No users with FCM tokens found');
+        return { success: false, message: 'No users with FCM tokens' };
       }
       
-      console.log(`📱 Found ${users.length} users with push tokens`);
+      console.log(`📱 Found ${users.length} users with FCM tokens`);
       
       // Create notification in database first
       const notificationService = require('./notification.service');
@@ -290,18 +290,18 @@ class PushNotificationService {
     try {
       console.log('📺 Sending new episode notification:', { movieId, movieTitle, episodeNumber, posterPath });
       
-      // Get all users with push tokens
+      // Get all users with FCM tokens
       const users = await User.find({
-        expoPushToken: { $exists: true, $ne: null },
+        fcmToken: { $exists: true, $ne: null },
         pushNotificationsEnabled: true
       });
       
       if (users.length === 0) {
-        console.log('⚠️ No users with push tokens found');
-        return { success: false, message: 'No users with push tokens' };
+        console.log('⚠️ No users with FCM tokens found');
+        return { success: false, message: 'No users with FCM tokens' };
       }
       
-      console.log(`📱 Found ${users.length} users with push tokens`);
+      console.log(`📱 Found ${users.length} users with FCM tokens`);
       
       // Create notification in database first
       const notificationService = require('./notification.service');
