@@ -48,7 +48,7 @@
             line-height: 1.6;
         }
         .btn {
-            display: inline-block;
+            display: none; /* Hidden by default, shown when deep links fail */
             background: #007AFF;
             color: white;
             text-decoration: none;
@@ -56,11 +56,32 @@
             border-radius: 6px;
             margin-top: 20px;
             font-weight: 500;
+            cursor: pointer;
         }
         .fallback-text {
             margin-top: 10px;
             font-size: 14px;
             color: #666;
+        }
+        .loading {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007AFF;
+            font-size: 16px;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #007AFF;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -71,54 +92,110 @@
         {{/if}}
         <h1>{{movie.title}}</h1>
         <p>{{movie.description}}</p>
+        <div class="loading" id="loading">Đang mở ứng dụng...</div>
         <a href="#" class="btn" id="openApp">Mở trong ứng dụng</a>
         <p class="fallback-text">Nếu ứng dụng không mở, hãy cài đặt Tech5 Movies từ App Store hoặc Google Play</p>
     </div>
     
     <script>
+        // Prevent infinite loops by checking if we're already in a redirect cycle
+        let redirectAttempted = false;
+        
         function openApp() {
+            // Prevent multiple redirect attempts
+            if (redirectAttempted) {
+                console.log('Redirect already attempted, stopping to prevent loop');
+                return;
+            }
+            
+            redirectAttempted = true;
+            
             // Get deeplink from URL parameters if available
             const urlParams = new URLSearchParams(window.location.search);
             const deeplink = urlParams.get('deeplink');
             
             // Try the provided deeplink first, then fallback to our defaults
+            // Remove the universal link fallback to prevent loops
             const deepLinks = [
                 deeplink, // User provided deeplink
-                'datn2025v2://movie/{{movie._id}}', // App scheme deeplink
-                'https://backend-app-lou3.onrender.com/movie/{{movie._id}}' // Universal link fallback
+                'datn2025v2://movie/{{movie._id}}' // App scheme deeplink only
             ].filter(Boolean); // Remove null/undefined values
             
             let currentIndex = 0;
             
             function tryNextDeepLink() {
                 if (currentIndex >= deepLinks.length) {
-                    // All deeplinks failed, redirect to store
-                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    if (isIOS) {
-                        window.location.href = 'https://apps.apple.com/app/tech5-movies';
-                    } else {
-                        window.location.href = 'https://play.google.com/store/apps/details?id=com.tech5.movies';
-                    }
+                    // All deeplinks failed, show manual button
+                    console.log('All deep links failed, showing manual button');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('openApp').style.display = 'inline-block';
+                    document.getElementById('openApp').onclick = function() {
+                        // Try app store links as fallback
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                        if (isIOS) {
+                            window.location.href = 'https://apps.apple.com/app/tech5-movies';
+                        } else {
+                            window.location.href = 'https://play.google.com/store/apps/details?id=com.tech5.movies';
+                        }
+                    };
                     return;
                 }
                 
                 const currentDeepLink = deepLinks[currentIndex];
                 console.log('Trying deeplink:', currentDeepLink);
-                window.location.href = currentDeepLink;
                 
-                // Try next deeplink after 1 second
+                // Use location.replace for immediate redirect without popup
+                window.location.replace(currentDeepLink);
+                
+                // Fallback after 3 seconds if app didn't open
                 setTimeout(() => {
                     currentIndex++;
                     tryNextDeepLink();
-                }, 1000);
+                }, 3000);
             }
             
             // Start trying deeplinks
             tryNextDeepLink();
         }
         
-        // Execute immediately when page loads
-        openApp();
+        // Only auto-redirect on mobile devices
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Execute immediately when page loads on mobile
+            openApp();
+            
+            // Detect if app opened successfully by monitoring page visibility
+            let appOpened = false;
+            
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && !appOpened) {
+                    appOpened = true;
+                    console.log('App opened successfully, stopping redirect attempts');
+                    // Stop any ongoing redirect attempts
+                    redirectAttempted = true;
+                }
+            });
+            
+            // Also detect when user leaves the page
+            window.addEventListener('beforeunload', function() {
+                appOpened = true;
+                redirectAttempted = true;
+            });
+            
+        } else {
+            // On desktop, just show the manual button
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('openApp').style.display = 'inline-block';
+            document.getElementById('openApp').onclick = function() {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                if (isIOS) {
+                    window.location.href = 'https://apps.apple.com/app/tech5-movies';
+                } else {
+                    window.location.href = 'https://play.google.com/store/apps/details?id=com.tech5.movies';
+                }
+            };
+        }
     </script>
 </body>
 </html>

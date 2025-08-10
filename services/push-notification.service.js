@@ -43,31 +43,63 @@ class PushNotificationService {
       let sentCount = 0;
       let failedCount = 0;
 
-      // Create base notification data
+      // Create base notification data with complete structure for FCM
       const baseNotificationData = {
         type: notification.event_type || notification.type,
         deep_link: notification.deep_link,
-        notification_id: notification._id.toString()
+        notification_id: notification._id.toString(),
+        // Add all necessary fields for proper navigation
+        movie_id: null,
+        series_id: null,
+        episode_number: null,
+        movie_title: null,
+        series_title: null,
+        movie_poster: null,
+        action: 'open_app'
       };
       
-      // Convert web deep link to app deep link if needed
-      if (baseNotificationData.deep_link && baseNotificationData.deep_link.startsWith('movie/')) {
-        const movieId = baseNotificationData.deep_link.split('movie/')[1];
-        baseNotificationData.deep_link = `datn2025v2://movie/${movieId}`;
-      }
-      
-      // Add movie-specific data if available
-      if (notification.deep_link && notification.deep_link.includes('movie/')) {
-        const movieId = notification.deep_link.split('movie/')[1];
-        baseNotificationData.movie_id = movieId;
-        baseNotificationData.movie_title = notification.title.replace('🎬 Phim mới: ', '').replace('📺 ', '').split(' - ')[0];
-        baseNotificationData.movie_poster = notification.image_url;
-        
-        // Add episode info if it's an episode notification
-        if (notification.event_type === 'new_episode') {
-          const episodeMatch = notification.title.match(/Tập (\d+)/);
-          if (episodeMatch) {
-            baseNotificationData.episode_number = parseInt(episodeMatch[1]);
+      // Extract movie/series information from deep_link
+      if (baseNotificationData.deep_link) {
+        if (baseNotificationData.deep_link.startsWith('movie/')) {
+          const movieId = baseNotificationData.deep_link.split('movie/')[1];
+          baseNotificationData.movie_id = movieId;
+          
+          // Try to get movie details for better notification data
+          try {
+            const Movie = require('../models/Movie');
+            const movie = await Movie.findById(movieId).select('movie_title poster_path movie_type');
+            if (movie) {
+              baseNotificationData.movie_title = movie.movie_title;
+              baseNotificationData.movie_poster = movie.poster_path;
+              // Check if it's a series
+              if (movie.movie_type === 'series') {
+                baseNotificationData.series_id = movieId;
+                baseNotificationData.series_title = movie.movie_title;
+              }
+            }
+          } catch (error) {
+            console.log('Could not fetch movie details for notification:', error.message);
+          }
+        } else if (baseNotificationData.deep_link.startsWith('series/')) {
+          const parts = baseNotificationData.deep_link.split('/');
+          if (parts.length >= 2) {
+            baseNotificationData.series_id = parts[1];
+            // Extract episode number if present
+            if (parts.length >= 3) {
+              baseNotificationData.episode_number = parseInt(parts[2]) || null;
+            }
+            
+            // Try to get series details
+            try {
+              const Movie = require('../models/Movie');
+              const series = await Movie.findById(parts[1]).select('movie_title poster_path');
+              if (series) {
+                baseNotificationData.series_title = series.movie_title;
+                baseNotificationData.movie_poster = series.poster_path;
+              }
+            } catch (error) {
+              console.log('Could not fetch series details for notification:', error.message);
+            }
           }
         }
       }
