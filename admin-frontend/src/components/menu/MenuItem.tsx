@@ -33,8 +33,8 @@ const MenuItem: React.FC<MenuItemProps> = ({
               to={listItem.url || ''}
               className={({ isActive }) =>
                 isActive
-                  ? 'btn 2xl:min-h-[52px] 3xl:min-h-[64px] btn-black btn-block justify-start gap-3 rounded-lg shadow-lg elegant-black'
-                  : 'btn 2xl:min-h-[52px] 3xl:min-h-[64px] btn-ghost btn-block justify-start gap-3 rounded-lg hover:btn-black transition-all duration-200'
+                  ? 'btn btn-block w-full px-5 2xl:min-h-[52px] 3xl:min-h-[64px] justify-start gap-3 rounded-xl shadow-lg elegant-black btn-black'
+                  : 'btn btn-block w-full px-5 2xl:min-h-[52px] 3xl:min-h-[64px] btn-ghost justify-start gap-3 rounded-xl hover:btn-black transition-all duration-200'
               }
             >
               <listItem.icon className="xl:text-xl 2xl:text-2xl 3xl:text-3xl" />

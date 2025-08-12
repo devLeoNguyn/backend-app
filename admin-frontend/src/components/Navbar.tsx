@@ -8,7 +8,8 @@ import toast from 'react-hot-toast';
 import { menu } from './menu/data';
 import MenuItem from './menu/MenuItem';
 import { authService } from '../services/authService';
-import { DiReact } from 'react-icons/di';
+// import { DiReact } from 'react-icons/di';
+import logo from '../assets/logo.png';
 
 const Navbar = () => {
   const [isFullScreen, setIsFullScreen] = React.useState(true);
@@ -60,7 +61,7 @@ const Navbar = () => {
 
   return (
     // navbar screen
-    <div className="fixed z-[3] top-0 left-0 right-0 bg-base-100 w-full flex justify-between px-3 xl:px-4 py-3 xl:py-5 gap-4 xl:gap-0">
+    <div className="fixed z-[3] top-0 left-0 right-0 bg-base-100 w-full flex justify-between px-3 xl:px-4 py-0 xl:py-0 gap-4 xl:gap-0">
       {/* container */}
       <div className="flex gap-3 items-center">
         {/* for mobile */}
@@ -89,18 +90,24 @@ const Navbar = () => {
             <div className="menu p-4 w-auto min-h-full bg-base-200 text-base-content">
               <Link
                 to={'/admin'}
-                className="flex items-center gap-2 xl:gap-3 mt-1 mb-5"
+                className="flex items-center gap-2 xl:gap-3 my-0"
               >
-                <div className="logo-container">
-                  <img 
-                    src="/logo.png" 
+                <div className="logo-container flex items-center">
+                  <img
+                    src={logo}
                     alt="Movie Management Logo"
-                    className="w-8 h-8 sm:w-10 sm:h-10 xl:w-12 xl:h-12 2xl:w-14 2xl:h-14 object-contain" 
+                    className="block dark:hidden invert w-16 h-16 sm:w-20 sm:h-20 xl:w-24 xl:h-24 2xl:w-28 2xl:h-28 object-contain"
                     onError={(e) => {
-                      console.error('❌ Mobile logo failed to load from /logo.png');
                       e.currentTarget.style.display = 'none';
                     }}
-                    onLoad={() => console.log('✅ Mobile logo loaded successfully')}
+                  />
+                  <img
+                    src={logo}
+                    alt="Movie Management Logo"
+                    className="hidden dark:block w-16 h-16 sm:w-20 sm:h-20 xl:w-24 xl:h-24 2xl:w-28 2xl:h-28 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 </div>
                 <span className="text-[16px] leading-[1.2] sm:text-lg xl:text-xl 2xl:text-2xl font-semibold text-base-content dark:text-neutral-200">
@@ -120,11 +127,26 @@ const Navbar = () => {
         </div>
 
         {/* navbar logo */}
-        <Link to={'/admin'} className="flex items-center gap-2 xl:gap-3 mt-1 mb-5">
-          <DiReact className="text-3xl sm:text-4xl xl:text-4xl 2xl:text-6xl text-primary animate-spin-slow" />
-          <span className="text-[16px] leading-[1.2] sm:text-lg xl:text-xl 2xl:text-2xl font-semibold text-base-content dark:text-neutral-200">
-            Quản Lý Phim
-          </span>
+        <Link to={'/admin'} className="flex items-center gap-3 xl:gap-4 my-0">
+          <img
+            src={logo}
+            alt="Movie Management Logo"
+            className="block dark:hidden invert w-32 h-32 sm:w-32 sm:h-32 xl:w-32 xl:h-32 2xl:w-32 2xl:h-32 object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          <img
+            src={logo}
+            alt="Movie Management Logo"
+            className="hidden dark:block w-32 h-32 sm:w-32 sm:h-32 xl:w-32 xl:h-32 2xl:w-32 2xl:h-32 object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          {/* <span className="text-xs sm:text-base xl:text-lg 2xl:text-xl font-medium leading-tight tracking-tight text-base-content/90 dark:text-neutral-200">
+            Trang Admin
+          </span> */}
         </Link>
       </div>
 

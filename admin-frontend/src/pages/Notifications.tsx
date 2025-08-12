@@ -244,95 +244,104 @@ const Notifications: React.FC = () => {
   }
 
   return (
-    <div className="p-4 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">📱 Quản lý thông báo</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Tạo thông báo mới
-        </button>
-      </div>
+    <div className="w-full min-h-screen bg-base-100">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <span className="hidden sm:inline">📱</span>
+            Quản lý thông báo
+          </h1>
+          <button
+            className="btn btn-primary w-full sm:w-auto"
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Tạo thông báo mới
+          </button>
+        </div>
 
-      {/* Stats Overview */}
-      <div className="mb-6">
-        <NotificationStats stats={stats} loading={loadingStats} />
-      </div>
+        {/* Stats Overview */}
+        <div className="mb-8">
+          <NotificationStats stats={stats} loading={loadingStats} />
+        </div>
 
-      {/* Tabs */}
-      <div className="tabs tabs-boxed mb-4">
-        <button 
-          className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('all')}
-        >
-          Tất cả
-        </button>
-        <button 
-          className={`tab ${activeTab === 'draft' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('draft')}
-        >
-          Nháp
-        </button>
-        <button 
-          className={`tab ${activeTab === 'scheduled' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('scheduled')}
-        >
-          Đã lên lịch
-        </button>
-        <button 
-          className={`tab ${activeTab === 'sent' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('sent')}
-        >
-          Đã gửi
-        </button>
-        <button 
-          className={`tab ${activeTab === 'failed' ? 'tab-active' : ''}`}
-          onClick={() => handleTabChange('failed')}
-        >
-          Thất bại
-        </button>
-      </div>
+        {/* Tabs - Scrollable on mobile */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="tabs tabs-boxed inline-flex whitespace-nowrap min-w-full sm:min-w-0">
+            <button 
+              className={`tab tab-lg ${activeTab === 'all' ? 'tab-active' : ''}`}
+              onClick={() => handleTabChange('all')}
+            >
+              Tất cả
+            </button>
+            <button 
+              className={`tab tab-lg ${activeTab === 'draft' ? 'tab-active' : ''}`}
+              onClick={() => handleTabChange('draft')}
+            >
+              Nháp
+            </button>
+            <button 
+              className={`tab tab-lg ${activeTab === 'scheduled' ? 'tab-active' : ''}`}
+              onClick={() => handleTabChange('scheduled')}
+            >
+              Đã lên lịch
+            </button>
+            <button 
+              className={`tab tab-lg ${activeTab === 'sent' ? 'tab-active' : ''}`}
+              onClick={() => handleTabChange('sent')}
+            >
+              Đã gửi
+            </button>
+            <button 
+              className={`tab tab-lg ${activeTab === 'failed' ? 'tab-active' : ''}`}
+              onClick={() => handleTabChange('failed')}
+            >
+              Thất bại
+            </button>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="mb-4">
-        <NotificationFilters 
-          filters={filters} 
-          onFilterChange={updateFilters}
-        />
-      </div>
+        {/* Filters */}
+        <div className="mb-6 bg-base-200 p-4 rounded-lg">
+          <NotificationFilters 
+            filters={filters} 
+            onFilterChange={updateFilters}
+          />
+        </div>
 
       {/* Bulk Actions */}
       {selectedNotifications.length > 0 && (
-        <div className="mb-4 p-2 bg-base-200 rounded-lg flex justify-between items-center">
-          <span className="text-sm">
-            {selectedNotifications.length} thông báo đã chọn
-          </span>
-          <div className="space-x-2">
-            <button 
-              className="btn btn-sm btn-primary"
-              onClick={handleBulkSend}
-            >
-              Gửi thông báo đã chọn
-            </button>
-            <button 
-              className="btn btn-sm btn-error"
-              onClick={handleBulkDelete}
-            >
-              Xóa thông báo đã chọn
-            </button>
-            <button 
-              className="btn btn-sm btn-ghost"
-              onClick={deselectAll}
-            >
-              Hủy
-            </button>
+        <div className="mb-6 p-4 bg-base-200 rounded-lg">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <span className="text-sm font-medium">
+              {selectedNotifications.length} thông báo đã chọn
+            </span>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <button 
+                className="btn btn-sm btn-primary flex-1 sm:flex-none"
+                onClick={handleBulkSend}
+              >
+                Gửi thông báo đã chọn
+              </button>
+              <button 
+                className="btn btn-sm btn-error flex-1 sm:flex-none"
+                onClick={handleBulkDelete}
+              >
+                Xóa thông báo đã chọn
+              </button>
+              <button 
+                className="btn btn-sm btn-ghost flex-1 sm:flex-none"
+                onClick={deselectAll}
+              >
+                Hủy
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Notification List */}
-      <div className="flex-grow">
+      <div className="bg-base-100 rounded-lg shadow-sm min-h-[300px]">
         <NotificationList
           notifications={notifications}
           loading={loading}
@@ -387,10 +396,17 @@ const Notifications: React.FC = () => {
         isLoading={isLoading}
       />
 
-      {/* Pagination (simplified version) */}
+      {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex justify-center mt-4">
-          <div className="join">
+        <div className="flex justify-center mt-8 mb-4">
+          <div className="join shadow-sm">
+            <button
+              className="join-item btn btn-sm"
+              onClick={() => changePage(Math.max(1, pagination.page - 1))}
+              disabled={pagination.page === 1}
+            >
+              «
+            </button>
             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={`page-${page}`}
@@ -400,9 +416,17 @@ const Notifications: React.FC = () => {
                 {page}
               </button>
             ))}
+            <button
+              className="join-item btn btn-sm"
+              onClick={() => changePage(Math.min(pagination.totalPages, pagination.page + 1))}
+              disabled={pagination.page === pagination.totalPages}
+            >
+              »
+            </button>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

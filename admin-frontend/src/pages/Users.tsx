@@ -1,201 +1,343 @@
-import React from 'react';
-import { GridColDef } from '@mui/x-data-grid';
-import DataTable from '../components/DataTable';
-import { fetchUsers } from '../api/ApiCollection';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
-import AddData from '../components/AddData';
+import { 
+  MdSearch, 
+  MdAdd, 
+  MdEdit, 
+  MdDelete, 
+  MdEmail,
+  MdPhone,
+  MdCalendarToday
+} from 'react-icons/md';
+import { fetchUsers } from '../api/ApiCollection';
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: string;
+  gender?: string;
+  img?: string;
+  createdAt: string;
+  isActive: boolean;
+}
+
+// Component Avatar tái sử dụng
+const UserAvatar = ({ user, size = 'w-16 h-16', showStatus = true }: { user: User; size?: string; showStatus?: boolean }) => {
+  const getInitials = () => {
+    const firstInitial = user.firstName?.[0] || '';
+    const lastInitial = user.lastName?.[0] || '';
+    return (firstInitial + lastInitial) || user.email?.[0]?.toUpperCase() || '?';
+  };
+
+  const getGradientColor = () => {
+    // Tạo màu gradient dựa trên tên để mỗi user có màu riêng
+    const colors = [
+      'from-blue-500 to-blue-600',
+      'from-purple-500 to-purple-600', 
+      'from-green-500 to-green-600',
+      'from-orange-500 to-orange-600',
+      'from-pink-500 to-pink-600',
+      'from-indigo-500 to-indigo-600',
+      'from-teal-500 to-teal-600',
+      'from-red-500 to-red-600'
+    ];
+    const index = (user.firstName?.charCodeAt(0) || 0) % colors.length;
+    return colors[index];
+  };
+
+  return (
+    <div className="avatar relative">
+      <div className={`${size} rounded-full ring ring-primary ring-offset-2 bg-base-300 overflow-hidden`}>
+        {user.img && user.img !== '/default-avatar.png' && !user.img.includes('default') ? (
+          <img 
+            src={user.img} 
+            alt={`${user.firstName} ${user.lastName}`}
+            className="object-cover w-full h-full"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent && !parent.querySelector('.avatar-fallback')) {
+                const fallback = document.createElement('div');
+                fallback.className = `avatar-fallback w-full h-full flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br ${getGradientColor()}`;
+                fallback.textContent = getInitials();
+                parent.appendChild(fallback);
+              }
+            }}
+          />
+        ) : (
+          <div className={`w-full h-full flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br ${getGradientColor()}`}>
+            {getInitials()}
+          </div>
+        )}
+      </div>
+      {/* Status indicator */}
+      {showStatus && user.isActive && (
+        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+      )}
+    </div>
+  );
+};
 
 const Users = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const { isLoading, isError, isSuccess, data } = useQuery({
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['allusers'],
     queryFn: fetchUsers,
   });
 
-  const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 90 },
-    {
-      field: 'firstName',
-      headerName: 'User Info',
-      minWidth: 250,
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <div className="flex gap-3 items-center">
-            <div className="avatar">
-              <div className="w-6 xl:w-9 rounded-full">
-                <img
-                  src={params.row.img || '/Portrait_Placeholder.png'}
-                  alt="user-picture"
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <div className="card bg-error text-error-content max-w-md mx-auto shadow-xl">
+          <div className="card-body text-center">
+            <h2 className="card-title">⚠️ Lỗi tải dữ liệu</h2>
+            <p>Không thể tải danh sách người dùng</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const users: User[] = data || [];
+  
+  // Filter users based on search and role
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const totalUsers = users.length;
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const userCount = users.filter(u => u.role === 'user').length;
+  const activeCount = users.filter(u => u.isActive).length;
+
+  return (
+    <div className="p-6 space-y-6 bg-base-100 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold text-base-content">👥 Quản lý Người dùng</h1>
+        <button 
+          className="btn btn-primary gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
+          <MdAdd className="w-5 h-5" />
+          Thêm người dùng
+        </button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-90">Tổng số</p>
+                <p className="text-2xl font-bold">{totalUsers}</p>
+                <p className="text-xs opacity-75 mt-1">người dùng</p>
+              </div>
+              <div className="text-3xl opacity-90">👥</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-90">Admin</p>
+                <p className="text-2xl font-bold">{adminCount}</p>
+                <p className="text-xs opacity-75 mt-1">quản trị viên</p>
+              </div>
+              <div className="text-3xl opacity-90">👑</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-90">Thành viên</p>
+                <p className="text-2xl font-bold">{userCount}</p>
+                <p className="text-xs opacity-75 mt-1">người dùng thường</p>
+              </div>
+              <div className="text-3xl opacity-90">👤</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card bg-gradient-to-r from-green-500 to-green-600 text-white shadow-xl">
+          <div className="card-body">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-90">Hoạt động</p>
+                <p className="text-2xl font-bold">{activeCount}</p>
+                <p className="text-xs opacity-75 mt-1">đang online</p>
+              </div>
+              <div className="text-3xl opacity-90">🟢</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & Search Card */}
+      <div className="card bg-base-200 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title text-base-content mb-4">🔍 Tìm kiếm & Lọc</h2>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <MdSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/50" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên hoặc email..."
+                  className="input input-bordered w-full pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
-            <div className="flex flex-col">
-              <span className="mb-0 pb-0 leading-none font-semibold">
-                {params.row.firstName} {params.row.lastName}
-              </span>
-              <span className="text-xs text-gray-500">
-                {params.row.role === 'admin' ? '👑 Admin' : '👤 User'} • {params.row.gender || 'N/A'}
-              </span>
+            
+            <div className="flex gap-2">
+              <select 
+                className="select select-bordered"
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+              >
+                <option value="all">Tất cả vai trò</option>
+                <option value="admin">Admin</option>
+                <option value="user">Người dùng</option>
+              </select>
             </div>
           </div>
-        );
-      },
-    },
-    {
-      field: 'email',
-      type: 'string',
-      headerName: 'Email',
-      minWidth: 200,
-      flex: 1,
-    },
-    {
-      field: 'phone',
-      type: 'string',
-      headerName: 'Phone',
-      minWidth: 120,
-      flex: 1,
-    },
-    {
-      field: 'verified',
-      headerName: 'Status',
-      width: 100,
-      type: 'boolean',
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <div className="flex flex-col gap-1 items-center">
-            <span className={`badge font-medium shadow-md transition-all duration-200 ${
-              params.row.verified 
-                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white' 
-                : 'bg-gradient-to-r from-red-400 to-pink-500 text-white'
-            }`}>
-              {params.row.verified ? '✓ Verified' : '✗ Not Verified'}
-            </span>
-            <span className={`badge font-medium shadow-md transition-all duration-200 ${
-              params.row.isActive 
-                ? 'bg-gradient-to-r from-blue-400 to-cyan-500 text-white' 
-                : 'bg-gradient-to-r from-gray-400 to-slate-500 text-white'
-            }`}>
-              {params.row.isActive ? '🟢 Active' : '🔴 Inactive'}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      field: 'address',
-      type: 'string',
-      headerName: 'Address',
-      minWidth: 150,
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <span className="text-sm">
-            {params.row.address || 'Chưa cập nhật'}
-          </span>
-        );
-      },
-    },
-    {
-      field: 'createdAt',
-      headerName: 'Joined Date',
-      minWidth: 100,
-      type: 'string',
-      flex: 1,
-    },
-    {
-      field: 'lastLogin',
-      headerName: 'Last Login',
-      minWidth: 100,
-      type: 'string',
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <span className="text-sm">
-            {params.row.lastLogin ? new Date(params.row.lastLogin).toLocaleDateString('vi-VN') : 'Chưa đăng nhập'}
-          </span>
-        );
-      },
-    },
-  ];
-
-  React.useEffect(() => {
-    if (isLoading) {
-      toast.loading('Loading...', { id: 'promiseUsers' });
-    }
-    if (isError) {
-      toast.error('Error while getting the data!', {
-        id: 'promiseUsers',
-      });
-    }
-    if (isSuccess) {
-      toast.success('Got the data successfully!', {
-        id: 'promiseUsers',
-      });
-    }
-  }, [isError, isLoading, isSuccess]);
-
-  return (
-    <div className="w-full p-0 m-0">
-      <div className="w-full flex flex-col items-stretch gap-3">
-        <div className="w-full flex justify-between mb-5">
-          <div className="flex gap-1 justify-start flex-col items-start">
-            <h2 className="font-bold text-2xl xl:text-4xl mt-0 pt-0 text-base-content dark:text-neutral-200">
-              👥 Quản lý người dùng
-            </h2>
-            {data && data.length > 0 && (
-              <span className="text-neutral dark:text-neutral-content font-medium text-base">
-                Tìm thấy {data.length} người dùng
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setIsOpen(true)}
-            className={`btn ${
-              isLoading ? 'btn-disabled' : 'btn-black elegant-black'
-            }`}
-          >
-            + Thêm người dùng mới
-          </button>
         </div>
-        {isLoading ? (
-          <DataTable
-            slug="users"
-            columns={columns}
-            rows={[]}
-            includeActionColumn={true}
-          />
-        ) : isSuccess ? (
-          <DataTable
-            slug="users"
-            columns={columns}
-            rows={data}
-            includeActionColumn={true}
-          />
-        ) : (
-          <>
-            <DataTable
-              slug="users"
-              columns={columns}
-              rows={[]}
-              includeActionColumn={true}
-            />
-            <div className="w-full flex justify-center">
-              Error while getting the data!
-            </div>
-          </>
-        )}
-
-        {isOpen && (
-          <AddData
-            slug={'user'}
-            isOpen={isOpen}
-            setIsOpen={setIsOpen}
-          />
-        )}
       </div>
+
+      {/* Users Table Card */}
+      <div className="card bg-base-200 shadow-xl">
+        <div className="card-body">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="card-title text-base-content">
+              📋 Danh sách người dùng ({filteredUsers.length})
+            </h2>
+            <div className="badge badge-primary badge-lg">{filteredUsers.length} kết quả</div>
+          </div>
+          
+          {filteredUsers.length > 0 ? (
+            <div className="space-y-4">
+              {filteredUsers.map((user) => (
+                <div key={user.id} className="card bg-base-100 shadow-md hover:shadow-lg transition-all duration-200 border border-base-300">
+                  <div className="card-body p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <UserAvatar user={user} />
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-lg font-semibold text-base-content">
+                              {user.firstName} {user.lastName}
+                            </h3>
+                            <div className={`badge ${
+                              user.role === 'admin' ? 'badge-warning' : 'badge-info'
+                            }`}>
+                              {user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                            </div>
+                            {user.isActive && (
+                              <div className="badge badge-success">🟢 Hoạt động</div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-base-content/70">
+                            <div className="flex items-center gap-1">
+                              <MdEmail className="w-4 h-4" />
+                              <span>{user.email}</span>
+                            </div>
+                            {user.phone && (
+                              <div className="flex items-center gap-1">
+                                <MdPhone className="w-4 h-4" />
+                                <span>{user.phone}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <MdCalendarToday className="w-4 h-4" />
+                              <span>Tham gia: {new Date(user.createdAt).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button className="btn btn-sm btn-outline btn-primary">
+                          <MdEdit className="w-4 h-4" />
+                          Sửa
+                        </button>
+                        <button className="btn btn-sm btn-outline btn-error">
+                          <MdDelete className="w-4 h-4" />
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <p className="text-base-content/70 font-medium text-lg mb-2">
+                Không tìm thấy người dùng nào
+              </p>
+              <p className="text-base-content/50 text-sm">
+                Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add User Modal */}
+      {isAddModalOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">🆕 Thêm người dùng mới</h3>
+            <div className="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>Chức năng này sẽ được phát triển trong phiên bản tiếp theo.</span>
+            </div>
+            <div className="modal-action">
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setIsAddModalOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

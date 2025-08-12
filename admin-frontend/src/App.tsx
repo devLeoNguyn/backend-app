@@ -17,22 +17,19 @@ import Menu from './components/menu/Menu';
 import Error from './pages/Error';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
-import Posts from './pages/Posts';
-import Notes from './pages/Notes';
-import Calendar from './pages/Calendar';
-import Charts from './pages/Charts';
-import Logs from './pages/Logs';
+// Removed Posts page from navigation and routing
 import ToasterProvider from './components/ToasterProvider';
 import EditProfile from './pages/EditProfile';
 import User from './pages/User';
 import Product from './pages/Product';
 import Login from './pages/Login';
-import WebSocketTestPage from './pages/WebSocketTest';
 import ProtectedRoute from './components/ProtectedRoute';
 import { authService } from './services/authService';
 import Notifications from './pages/Notifications';
 import TestNotifications from './pages/TestNotifications';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
+// Note: Register route is currently removed by user; keep /register disabled
 
 function App() {
   // Initialize authentication when app starts
@@ -51,7 +48,7 @@ function App() {
         <ScrollRestoration />
         <div>
           <Navbar />
-          <div className="w-full flex gap-0 pt-20 xl:pt-[96px] 2xl:pt-[112px] mb-auto">
+          <div className="w-full flex gap-0 pt-28 xl:pt-[132px] 2xl:pt-[148px] mb-auto">
             <div className="hidden xl:block xl:w-[250px] 2xl:w-[280px] 3xl:w-[350px] border-r-2 border-base-300 dark:border-slate-700 px-3 xl:px-4 xl:py-1">
               <Menu />
             </div>
@@ -115,30 +112,7 @@ function App() {
           path: 'orders',
           element: <Orders />,
         },
-        {
-          path: 'posts',
-          element: <Posts />,
-        },
-        {
-          path: 'notes',
-          element: <Notes />,
-        },
-        {
-          path: 'calendar',
-          element: <Calendar />,
-        },
-        {
-          path: 'charts',
-          element: <Charts />,
-        },
-        {
-          path: 'logs',
-          element: <Logs />,
-        },
-        {
-          path: 'websocket-test',
-          element: <WebSocketTestPage />,
-        },
+        // Posts route removed per requirement
         {
           path: 'notifications',
           element: <Notifications />,
@@ -151,6 +125,10 @@ function App() {
           path: 'settings',
           element: <Settings />,
         },
+        {
+          path: 'analytics',
+          element: <Analytics />,
+        },
       ],
       errorElement: <Error />,
     },
@@ -158,6 +136,7 @@ function App() {
       path: '/login',
       element: <Login />,
     },
+    // { path: '/register', element: <Register /> },
   ]);
 
   return <RouterProvider router={router} />;

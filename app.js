@@ -70,6 +70,7 @@ const uploadRoutes = require('./routes/upload.routes');
 const animeRoutes = require('./routes/anime.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const testNotificationRoutes = require('./routes/test-notification');
+const analyticsRoutes = require('./routes/analytics.routes');
 
 // Đăng ký routes
 app.use('/', indexRouter);
@@ -91,6 +92,7 @@ app.use('/api/anime', animeRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes); // Add this line
 app.use('/api/test-notification', testNotificationRoutes); // Add test route
+app.use('/api/analytics', analyticsRoutes); // Add analytics routes
 
 // Admin routes
 const adminRoutes = require('./routes/admin.routes');

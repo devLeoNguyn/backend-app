@@ -57,7 +57,8 @@ interface Genre {
 // Lấy admin user từ localStorage để pass userId
 const getAdminUserId = () => {
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
-    return adminUser._id;
+    // Fallback to hardcoded admin ID for testing
+    return adminUser._id || '6863e129661212a5d79c271f';
 };
 
 // Thêm function để lấy parent genres với children
@@ -563,16 +564,7 @@ export const fetchTotalRevenueByProducts = async () => {
     return { chartData };
 };
 
-// Analytics charts data
-export const fetchAnalyticsData = async () => {
-    const adminUserId = getAdminUserId();
-    const response = await axios.get(API_ENDPOINTS.ADMIN_ANALYTICS, {
-        params: { adminUserId }
-    });
-    
-    console.log('Analytics Data API response:', response.data);
-    return response.data;
-};
+
 
 // System status monitoring
 export const fetchSystemStatus = async () => {
@@ -618,32 +610,7 @@ export const fetchPosts = async () => {
     ];
 };
 
-// Notes - mock data for now
-export const fetchNotes = async () => {
-    return [
-        {
-            id: 1,
-            title: 'System Maintenance',
-            body: 'Schedule system maintenance for next week',
-            date: new Date().toISOString(),
-            author: 'Admin',
-            topic: 'productivity'
-        }
-    ];
-};
 
-// Logs - mock data for now
-export const fetchLogs = async () => {
-    return [
-        {
-            id: 1,
-            action: 'User Login',
-            timestamp: new Date().toISOString(),
-            user: 'admin@movieapp.com',
-            status: 'success'
-        }
-    ];
-};
 
 // ============================================================================
 // EPISODE MANAGEMENT API FUNCTIONS

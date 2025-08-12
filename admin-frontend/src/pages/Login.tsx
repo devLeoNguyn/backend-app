@@ -1,72 +1,80 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChangeThemes from '../components/ChangesThemes';
-import { DiReact } from 'react-icons/di';
+// import { DiReact } from 'react-icons/di';
 import { authService } from '../services/authService';
+import logo from '../assets/logo.png';
 
 const Login = () => {
   const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-        try {
-            await authService.login(email, password);
-            navigate('/admin'); // Redirect to dashboard
-        } catch (error) {
-            setError((error as Error).message || 'Login failed');
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      await authService.login(email, password);
+      navigate('/admin'); // Redirect to dashboard
+    } catch (error) {
+      setError((error as Error).message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Check if already authenticated
-    React.useEffect(() => {
-        if (authService.isAuthenticated()) {
-            navigate('/admin');
-        }
-    }, [navigate]);
+  // Check if already authenticated
+  React.useEffect(() => {
+    if (authService.isAuthenticated()) {
+      navigate('/admin');
+    }
+  }, [navigate]);
 
   return (
     <div className="w-full p-0 m-0">
       <div className="w-full min-h-screen flex justify-center items-center bg-base-200 relative">
-                {/* Theme selector */}
+        {/* Theme selector */}
         <div className="absolute top-5 right-5 z-[99]">
           <ChangeThemes />
         </div>
 
         <div className="w-full h-screen xl:h-auto xl:w-[30%] 2xl:w-[25%] 3xl:w-[20%] bg-base-100 rounded-lg shadow-md flex flex-col items-center p-5 pb-7 gap-8 pt-20 xl:pt-7">
-                    {/* Logo */}
+          {/* Logo */}
           <div className="flex items-center gap-1 xl:gap-2">
-            <DiReact className="text-4xl sm:text-4xl xl:text-6xl 2xl:text-6xl text-primary animate-spin-slow -ml-3" />
-            <span className="text-[18px] leading-[1.2] sm:text-lg xl:text-3xl 2xl:text-3xl font-semibold text-base-content dark:text-neutral-200">
-                            Movie Admin
+            {/* <DiReact className="text-4xl sm:text-4xl xl:text-6xl 2xl:text-6xl text-primary animate-spin-slow -ml-3" /> */}
+            <img
+              src={logo}
+              alt="Movie Management Logo"
+              className="block dark:hidden invert w-25 h-25 sm:w-30 sm:h-30 xl:w-35 xl:h-35 2xl:w-40 2xl:h-40 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <span className="text-[18px] leading-[1.2] sm:text-lg xl:text-3xl 2xl:text-3xl font-semi text-base-content dark:text-neutral-200">
+              {/* Movie Admin */}
             </span>
           </div>
-
-          <span className="xl:text-xl font-semibold">
-            Hello, 👋 Welcome Back!
+          <span className="xl:text-xl font-semi">
+            Hệ thống admin quản lý Tech5Play
           </span>
 
-                    {/* Error message */}
-                    {error && (
-                        <div className="alert alert-error w-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>{error}</span>
-                        </div>
-                    )}
+          {/* Error message */}
+          {error && (
+            <div className="alert alert-error w-full">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
 
-                    {/* Login form */}
-                    <form onSubmit={handleLogin} className="w-full flex flex-col items-stretch gap-3">
+          {/* Login form */}
+          <form onSubmit={handleLogin} className="w-full flex flex-col items-stretch gap-3">
             <label className="input input-bordered min-w-full flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -78,13 +86,13 @@ const Login = () => {
                 <path d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
               </svg>
               <input
-                                type="email"
+                type="email"
                 className="grow input outline-none focus:outline-none border-none border-[0px] h-auto pl-1 pr-0"
-                                placeholder="Admin Email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                disabled={loading}
+                placeholder="Admin Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
               />
             </label>
 
@@ -105,10 +113,10 @@ const Login = () => {
                 type="password"
                 className="grow input outline-none focus:outline-none border-none border-[0px] h-auto pl-1 pr-0"
                 placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                disabled={loading}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
               />
             </label>
 
@@ -117,8 +125,8 @@ const Login = () => {
                 <label className="label cursor-pointer gap-2">
                   <input
                     type="checkbox"
-                                        checked={rememberMe}
-                                        onChange={(e) => setRememberMe(e.target.checked)}
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     className="checkbox w-4 h-4 rounded-md checkbox-primary"
                   />
                   <span className="label-text text-xs">
@@ -126,33 +134,33 @@ const Login = () => {
                   </span>
                 </label>
               </div>
-              <a
+              {/* <a
                 href="#"
                 className="link link-primary font-semibold text-xs no-underline"
               >
                 Forgot Password?
-              </a>
+              </a> */}
             </div>
 
-                        <button
-                            type="submit"
-                            className={`btn btn-block btn-primary ${loading ? 'loading' : ''}`}
-                            disabled={loading}
-                        >
-                            {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-                    </form>
+            <button
+              type="submit"
+              className={`btn btn-block btn-primary ${loading ? 'loading' : ''}`}
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
 
-                    {/* Test admin credentials info */}
-                    <div className="alert alert-info w-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <div>
-                            <p className="text-xs">Use your Movie App admin account to login</p>
-                            <p className="text-xs text-gray-500">Only users with 'admin' role can access</p>
-            </div>
-          </div>
+          {/* Test admin credentials info */}
+          {/* <div className="alert alert-info w-full">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p className="text-xs">Use your Movie App admin account to login</p>
+              <p className="text-xs text-gray-500">Only users with 'admin' role can access</p>
+            </div> */}
+          {/* </div> */}
         </div>
       </div>
     </div>

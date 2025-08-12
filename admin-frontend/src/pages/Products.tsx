@@ -157,7 +157,7 @@ const Products = () => {
       renderCell: (params) => {
         return (
           <div className="flex justify-center">
-            <span className="badge bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200">
+            <span className="badge badge-secondary text-xs font-medium px-3 py-2 normal-case">
               {params.row.genre || 'Chưa phân loại'}
             </span>
           </div>
@@ -189,20 +189,20 @@ const Products = () => {
         const isReleased = status === 'released';
         const isEnded = status === 'ended';
         
-        let gradientClass = 'from-yellow-400 to-orange-500';
+        let badgeClass = 'badge badge-warning';
         let statusText = 'Đang sản xuất';
         
         if (isReleased) {
-          gradientClass = 'from-green-400 to-emerald-500';
+          badgeClass = 'badge badge-success';
           statusText = 'Đã phát hành';
         } else if (isEnded) {
-          gradientClass = 'from-red-400 to-pink-500';
+          badgeClass = 'badge badge-neutral';
           statusText = 'Đã kết thúc';
         }
         
         return (
           <div className="flex justify-center">
-            <span className={`badge bg-gradient-to-r ${gradientClass} text-white font-medium shadow-md hover:shadow-lg transition-all duration-200`}>
+            <span className={`${badgeClass} text-xs font-medium px-3 py-2 normal-case`}>
               {statusText}
             </span>
           </div>

@@ -5,14 +5,9 @@ import {
   IoPeopleOutline,
   IoFilmOutline,
   IoDocumentTextOutline,
-  IoBarChartOutline,
-  IoCreateOutline,
-  IoCalendarOutline,
-  IoPieChartOutline,
-  IoNewspaperOutline,
   IoLogOutOutline,
-  IoStatsChartOutline,
   IoNotificationsOutline,
+  IoStatsChartOutline,
 } from 'react-icons/io5';
 // import { IoSettingsOutline } from 'react-icons/io5';
 
@@ -57,49 +52,9 @@ export const menu = [
       },
       {
         isLink: true,
-        url: '/admin/posts',
-        icon: IoBarChartOutline,
-        label: 'bài viết',
-      },
-    ],
-  },
-  {
-    catalog: 'tiện ích',
-    listItems: [
-      {
-        isLink: true,
-        url: '/admin/notes',
-        icon: IoCreateOutline,
-        label: 'ghi chú',
-      },
-      {
-        isLink: true,
-        url: '/admin/calendar',
-        icon: IoCalendarOutline,
-        label: 'lịch',
-      },
-    ],
-  },
-  {
-    catalog: 'thống kê',
-    listItems: [
-      {
-        isLink: true,
-        url: '/admin/charts',
-        icon: IoPieChartOutline,
-        label: 'biểu đồ',
-      },
-      {
-        isLink: true,
-        url: '/admin/logs',
-        icon: IoNewspaperOutline,
-        label: 'nhật ký',
-      },
-      {
-        isLink: true,
-        url: '/admin/websocket-test',
+        url: '/admin/analytics',
         icon: IoStatsChartOutline,
-        label: 'kiểm tra websocket',
+        label: 'doanh thu',
       },
     ],
   },

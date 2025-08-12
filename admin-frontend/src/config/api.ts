@@ -27,7 +27,6 @@ export const WS_BASE_URL = API_BASE_URL.startsWith('https')
 export const API_ENDPOINTS = {
     // Admin specific endpoints
     ADMIN_DASHBOARD: `${API_BASE_URL}/api/admin/dashboard/overview`,
-    ADMIN_ANALYTICS: `${API_BASE_URL}/api/admin/analytics/charts`,
     ADMIN_USERS: `${API_BASE_URL}/api/admin/users`,
     ADMIN_MOVIES: `${API_BASE_URL}/api/admin/movies`, 
     ADMIN_MOVIES_CREATE: `${API_BASE_URL}/api/admin/movies`, // POST endpoint cho tạo phim mới

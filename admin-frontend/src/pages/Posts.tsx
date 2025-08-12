@@ -1,3 +1,4 @@
+// Deprecated: Posts page is no longer used and will be removed soon
 import React from 'react';
 import { GridColDef } from '@mui/x-data-grid';
 import DataTable from '../components/DataTable';
