@@ -25,6 +25,7 @@ router.get('/analytics/charts', requireAdmin, adminController.getAnalyticsData);
 // User Management  
 router.get('/users', requireAdmin, adminController.getAllUsers);
 router.get('/users/:id', requireAdmin, adminController.getUserDetail);
+router.put('/users/:id/lock', requireAdmin, adminController.updateUserLockStatus);
 
 // Movie Management (Products)
 router.get('/movies', requireAdmin, adminController.getAllMovies);

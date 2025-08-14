@@ -135,13 +135,26 @@ const applyWatchingMethods = (watchingSchema) => {
             });
         }
 
-        // Now find or create watching record with the correct episode ID
+        // Check if there's an existing incomplete watching record
         let watching = await this.findOne({
             user_id: userId,
-            episode_id: targetEpisode._id
+            episode_id: targetEpisode._id,
+            completed: false
         });
 
         if (!watching) {
+            // Check if user has completed this episode before (for re-watch support)
+            const previousWatching = await this.findOne({
+                user_id: userId,
+                episode_id: targetEpisode._id,
+                completed: true
+            });
+
+            // Determine if this is a single movie (phim lẻ)
+            const isSingleMovie = targetEpisode.movie_id?.movie_type === 'Phim lẻ' || 
+                                  (targetMovie && targetMovie.movie_type === 'Phim lẻ');
+
+            // Always create a new record (supports re-watching, especially for single movies)
             watching = new this({
                 user_id: userId,
                 episode_id: targetEpisode._id,
@@ -154,10 +167,13 @@ const applyWatchingMethods = (watchingSchema) => {
                 id: watching._id,
                 user_id: userId,
                 episode_id: watching.episode_id,
-                duration: watching.duration
+                duration: watching.duration,
+                isRewatch: !!previousWatching,
+                isSingleMovie,
+                movieType: targetEpisode.movie_id?.movie_type || targetMovie?.movie_type
             });
         } else {
-            console.log('🎬 [findOrCreateWatching] Found existing watching record:', {
+            console.log('🎬 [findOrCreateWatching] Found existing incomplete watching record:', {
                 id: watching._id,
                 current_time: watching.current_time,
                 duration: watching.duration
