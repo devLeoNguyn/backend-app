@@ -3,13 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   MdSearch, 
   MdAdd, 
-  MdEdit, 
-  MdDelete, 
   MdEmail,
   MdPhone,
-  MdCalendarToday
+  MdCalendarToday,
+  MdLock,
+  MdLockOpen,
 } from 'react-icons/md';
-import { fetchUsers } from '../api/ApiCollection';
+import { fetchUsers, setUserLockStatus } from '../api/ApiCollection';
 
 interface User {
   id: string;
@@ -21,11 +21,11 @@ interface User {
   gender?: string;
   img?: string;
   createdAt: string;
-  isActive: boolean;
+  // Removed live online status from UI/logic
 }
 
 // Component Avatar tái sử dụng
-const UserAvatar = ({ user, size = 'w-16 h-16', showStatus = true }: { user: User; size?: string; showStatus?: boolean }) => {
+const UserAvatar = ({ user, size = 'w-16 h-16' }: { user: User; size?: string }) => {
   const getInitials = () => {
     const firstInitial = user.firstName?.[0] || '';
     const lastInitial = user.lastName?.[0] || '';
@@ -74,10 +74,7 @@ const UserAvatar = ({ user, size = 'w-16 h-16', showStatus = true }: { user: Use
           </div>
         )}
       </div>
-      {/* Status indicator */}
-      {showStatus && user.isActive && (
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
-      )}
+      {/* Online status indicator removed */}
     </div>
   );
 };
@@ -130,7 +127,7 @@ const Users = () => {
   const totalUsers = users.length;
   const adminCount = users.filter(u => u.role === 'admin').length;
   const userCount = users.filter(u => u.role === 'user').length;
-  const activeCount = users.filter(u => u.isActive).length;
+  // Removed active online counter
 
   return (
     <div className="p-6 space-y-6 bg-base-100 min-h-screen">
@@ -187,18 +184,7 @@ const Users = () => {
           </div>
         </div>
 
-        <div className="card bg-gradient-to-r from-green-500 to-green-600 text-white shadow-xl">
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium opacity-90">Hoạt động</p>
-                <p className="text-2xl font-bold">{activeCount}</p>
-                <p className="text-xs opacity-75 mt-1">đang online</p>
-              </div>
-              <div className="text-3xl opacity-90">🟢</div>
-            </div>
-          </div>
-        </div>
+        {/* Removed online status KPI card */}
       </div>
 
       {/* Filters & Search Card */}
@@ -241,7 +227,7 @@ const Users = () => {
             <h2 className="card-title text-base-content">
               📋 Danh sách người dùng ({filteredUsers.length})
             </h2>
-            <div className="badge badge-primary badge-lg">{filteredUsers.length} kết quả</div>
+              <div className="badge badge-primary badge-lg">{filteredUsers.length} kết quả</div>
           </div>
           
           {filteredUsers.length > 0 ? (
@@ -263,9 +249,7 @@ const Users = () => {
                             }`}>
                               {user.role === 'admin' ? '👑 Admin' : '👤 User'}
                             </div>
-                            {user.isActive && (
-                              <div className="badge badge-success">🟢 Hoạt động</div>
-                            )}
+                            {/* Removed per-user online badge */}
                           </div>
                           
                           <div className="flex flex-wrap items-center gap-4 text-sm text-base-content/70">
@@ -287,14 +271,33 @@ const Users = () => {
                         </div>
                       </div>
                       
+                      {/* Lock/Unlock actions */}
                       <div className="flex items-center gap-2">
-                        <button className="btn btn-sm btn-outline btn-primary">
-                          <MdEdit className="w-4 h-4" />
-                          Sửa
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={async () => {
+                            try {
+                              await setUserLockStatus(user.id, 'lock');
+                              window.location.reload();
+                            } catch (e) {
+                              console.error('Lock user failed', e);
+                            }
+                          }}
+                        >
+                          <MdLock className="w-4 h-4" /> Khóa
                         </button>
-                        <button className="btn btn-sm btn-outline btn-error">
-                          <MdDelete className="w-4 h-4" />
-                          Xóa
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={async () => {
+                            try {
+                              await setUserLockStatus(user.id, 'unlock');
+                              window.location.reload();
+                            } catch (e) {
+                              console.error('Unlock user failed', e);
+                            }
+                          }}
+                        >
+                          <MdLockOpen className="w-4 h-4" /> Mở khóa
                         </button>
                       </div>
                     </div>

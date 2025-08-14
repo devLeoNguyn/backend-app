@@ -72,6 +72,7 @@ class AdminController {
                 address: user.address,
                 lastLogin: user.last_login,
                 isActive: user.is_active !== false,
+                isLocked: user.is_locked === true,
                 joinedDate: user.createdAt.toISOString().split('T')[0],
                 totalRentals: 0 // Sẽ được populate sau
             }));
@@ -107,7 +108,8 @@ class AdminController {
                 verified: user.is_phone_verified,
                 img: user.avatar || '/default-avatar.png',
                 role: user.role,
-                gender: user.gender
+                gender: user.gender,
+                isLocked: user.is_locked === true
             };
 
             res.json(formattedUser);
@@ -1011,6 +1013,50 @@ class AdminController {
             });
         } catch (error) {
             console.error('Reorder episodes error:', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    }
+
+    // PUT /api/admin/users/:id/lock - Lock/Unlock user account
+    async updateUserLockStatus(req, res) {
+        try {
+            const { id } = req.params;
+            const { action } = req.body; // 'lock' or 'unlock'
+
+            if (!['lock', 'unlock'].includes(action)) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: "Action must be 'lock' or 'unlock'"
+                });
+            }
+
+            const user = await User.findById(id);
+            if (!user) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'User not found'
+                });
+            }
+
+            // Optional: prevent admin from locking themselves
+            // if (req.adminUser && req.adminUser._id.toString() === id) {
+            //     return res.status(400).json({ status: 'error', message: 'Cannot lock your own account' });
+            // }
+
+            const is_locked = action === 'lock';
+            user.is_locked = is_locked;
+            await user.save();
+
+            res.json({
+                status: 'success',
+                message: is_locked ? 'User locked successfully' : 'User unlocked successfully',
+                data: {
+                    id: user._id,
+                    isLocked: user.is_locked
+                }
+            });
+        } catch (error) {
+            console.error('Update user lock status error:', error);
             res.status(500).json({ status: 'error', message: error.message });
         }
     }

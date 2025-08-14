@@ -84,6 +84,11 @@ const userSchema = new mongoose.Schema({
   notificationMute: {
     isMuted: { type: Boolean, default: false },
     muteUntil: { type: Date, default: null }
+  },
+  // Account lock status (admin can lock/unlock)
+  is_locked: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

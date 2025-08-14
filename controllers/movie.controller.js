@@ -16,6 +16,8 @@ const movieService = require('../services/movie.service');
 const {
     calculateMovieRating,
     calculateViewCount,
+    calculateUniqueViewCount,
+    calculateTotalEpisodeCompletions,
     formatViewCount,
     calculateCommentCount,
     getMovieStatistics
@@ -282,7 +284,7 @@ const getMovieDetailWithInteractions = async (req, res) => {
         // Calculate interactions
         const [ratingData, viewCount, commentCount] = await Promise.all([
             calculateMovieRating(id),
-            calculateViewCount(id),
+            calculateTotalEpisodeCompletions(id),
             calculateCommentCount(id)
         ]);
 

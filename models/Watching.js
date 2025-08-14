@@ -46,8 +46,8 @@ const watchingSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Tạo compound index để tracking theo user và episode
-watchingSchema.index({ user_id: 1, episode_id: 1 }, { unique: true });
+// Tạo compound index để tracking theo user và episode (bỏ unique để cho phép xem lại)
+watchingSchema.index({ user_id: 1, episode_id: 1 });
 watchingSchema.index({ movie_id: 1, completed: 1 }); // Để đếm lượt xem hoàn thành theo phim
 watchingSchema.index({ last_watched: -1 }); // Để query phim xem gần đây
 

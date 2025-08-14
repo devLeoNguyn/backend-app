@@ -78,6 +78,59 @@ const calculateViewCount = async (movieId) => {
 };
 
 /**
+ * Calculate unique movie view count (improved)
+ * Only counts unique users who completed watching
+ */
+const calculateUniqueViewCount = async (movieId) => {
+    try {
+        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
+        const episodeIds = episodes.map(ep => ep._id);
+
+        // Count unique users who completed watching any episode of this movie
+        const uniqueViewCount = await Watching.aggregate([
+            {
+                $match: {
+                    episode_id: { $in: episodeIds },
+                    completed: true
+                }
+            },
+            {
+                $group: {
+                    _id: '$user_id',
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $count: 'uniqueUsers'
+            }
+        ]);
+
+        return uniqueViewCount[0]?.uniqueUsers || 0;
+    } catch (error) {
+        console.error('Error calculating unique view count:', error);
+        return 0;
+    }
+};
+
+/**
+ * Calculate total episode completions (for detailed stats)
+ */
+const calculateTotalEpisodeCompletions = async (movieId) => {
+    try {
+        const episodes = await Episode.find({ movie_id: movieId }).select('_id');
+        const episodeIds = episodes.map(ep => ep._id);
+
+        return await Watching.countDocuments({
+            episode_id: { $in: episodeIds },
+            completed: true
+        });
+    } catch (error) {
+        console.error('Error calculating total completions:', error);
+        return 0;
+    }
+};
+
+/**
  * Format view count for UI display
  * Used by: movie.controller.js, watching.controller.js
  */
@@ -108,14 +161,14 @@ const calculateCommentCount = async (movieId) => {
 };
 
 /**
- * Get comprehensive movie statistics
+ * Get comprehensive movie statistics (simplified)
  * Used by: movie.controller.js
  */
 const getMovieStatistics = async (movieId) => {
     try {
         const [ratingData, viewCount, commentCount] = await Promise.all([
             calculateMovieRating(movieId),
-            calculateViewCount(movieId),
+            calculateTotalEpisodeCompletions(movieId), // Use total completions as main view count
             calculateCommentCount(movieId)
         ]);
 
@@ -123,7 +176,7 @@ const getMovieStatistics = async (movieId) => {
             likes: ratingData.likeCount,
             rating: ratingData.rating,
             totalRatings: ratingData.totalRatings,
-            views: viewCount,
+            views: viewCount, // Total completions (includes re-watches)
             viewsFormatted: formatViewCount(viewCount),
             comments: commentCount
         };
@@ -142,7 +195,9 @@ const getMovieStatistics = async (movieId) => {
 
 module.exports = {
     calculateMovieRating,
-    calculateViewCount,
+    calculateViewCount, // Keep for backward compatibility
+    calculateUniqueViewCount, // New: for accurate unique user count
+    calculateTotalEpisodeCompletions, // New: for total completions
     formatViewCount,
     calculateCommentCount,
     getMovieStatistics,

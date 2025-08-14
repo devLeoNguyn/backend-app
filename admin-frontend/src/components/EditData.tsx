@@ -179,6 +179,9 @@ const EditData: React.FC<EditDataProps> = ({
       case 'Phim lẻ':
         targetGenreName = 'Phim lẻ';
         break;
+      case 'Thể thao':
+        targetGenreName = 'Thể thao';
+        break;
       default:
         console.log('⚠️ Unknown movie type:', selectedType);
         return;
@@ -253,7 +256,7 @@ const EditData: React.FC<EditDataProps> = ({
 
   // Hàm kiểm tra có cần hiển thị field số tập không
   const shouldShowEpisodesField = () => {
-    return movieType;
+    return movieType && movieType !== 'Thể thao';
   };
 
   // Hàm kiểm tra có cần hiển thị toggle notification không
@@ -1019,7 +1022,8 @@ const EditData: React.FC<EditDataProps> = ({
                 >
                   <option value="">Chọn kiểu nội dung</option>
                   <option value="Phim lẻ">🎬 Phim lẻ</option>
-                  <option value="Phim bộ">🎬 Phim bộ</option>
+                  <option value="Phim bộ">📺 Phim bộ</option>
+                  <option value="Thể thao">🏟️ Thể thao</option>
                 </select>
                 {validationErrors.movieType && (
                   <div className="label">

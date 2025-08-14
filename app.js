@@ -25,7 +25,7 @@ app.use(cors({
     'https://backend-app-lou3.onrender.com',
     'http://localhost:3003',
     'http://localhost:8082',
-    'http://192.168.8.138:3003',
+    'http://192.168.5.71:3003',
     // Expo mobile app origins      
     'exp://localhost:8081',
     'http://localhost:5173',

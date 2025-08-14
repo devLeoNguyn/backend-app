@@ -34,7 +34,9 @@ module.exports = function applyMovieMethods(schema) {
   schema.methods.formatMovieResponse = function (episodes = []) {
     const data = this.toObject();
 
-    data.movie_type = this.getMovieType();
+    // Preserve the stored movie_type from DB instead of recomputing from total_episodes
+    // This avoids incorrectly overriding values like 'Thể thao' when editing
+    data.movie_type = this.movie_type;
     data.is_free = this.isFreeMovie();
     data.price_display = this.getPriceDisplay();
 

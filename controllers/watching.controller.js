@@ -4,7 +4,7 @@ const Movie = require('../models/Movie');
 const mongoose = require('mongoose');
 
 // Import shared utility functions (eliminates duplication)
-const { calculateViewCount, formatViewCount } = require('../utils/movieStatsUtils');
+const { calculateViewCount, calculateUniqueViewCount, calculateTotalEpisodeCompletions, formatViewCount } = require('../utils/movieStatsUtils');
 
 // UNIFIED: Cập nhật tiến độ xem video (hỗ trợ cả start watching và update progress)
 exports.updateWatchProgress = async (req, res) => {
@@ -279,8 +279,8 @@ exports.addView = async (req, res) => {
         const timeToSet = current_time !== undefined ? current_time : episode.duration;
         await watching.updateProgress(timeToSet);
 
-        // Get updated view count
-        const viewCount = await calculateViewCount(movie_id);
+        // Get total view count (includes re-watches)
+        const viewCount = await calculateTotalEpisodeCompletions(movie_id);
 
         res.json({
             status: 'success',
@@ -291,7 +291,7 @@ exports.addView = async (req, res) => {
                 completed: watching.completed,
                 watch_percentage: watching.watch_percentage,
                 current_time: watching.current_time,
-                viewCount,
+                viewCount: viewCount,
                 viewCountFormatted: formatViewCount(viewCount)
             }
         });
@@ -318,7 +318,7 @@ exports.getMovieViewCount = async (req, res) => {
             });
         }
 
-        const viewCount = await calculateViewCount(movie_id);
+        const viewCount = await calculateTotalEpisodeCompletions(movie_id);
 
         res.json({
             status: 'success',
@@ -629,3 +629,5 @@ exports.getMovieEpisodesProgress = async (req, res) => {
         });
     }
 }; 
+
+ 

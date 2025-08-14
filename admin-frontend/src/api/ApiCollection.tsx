@@ -192,6 +192,15 @@ export const fetchSingleUser = async (id: string) => {
     return response.data;
 };
 
+// Lock/Unlock user account (admin)
+export const setUserLockStatus = async (userId: string, action: 'lock' | 'unlock') => {
+    const adminUserId = getAdminUserId();
+    const response = await axios.put(`${API_ENDPOINTS.ADMIN_USER_LOCK}/${userId}/lock`, { action }, {
+        params: { adminUserId }
+    });
+    return response.data;
+};
+
 // Products (Movies) từ movie app
 export const fetchProducts = async () => {
     const adminUserId = getAdminUserId();
