@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HiOutlineXMark } from 'react-icons/hi2';
 import { Notification } from '../../services/notificationService';
+import DeepLinkHelper from './DeepLinkHelper';
 
 interface NotificationFormProps {
   isOpen: boolean;
@@ -95,6 +96,48 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
       newErrors.segment = 'Vui lòng chọn phân nhóm';
     }
     
+    // Validate deep_link format
+    if (formData.deep_link) {
+      const validFormats = [
+        /^movie\/\d+$/,           // movie/123
+        /^series\/\d+$/,          // series/123
+        /^anime\/\d+$/,           // anime/123
+        /^genre\/\d+$/,           // genre/123
+        /^profile$/,              // profile
+        /^notifications$/,        // notifications
+        /^settings$/,             // settings
+        /^payment\/qr$/,          // payment/qr
+        /^recommendations$/,      // recommendations
+        /^watch-later$/,          // watch-later
+        /^watching-history$/,     // watching-history
+        /^explore$/,              // explore
+        /^home$/,                 // home
+        /^[a-zA-Z0-9\/\-_]+$/     // Format chung
+      ];
+      
+      const isValidFormat = validFormats.some(format => format.test(formData.deep_link!));
+      if (!isValidFormat) {
+        newErrors.deep_link = 'Deep link không đúng định dạng. Ví dụ: movie/123, series/456, profile';
+      }
+    }
+    
+    // Validate image_url
+    if (formData.image_url) {
+      try {
+        new URL(formData.image_url);
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const hasValidExtension = validExtensions.some(ext => 
+          formData.image_url!.toLowerCase().includes(ext)
+        );
+        
+        if (!hasValidExtension) {
+          newErrors.image_url = 'URL phải có định dạng ảnh hợp lệ (.jpg, .jpeg, .png, .gif, .webp)';
+        }
+      } catch {
+        newErrors.image_url = 'URL không hợp lệ';
+      }
+    }
+    
     // Set errors
     setErrors(newErrors);
     
@@ -179,6 +222,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Loại</span>
+                  <span className="label-text-alt text-info">Cách thức tạo thông báo</span>
                 </label>
                 <select
                   name="type"
@@ -186,8 +230,8 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.type}
                   onChange={handleChange}
                 >
-                  <option value="manual">Thủ công</option>
-                  <option value="auto">Tự động</option>
+                  <option value="manual">Thủ công - Tạo bởi admin</option>
+                  <option value="auto">Tự động - Hệ thống tạo</option>
                 </select>
               </div>
             </div>
@@ -197,6 +241,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Đối tượng</span>
+                  <span className="label-text-alt text-info">Ai sẽ nhận thông báo</span>
                 </label>
                 <select
                   name="target_type"
@@ -204,9 +249,9 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.target_type}
                   onChange={handleChange}
                 >
-                  <option value="all">Tất cả người dùng</option>
-                  <option value="segment">Phân nhóm người dùng</option>
-                  <option value="specific_users">Người dùng cụ thể</option>
+                  <option value="all">Tất cả người dùng - Gửi cho mọi người</option>
+                  <option value="segment">Phân nhóm người dùng - Gửi theo nhóm</option>
+                  <option value="specific_users">Người dùng cụ thể - Chọn từng người</option>
                 </select>
               </div>
               
@@ -238,34 +283,102 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Deep Link (Không bắt buộc)</span>
+                  <span className="label-text-alt text-info">Điều hướng khi nhấn vào thông báo</span>
                 </label>
-                <input
-                  type="text"
-                  name="deep_link"
-                  placeholder="Ví dụ: movie/123"
-                  className="input input-bordered w-full"
-                  value={formData.deep_link}
-                  onChange={handleChange}
-                />
+                <div className="flex gap-2">
+                  <select
+                    name="deep_link_type"
+                    className="select select-bordered w-1/3"
+                    onChange={(e) => {
+                      const type = e.target.value;
+                      let link = '';
+                      if (type === 'movie') link = 'movie/';
+                      else if (type === 'series') link = 'series/';
+                      else if (type === 'anime') link = 'anime/';
+                      else if (type === 'genre') link = 'genre/';
+                      else if (type === 'custom') link = '';
+                      else link = type;
+                      
+                      setFormData(prev => ({
+                        ...prev,
+                        deep_link: link
+                      }));
+                    }}
+                  >
+                    <option value="">Chọn loại</option>
+                    <option value="home">Trang chủ</option>
+                    <option value="profile">Hồ sơ</option>
+                    <option value="notifications">Thông báo</option>
+                    <option value="settings">Cài đặt</option>
+                    <option value="explore">Khám phá</option>
+                    <option value="recommendations">Đề xuất</option>
+                    <option value="watch-later">Xem sau</option>
+                    <option value="watching-history">Lịch sử xem</option>
+                    <option value="payment/qr">Thanh toán QR</option>
+                    <option value="movie">Phim (cần ID)</option>
+                    <option value="series">Series (cần ID)</option>
+                    <option value="anime">Anime (cần ID)</option>
+                    <option value="genre">Thể loại (cần ID)</option>
+                    <option value="custom">Tùy chỉnh</option>
+                  </select>
+                  <input
+                    type="text"
+                    name="deep_link"
+                    placeholder={
+                      formData.deep_link?.includes('/') && !formData.deep_link?.endsWith('/') 
+                        ? "Nhập ID (ví dụ: 123)" 
+                        : "Nhập deep link tùy chỉnh"
+                    }
+                    className="input input-bordered w-2/3"
+                    value={formData.deep_link}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <DeepLinkHelper 
+                    onSelect={(value) => setFormData(prev => ({ ...prev, deep_link: value }))}
+                    currentValue={formData.deep_link}
+                  />
+                  <span className="text-xs text-base-content/70">
+                    Ví dụ: movie/123, series/456, profile, notifications
+                  </span>
+                </div>
+                {errors.deep_link && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">{errors.deep_link}</span>
+                  </label>
+                )}
               </div>
               
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">URL hình ảnh (Không bắt buộc)</span>
+                  <span className="label-text-alt text-info">Hình ảnh hiển thị trong thông báo</span>
                 </label>
                 <input
                   type="text"
                   name="image_url"
-                  placeholder="Ví dụ: https://example.com/image.jpg"
-                  className="input input-bordered w-full"
+                  placeholder="https://example.com/image.jpg"
+                  className={`input input-bordered w-full ${errors.image_url ? 'input-error' : ''}`}
                   value={formData.image_url}
                   onChange={handleChange}
                 />
+                {errors.image_url && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">{errors.image_url}</span>
+                  </label>
+                )}
+                <label className="label">
+                  <span className="label-text-alt text-info">
+                    Hỗ trợ: .jpg, .jpeg, .png, .gif, .webp
+                  </span>
+                </label>
               </div>
               
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Độ ưu tiên</span>
+                  <span className="label-text-alt text-info">Ảnh hưởng đến thứ tự hiển thị</span>
                 </label>
                 <select
                   name="priority"
@@ -273,9 +386,9 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   value={formData.priority}
                   onChange={handleChange}
                 >
-                  <option value="low">Thấp</option>
-                  <option value="normal">Bình thường</option>
-                  <option value="high">Cao</option>
+                  <option value="low">Thấp - Hiển thị cuối</option>
+                  <option value="normal">Bình thường - Hiển thị theo thời gian</option>
+                  <option value="high">Cao - Hiển thị đầu</option>
                 </select>
               </div>
             </div>

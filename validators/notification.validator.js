@@ -1,6 +1,7 @@
 const { body, param, query } = require('express-validator');
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const { validateDeepLink } = require('../utils/deepLinkHelper');
 
 // Middleware to handle validation errors consistently
 const handleValidationErrors = (req, res, next) => {
@@ -107,12 +108,44 @@ const validateCreateNotification = [
     .isString()
     .withMessage('Deep link phải là chuỗi')
     .isLength({ max: 255 })
-    .withMessage('Deep link không được vượt quá 255 ký tự'),
+    .withMessage('Deep link không được vượt quá 255 ký tự')
+    .custom(value => {
+      if (value) {
+        const validation = validateDeepLink(value);
+        if (!validation.isValid) {
+          throw new Error(validation.message);
+        }
+      }
+      return true;
+    }),
     
   body('image_url')
     .optional()
-    .isURL()
-    .withMessage('Image URL phải là URL hợp lệ'),
+    .isString()
+    .withMessage('Image URL phải là chuỗi')
+    .custom(value => {
+      if (value) {
+        const trimmedValue = value.trim();
+        
+        // Kiểm tra URL hợp lệ
+        try {
+          new URL(trimmedValue);
+        } catch {
+          throw new Error('Image URL phải là URL hợp lệ (ví dụ: https://example.com/image.jpg)');
+        }
+        
+        // Kiểm tra extension ảnh
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const hasValidExtension = validExtensions.some(ext => 
+          trimmedValue.toLowerCase().includes(ext)
+        );
+        
+        if (!hasValidExtension) {
+          throw new Error('Image URL phải có định dạng ảnh hợp lệ (.jpg, .jpeg, .png, .gif, .webp)');
+        }
+      }
+      return true;
+    }),
     
   body('priority')
     .optional()

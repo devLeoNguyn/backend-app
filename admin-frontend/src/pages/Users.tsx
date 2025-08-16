@@ -2,14 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   MdSearch, 
-  MdAdd, 
   MdEmail,
   MdPhone,
   MdCalendarToday,
-  MdLock,
-  MdLockOpen,
 } from 'react-icons/md';
-import { fetchUsers, setUserLockStatus } from '../api/ApiCollection';
+import { fetchUsers } from '../api/ApiCollection';
 
 interface User {
   id: string;
@@ -134,13 +131,13 @@ const Users = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold text-base-content">👥 Quản lý Người dùng</h1>
-        <button 
+        {/* <button 
           className="btn btn-primary gap-2"
           onClick={() => setIsAddModalOpen(true)}
         >
           <MdAdd className="w-5 h-5" />
           Thêm người dùng
-        </button>
+        </button> */}
       </div>
 
       {/* KPI Cards */}
@@ -272,8 +269,8 @@ const Users = () => {
                       </div>
                       
                       {/* Lock/Unlock actions */}
-                      <div className="flex items-center gap-2">
-                        <button
+                      {/* <div className="flex items-center gap-2"> */}
+                        {/* <button
                           className="btn btn-sm btn-outline"
                           onClick={async () => {
                             try {
@@ -298,8 +295,8 @@ const Users = () => {
                           }}
                         >
                           <MdLockOpen className="w-4 h-4" /> Mở khóa
-                        </button>
-                      </div>
+                        </button> */}
+                      {/* </div> */}
                     </div>
                   </div>
                 </div>

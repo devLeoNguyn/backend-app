@@ -172,7 +172,7 @@ class AdminController {
             const rentals = await MovieRental.find()
                 .populate('userId', 'full_name email')
                 .populate('movieId', 'movie_title')
-                .populate('paymentId', 'amount orderCode')
+                .populate('paymentId', 'amount')
                 .sort({ createdAt: -1 })
                 .limit(50);
 
@@ -189,10 +189,7 @@ class AdminController {
                 // Thêm thông tin chi tiết
                 movieId: rental.movieId?._id,
                 paymentId: rental.paymentId?._id,
-                orderCode: rental.paymentId?.orderCode,
                 rentalType: rental.rentalType,
-                startDate: rental.startDate?.toISOString().split('T')[0],
-                endDate: rental.endDate?.toISOString().split('T')[0],
                 remainingTime: rental.remainingTime,
                 isExpired: rental.status === 'expired',
                 paymentMethod: rental.paymentId?.paymentMethod || 'PayOS',

@@ -56,10 +56,9 @@ const createMovieController = async (req, res) => {
 
         // Gỡ bỏ logic event_start_time và event_status
 
-        // Gửi push notification dựa trên 2 điều kiện:
-        // 1. Phim có trạng thái "released" (auto notification)
-        // 2. Admin bật flag send_notification (manual notification)
-        const shouldSendNotification = newMovie.release_status === 'released' || req.body.send_notification === true;
+        // Gửi push notification chỉ khi admin bật flag send_notification
+        // Không gửi tự động dựa trên release_status nữa
+        const shouldSendNotification = req.body.send_notification === true;
         
         if (shouldSendNotification) {
             try {
@@ -67,7 +66,7 @@ const createMovieController = async (req, res) => {
                     movie_title: newMovie.movie_title,
                     release_status: newMovie.release_status,
                     send_notification: req.body.send_notification,
-                    reason: newMovie.release_status === 'released' ? 'auto_released' : 'manual_admin'
+                    reason: 'manual_admin_request'
                 });
                 
                 await PushNotificationService.sendNewMovieNotification(
@@ -172,38 +171,24 @@ const updateMovie = async (req, res) => {
         
         const { updatedMovie, episodes } = await movieService.updateMovie(id, req.body);
 
-        // Kiểm tra xem có thay đổi release_status từ 'ended' thành 'released' không
-        const wasEnded = oldMovie.release_status === 'ended';
-        const nowReleased = updatedMovie.release_status === 'released';
-        
-        if (wasEnded && nowReleased) {
+        // Chỉ gửi thông báo khi admin bật flag send_notification
+        // Không gửi tự động dựa trên thay đổi release_status
+        if (req.body.send_notification === true) {
             try {
-                console.log('📢 Movie status changed from ended to released, sending notification:', updatedMovie.movie_title);
+                console.log('📢 Admin requested notification for movie update:', updatedMovie.movie_title);
                 await PushNotificationService.sendNewMovieNotification(
                     updatedMovie._id,
                     updatedMovie.movie_title,
                     updatedMovie.poster_path
                 );
             } catch (notificationError) {
-                console.error('Error sending push notification for status change:', notificationError);
+                console.error('Error sending push notification for movie update:', notificationError);
                 // Don't fail the update if notification fails
             }
-        } else if (nowReleased && oldMovie.release_status !== 'released') {
-            // Trường hợp khác: từ upcoming hoặc trạng thái khác thành released
-            try {
-                console.log('📢 Movie status changed to released, sending notification:', updatedMovie.movie_title);
-                await PushNotificationService.sendNewMovieNotification(
-                    updatedMovie._id,
-                    updatedMovie.movie_title,
-                    updatedMovie.poster_path
-                );
-            } catch (notificationError) {
-                console.error('Error sending push notification for status change:', notificationError);
-            }
         } else {
-            console.log('🔇 No notification needed for status change:', {
-                from: oldMovie.release_status,
-                to: updatedMovie.release_status
+            console.log('🔇 No notification requested for movie update:', {
+                movie_title: updatedMovie.movie_title,
+                send_notification: req.body.send_notification
             });
         }
 

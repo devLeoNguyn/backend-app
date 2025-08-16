@@ -169,7 +169,7 @@ describe('NotificationService', () => {
           title: 'Notification 2',
           body: 'Body 2',
           type: 'auto',
-          event_type: 'payment_success',
+          event_type: 'promotion',
           target_type: 'segment',
           segment: 'premium_users',
           status: 'draft',

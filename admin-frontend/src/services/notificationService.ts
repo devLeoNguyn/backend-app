@@ -54,36 +54,18 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-export interface NotificationFilters {
-  status?: string[];
-  type?: string[];
-  target_type?: string[];
-  search?: string;
-  date_from?: Date;
-  date_to?: Date;
-  page?: number;
-  limit?: number;
-}
+
 
 class NotificationService {
-  // Get all notifications with filtering
+  // Get all notifications
   async getNotifications(
     adminUserId: string,
-    filters: NotificationFilters = {}
+    _filters: any = {}
   ): Promise<PaginatedResponse<Notification>> {
     try {
-      // Convert filters to query params
+      // Simple params
       const params = new URLSearchParams();
       params.append('userId', adminUserId);
-      
-      if (filters.page) params.append('page', filters.page.toString());
-      if (filters.limit) params.append('limit', filters.limit.toString());
-      if (filters.search) params.append('search', filters.search);
-      if (filters.status && filters.status.length) params.append('status', filters.status.join(','));
-      if (filters.type && filters.type.length) params.append('type', filters.type.join(','));
-      if (filters.target_type && filters.target_type.length) params.append('target_type', filters.target_type.join(','));
-      if (filters.date_from) params.append('date_from', filters.date_from.toISOString());
-      if (filters.date_to) params.append('date_to', filters.date_to.toISOString());
       
       const url = `${API_ENDPOINTS.ADMIN_NOTIFICATIONS}?${params.toString()}`;
       console.log('Fetching notifications from:', url);

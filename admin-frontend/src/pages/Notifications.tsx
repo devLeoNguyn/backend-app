@@ -5,7 +5,7 @@ import { authService } from '../services/authService';
 import NotificationList from '../components/Notifications/NotificationList';
 import NotificationForm from '../components/Notifications/NotificationForm';
 import NotificationStats from '../components/Notifications/NotificationStats';
-import NotificationFilters from '../components/Notifications/NotificationFilters';
+
 import ScheduleModal from '../components/Notifications/ScheduleModal';
 import toast from 'react-hot-toast';
 
@@ -22,10 +22,8 @@ const Notifications: React.FC = () => {
     notifications,
     loading,
     error,
-    filters,
     pagination,
     selectedNotifications,
-    updateFilters,
     changePage,
     createNotification,
     updateNotification,
@@ -202,28 +200,7 @@ const Notifications: React.FC = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    
-    // Update filters based on tab
-    let statusFilters: string[] = [];
-    
-    switch (tab) {
-      case 'draft':
-        statusFilters = ['draft'];
-        break;
-      case 'scheduled':
-        statusFilters = ['scheduled'];
-        break;
-      case 'sent':
-        statusFilters = ['sent'];
-        break;
-      case 'failed':
-        statusFilters = ['failed'];
-        break;
-      default:
-        statusFilters = [];
-    }
-    
-    updateFilters({ status: statusFilters.length > 0 ? statusFilters : undefined });
+    // Simple tab change without filters
   };
 
   // Error handling
@@ -252,12 +229,12 @@ const Notifications: React.FC = () => {
             <span className="hidden sm:inline">📱</span>
             Quản lý thông báo
           </h1>
-          <button
+          {/* <button
             className="btn btn-primary w-full sm:w-auto"
             onClick={() => setShowCreateModal(true)}
           >
             + Tạo thông báo mới
-          </button>
+          </button> */}
         </div>
 
         {/* Stats Overview */}
@@ -301,13 +278,7 @@ const Notifications: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 bg-base-200 p-4 rounded-lg">
-          <NotificationFilters 
-            filters={filters} 
-            onFilterChange={updateFilters}
-          />
-        </div>
+
 
       {/* Bulk Actions */}
       {selectedNotifications.length > 0 && (

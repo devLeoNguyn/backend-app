@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   notificationService, 
-  Notification, 
-  NotificationFilters 
+  Notification
 } from '../services/notificationService';
 import { authService } from '../services/authService';
 
-export const useNotifications = (initialFilters: NotificationFilters = {}) => {
+export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<NotificationFilters>(initialFilters);
   const [pagination, setPagination] = useState<{
     total: number;
     page: number;
@@ -29,7 +27,7 @@ export const useNotifications = (initialFilters: NotificationFilters = {}) => {
   const adminUser = authService.getCurrentUser();
   const adminUserId = adminUser?._id || '6863e129661212a5d79c271f'; // Fallback admin ID for testing
   
-  // Fetch notifications with current filters
+  // Fetch notifications
   const fetchNotifications = useCallback(async () => {
     if (!adminUserId) return;
     
@@ -37,9 +35,9 @@ export const useNotifications = (initialFilters: NotificationFilters = {}) => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching notifications with:', { adminUserId, filters });
+      console.log('Fetching notifications with:', { adminUserId });
       
-      const response = await notificationService.getNotifications(adminUserId, filters);
+      const response = await notificationService.getNotifications(adminUserId, {});
       
       console.log('Notifications response:', response);
       
@@ -57,7 +55,7 @@ export const useNotifications = (initialFilters: NotificationFilters = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [adminUserId, filters]);
+  }, [adminUserId]);
   
   // Fetch notifications when component mounts or filters change
   useEffect(() => {
@@ -67,22 +65,11 @@ export const useNotifications = (initialFilters: NotificationFilters = {}) => {
     }
   }, [adminUserId, fetchNotifications]);
   
-  // Update filters and refetch
-  const updateFilters = useCallback((newFilters: NotificationFilters) => {
-    setFilters(prevFilters => ({
-      ...prevFilters,
-      ...newFilters,
-      page: 1, // Reset to first page when filters change
-    }));
-  }, []);
-  
   // Change page
-  const changePage = useCallback((page: number) => {
-    setFilters(prevFilters => ({
-      ...prevFilters,
-      page,
-    }));
-  }, []);
+  const changePage = useCallback((_page: number) => {
+    // Simple pagination without filters
+    fetchNotifications();
+  }, [fetchNotifications]);
   
   // Create a notification
   const createNotification = useCallback(async (notificationData: Partial<Notification>) => {
@@ -277,10 +264,8 @@ export const useNotifications = (initialFilters: NotificationFilters = {}) => {
     notifications,
     loading,
     error,
-    filters,
     pagination,
     selectedNotifications,
-    updateFilters,
     changePage,
     createNotification,
     updateNotification,

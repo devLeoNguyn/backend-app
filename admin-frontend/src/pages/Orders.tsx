@@ -71,24 +71,6 @@ const Orders = () => {
       },
     },
     {
-      field: 'startDate',
-      headerName: 'Rental Period',
-      minWidth: 150,
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <div className="flex flex-col">
-            <span className="text-sm">
-              📅 {params.row.startDate || 'N/A'}
-            </span>
-            <span className="text-sm">
-              🔚 {params.row.endDate || 'N/A'}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
       field: 'status',
       headerName: 'Status',
       minWidth: 120,
@@ -147,24 +129,6 @@ const Orders = () => {
                 ⏱️ {params.row.remainingTime}
               </span>
             )}
-          </div>
-        );
-      },
-    },
-    {
-      field: 'orderCode',
-      headerName: 'Order Code',
-      minWidth: 120,
-      flex: 1,
-      renderCell: (params) => {
-        return (
-          <div className="flex flex-col">
-            <span className="text-sm font-mono">
-              {params.row.orderCode || 'N/A'}
-            </span>
-            <span className="text-xs text-gray-500">
-              {params.row.createdAt}
-            </span>
           </div>
         );
       },

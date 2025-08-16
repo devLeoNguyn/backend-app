@@ -206,7 +206,7 @@ class RentalService {
                 data: {
                     rental: await MovieRental.findById(rental._id)
                         .populate('movieId', 'movie_title poster_path duration movie_type')
-                        .populate('paymentId', 'amount orderCode'),
+                        .populate('paymentId', 'amount'),
                     message: `Thanh toán thành công! Nhấn "Xem ngay" để bắt đầu thuê phim ${rentalType === '48h' ? '48 giờ' : '30 ngày'}.`
                 }
             };
@@ -405,7 +405,7 @@ class RentalService {
         try {
             const rental = await MovieRental.findById(rentalId)
                 .populate('movieId', 'title')
-                .populate('paymentId', 'amount orderCode');
+                .populate('paymentId', 'amount');
 
             if (!rental) {
                 throw new Error('Không tìm thấy rental');
@@ -590,7 +590,7 @@ class RentalService {
             // Return rental với populate data
             const activatedRental = await MovieRental.findById(rental._id)
                 .populate('movieId', 'movie_title poster_path duration movie_type')
-                .populate('paymentId', 'amount orderCode');
+                .populate('paymentId', 'amount');
 
             return {
                 success: true,
