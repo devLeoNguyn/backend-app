@@ -537,43 +537,95 @@ class NotificationService {
    */
   async getNotificationStats(filters = {}) {
     try {
-      // Build query based on filters
-      const query = {};
+      const matchStage = {};
       
-      if (filters.status) query.status = filters.status;
-      if (filters.type) query.type = filters.type;
-      
-      if (filters.date_from || filters.date_to) {
-        query.created_at = {};
-        if (filters.date_from) query.created_at.$gte = new Date(filters.date_from);
-        if (filters.date_to) query.created_at.$lte = new Date(filters.date_to);
+      if (filters.startDate) {
+        matchStage.created_at = { $gte: new Date(filters.startDate) };
       }
       
-      // Get total count
-      const totalCount = await Notification.countDocuments(query);
+      if (filters.endDate) {
+        if (matchStage.created_at) {
+          matchStage.created_at.$lte = new Date(filters.endDate);
+        } else {
+          matchStage.created_at = { $lte: new Date(filters.endDate) };
+        }
+      }
       
-      // Get counts by status
-      const sentCount = await Notification.countDocuments({ ...query, status: 'sent' });
-      const scheduledCount = await Notification.countDocuments({ ...query, status: 'scheduled' });
-      const draftCount = await Notification.countDocuments({ ...query, status: 'draft' });
-      const failedCount = await Notification.countDocuments({ ...query, status: 'failed' });
+      if (filters.type) {
+        matchStage.type = filters.type;
+      }
       
-      // Get read stats
+      if (filters.event_type) {
+        matchStage.event_type = filters.event_type;
+      }
+      
+      const stats = await Notification.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: null,
+            totalNotifications: { $sum: 1 },
+            totalSent: { $sum: '$sent_count' },
+            totalFailed: { $sum: '$failed_count' },
+            totalTargeted: { $sum: '$total_target_count' },
+            totalMuted: { $sum: '$muted_count' }
+          }
+        }
+      ]);
+      
       const readCount = await UserNotification.countDocuments({ is_read: true });
       const totalUserNotifications = await UserNotification.countDocuments({});
       const readRate = totalUserNotifications > 0 ? readCount / totalUserNotifications : 0;
       
       return {
-        total: totalCount,
-        sent: sentCount,
-        scheduled: scheduledCount,
-        draft: draftCount,
-        failed: failedCount,
-        read_rate: readRate,
-        read_count: readCount
+        totalNotifications: stats[0]?.totalNotifications || 0,
+        totalSent: stats[0]?.totalSent || 0,
+        totalFailed: stats[0]?.totalFailed || 0,
+        totalTargeted: stats[0]?.totalTargeted || 0,
+        totalMuted: stats[0]?.totalMuted || 0,
+        readRate: readRate
       };
     } catch (error) {
       console.error('Error getting notification stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a single UserNotification record
+   */
+  async createUserNotification(notificationId, userId, isSent = true) {
+    try {
+      // Check if UserNotification already exists
+      let userNotification = await UserNotification.findOne({
+        user_id: userId,
+        notification_id: notificationId
+      });
+      
+      if (!userNotification) {
+        // Create new UserNotification if it doesn't exist
+        userNotification = await UserNotification.create({
+          user_id: userId,
+          notification_id: notificationId,
+          is_read: false,
+          is_sent: isSent,
+          sent_at: isSent ? new Date() : null,
+          delivery_status: isSent ? 'sent' : 'failed',
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      } else {
+        // Update existing UserNotification
+        userNotification.is_sent = isSent;
+        userNotification.sent_at = isSent ? new Date() : null;
+        userNotification.delivery_status = isSent ? 'sent' : 'failed';
+        userNotification.updated_at = new Date();
+        await userNotification.save();
+      }
+      
+      return userNotification;
+    } catch (error) {
+      console.error('Error creating user notification:', error);
       throw error;
     }
   }

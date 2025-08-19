@@ -15,11 +15,10 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Menu from './components/menu/Menu';
 import Error from './pages/Error';
-import Profile from './pages/Profile';
+// Profile and EditProfile imports removed
 import Orders from './pages/Orders';
 // Removed Posts page from navigation and routing
 import ToasterProvider from './components/ToasterProvider';
-import EditProfile from './pages/EditProfile';
 import User from './pages/User';
 import Product from './pages/Product';
 import Login from './pages/Login';
@@ -80,14 +79,7 @@ function App() {
           path: 'home',
           element: <Home />,
         },
-        {
-          path: 'profile',
-          element: <Profile />,
-        },
-        {
-          path: 'profile/edit',
-          element: <EditProfile />,
-        },
+        // Profile routes removed
         {
           path: 'users',
           element: <Users />,

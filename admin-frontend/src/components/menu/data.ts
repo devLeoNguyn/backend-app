@@ -1,7 +1,6 @@
 // import toast from 'react-hot-toast';
 import {
   IoHomeOutline,
-  IoPersonOutline,
   IoPeopleOutline,
   IoFilmOutline,
   IoDocumentTextOutline,
@@ -21,12 +20,7 @@ export const menu = [
         icon: IoHomeOutline,
         label: 'trang chủ',
       },
-      {
-        isLink: true,
-        url: '/admin/profile',
-        icon: IoPersonOutline,
-        label: 'hồ sơ',
-      },
+      // Profile menu item removed
     ],
   },
   {

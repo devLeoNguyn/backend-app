@@ -377,6 +377,118 @@ class PushNotificationService {
       throw error;
     }
   }
+
+  /**
+   * Send rental expiry notification to specific user
+   */
+  async sendRentalExpiryNotification(userId, movieId, movieTitle, remainingHours) {
+    try {
+      console.log('⏰ Sending rental expiry notification:', { userId, movieId, movieTitle, remainingHours });
+      
+      // Get user with FCM token
+      const user = await User.findById(userId);
+      
+      if (!user || !user.fcmToken) {
+        console.log('⚠️ User not found or no FCM token:', userId);
+        return { success: false, message: 'User not found or no FCM token' };
+      }
+      
+      // Check if user has notifications enabled
+      if (!user.pushNotificationsEnabled) {
+        console.log('⚠️ User has notifications disabled:', userId);
+        return { success: false, message: 'User has notifications disabled' };
+      }
+      
+      // Check if user is muted
+      if (user.notificationMute && user.notificationMute.isMuted) {
+        if (!user.notificationMute.muteUntil || new Date() < user.notificationMute.muteUntil) {
+          console.log('⚠️ User is muted:', userId);
+          return { success: false, message: 'User is muted' };
+        }
+      }
+      
+      console.log(`📱 Found user with FCM token: ${userId}`);
+      
+      // Create notification in database first
+      const notificationService = require('./notification.service');
+      const adminUser = await User.findOne({ role: 'admin' });
+      
+      if (!adminUser) {
+        console.error('❌ No admin user found for creating notification');
+        return { success: false, message: 'No admin user found' };
+      }
+      
+      // Get movie poster for notification
+      const Movie = require('../models/Movie');
+      const movie = await Movie.findById(movieId).select('poster_path');
+      const posterPath = movie ? movie.poster_path : null;
+      
+      // Create notification record in database
+      const notificationData = {
+        title: `⏰ ${movieTitle} sắp hết hạn!`,
+        body: `Phim của bạn sẽ hết hạn trong ${remainingHours} giờ. Xem ngay để không bỏ lỡ!`,
+        type: 'auto',
+        event_type: 'rental_expiry',
+        target_type: 'specific_users',
+        target_users: [userId],
+        deep_link: `movie/${movieId}`,
+        image_url: posterPath,
+        priority: 'high',
+        created_by: adminUser._id
+      };
+      
+      const notification = await notificationService.createNotification(notificationData);
+      console.log('✅ Rental expiry notification created in database:', notification._id);
+      
+      // Send push notification directly to user
+      const fcmNotification = {
+        title: notificationData.title,
+        body: notificationData.body,
+        data: {
+          type: 'rental_expiry',
+          deep_link: notificationData.deep_link,
+          notification_id: notification._id.toString(),
+          movie_id: movieId,
+          movie_title: movieTitle,
+          movie_poster: posterPath,
+          action: 'open_app'
+        }
+      };
+      
+      const fcmResult = await fcmService.sendToToken(user.fcmToken, fcmNotification);
+      
+      if (fcmResult.success) {
+        console.log(`✅ Rental expiry notification sent successfully to user: ${userId}`);
+        
+        // Create UserNotification record
+        await notificationService.createUserNotification(notification._id, userId, true);
+        
+        return {
+          success: true,
+          notificationId: notification._id,
+          sentCount: 1,
+          failedCount: 0,
+          total: 1
+        };
+      } else {
+        console.error(`❌ Failed to send rental expiry notification to user: ${userId}`, fcmResult.error);
+        
+        // Create UserNotification record with failed status
+        await notificationService.createUserNotification(notification._id, userId, false);
+        
+        return {
+          success: false,
+          error: fcmResult.error,
+          sentCount: 0,
+          failedCount: 1,
+          total: 1
+        };
+      }
+    } catch (error) {
+      console.error('Error sending rental expiry notification:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new PushNotificationService();

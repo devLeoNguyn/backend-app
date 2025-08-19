@@ -64,7 +64,7 @@ class CronService {
                         await rental.expire();
                         expiredCount++;
                         
-                        console.log(`Expired rental: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.title}`);
+                        console.log(`Expired rental: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.movie_title}`);
                     } catch (error) {
                         console.error(`Error expiring rental ${rental._id}:`, error);
                     }
@@ -100,7 +100,7 @@ class CronService {
                 for (const rental of expiringRentals) {
                     try {
                         const remainingHours = Math.ceil(rental.remainingTime / (1000 * 60 * 60));
-                        console.log(`Rental expiring soon: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.title} - ${remainingHours}h remaining`);
+                        console.log(`Rental expiring soon: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.movie_title} - ${remainingHours}h remaining`);
                         
                         // Mark notification as sent
                         await rental.markNotificationSent();
@@ -110,7 +110,7 @@ class CronService {
                         await pushNotificationService.sendRentalExpiryNotification(
                             rental.userId._id,
                             rental.movieId._id,
-                            rental.movieId.title,
+                            rental.movieId.movie_title,
                             remainingHours
                         );
 
@@ -299,13 +299,13 @@ class CronService {
     async sendExpiringNotification(rental) {
         try {
             const remainingHours = Math.ceil(rental.remainingTime / (1000 * 60 * 60));
-            const message = `Phim "${rental.movieId.title}" của bạn sắp hết hạn trong ${remainingHours} giờ nữa.`;
+                            const message = `Phim "${rental.movieId.movie_title}" của bạn sắp hết hạn trong ${remainingHours} giờ nữa.`;
             
             // Use push notification service to send expiry notification
             await pushNotificationService.sendRentalExpiryNotification(
                 rental.userId._id,
                 rental.movieId._id,
-                rental.movieId.title,
+                rental.movieId.movie_title,
                 remainingHours
             );
             
@@ -443,6 +443,55 @@ class CronService {
             
         } catch (error) {
             console.error('Error in manual notification check:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Run manual expiring notification check (for testing)
+     */
+    async runManualExpiringNotificationCheck() {
+        try {
+            console.log('Running manual expiring notification check...');
+            
+            const expiringRentals = await MovieRental.findExpiringSoon();
+            let notificationCount = 0;
+
+            console.log(`Found ${expiringRentals.length} rentals expiring soon`);
+
+            for (const rental of expiringRentals) {
+                try {
+                    const remainingHours = Math.ceil(rental.remainingTime / (1000 * 60 * 60));
+                    console.log(`Processing rental: User ${rental.userId.name || rental.userId.email} - Movie ${rental.movieId.movie_title} - ${remainingHours}h remaining`);
+                    
+                    // Mark notification as sent
+                    await rental.markNotificationSent();
+                    notificationCount++;
+
+                    // Send push notification using push notification service
+                    const result = await pushNotificationService.sendRentalExpiryNotification(
+                        rental.userId._id,
+                        rental.movieId._id,
+                        rental.movieId.movie_title,
+                        remainingHours
+                    );
+
+                    console.log(`Notification result for rental ${rental._id}:`, result);
+
+                } catch (error) {
+                    console.error(`Error processing expiring rental ${rental._id}:`, error);
+                }
+            }
+
+            console.log(`Manual expiring notification check completed. ${notificationCount} notifications processed.`);
+            return {
+                success: true,
+                processedCount: notificationCount,
+                totalExpiring: expiringRentals.length
+            };
+
+        } catch (error) {
+            console.error('Error in manual expiring notification check:', error);
             throw error;
         }
     }
