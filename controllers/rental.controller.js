@@ -492,8 +492,33 @@ class RentalController {
             console.error('Error in controlAllCronJobs:', error);
             res.status(500).json({
                 success: false,
-                message: 'Lỗi server khi điều khiển tất cả cron jobs',
+                message: 'Lỗi server khi điều khiển cron jobs',
                 data: null
+            });
+        }
+    }
+
+    /**
+     * POST /api/rentals/test-expiry-notification
+     * Test rental expiry notification manually
+     */
+    async testRentalExpiryNotification(req, res) {
+        try {
+            console.log('Testing rental expiry notification...');
+            
+            const result = await cronService.runManualExpiringNotificationCheck();
+            
+            res.json({
+                success: true,
+                message: 'Rental expiry notification test completed',
+                data: result
+            });
+        } catch (error) {
+            console.error('Error in testRentalExpiryNotification:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error testing rental expiry notification',
+                error: error.message
             });
         }
     }

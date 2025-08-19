@@ -239,6 +239,13 @@ router.put('/cron/:action/:jobName', rentalController.controlCronJob);
  */
 router.put('/cron/all/:action', rentalController.controlAllCronJobs);
 
+/**
+ * @route POST /api/rentals/test-expiry-notification
+ * @desc Test rental expiry notification manually
+ * @access Admin
+ */
+router.post('/test-expiry-notification', rentalController.testRentalExpiryNotification);
+
 // ===========================================
 // WEBHOOK ENDPOINTS
 // ===========================================

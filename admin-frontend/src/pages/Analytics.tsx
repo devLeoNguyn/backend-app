@@ -181,7 +181,7 @@ const Analytics: React.FC = () => {
           </div>
         </div>
 
-        <div className="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl">
+        {/* <div className="card bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-xl">
           <div className="card-body">
             <div className="flex items-center justify-between">
               <div>
@@ -196,7 +196,7 @@ const Analytics: React.FC = () => {
               <div className="text-3xl opacity-90">👥</div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="card bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-xl">
           <div className="card-body">

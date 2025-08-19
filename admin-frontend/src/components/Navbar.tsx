@@ -211,11 +211,7 @@ const Navbar = () => {
             tabIndex={0}
             className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-40"
           >
-            <li>
-              <Link to="/admin/profile" className="justify-between">
-                My Profile
-              </Link>
-            </li>
+            {/* Profile link removed */}
             <li>
               <button 
                 onClick={handleLogout}
