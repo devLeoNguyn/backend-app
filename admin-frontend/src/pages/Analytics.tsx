@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../config/api';
+import { getAdminUserId } from '../api/ApiCollection';
 import {
   LineChart,
   Line,
@@ -181,15 +183,12 @@ const Analytics: React.FC = () => {
   const fetchAnalyticsData = useCallback(async () => {
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3003';
-      const userId = '6863e129661212a5d79c271f'; // Admin user ID
-      const { startDate, endDate } = getRangeFromFilter(filter);
+  const baseUrl = import.meta.env.VITE_API_URL || API_BASE_URL;
+  const userId = getAdminUserId();
+  const { startDate, endDate } = getRangeFromFilter(filter);
 
-      const params = new URLSearchParams({
-        userId,
-        startDate,
-        endDate
-      });
+  const params = new URLSearchParams({ startDate, endDate });
+  if (userId) params.set('userId', userId);
 
       // Fetch dashboard data
       const dashboardResponse = await fetch(`${baseUrl}/api/analytics/dashboard?${params}`);

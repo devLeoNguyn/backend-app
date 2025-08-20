@@ -55,9 +55,9 @@ interface Genre {
 }
 
 // Lấy admin user từ localStorage để pass userId
-const getAdminUserId = () => {
+export const getAdminUserId = () => {
     const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
-    // Fallback to hardcoded admin ID for testing
+    // Fallback to hardcoded admin ID for testing (only when localStorage empty)
     return adminUser._id || '6863e129661212a5d79c271f';
 };
 
