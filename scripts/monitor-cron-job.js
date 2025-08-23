@@ -16,7 +16,7 @@ async function monitorCronJob() {
     console.log('🔍 Monitoring Cron Job and Notifications...\n');
 
     // 1. Check current rental status
-    const rental = await MovieRental.findById('68a416d9e37c9f5dafa35dfc')
+    const rental = await MovieRental.findById('68a555f03a1c2caefc790a92')
       .populate('userId', 'name email')
       .populate('movieId', 'movie_title');
 

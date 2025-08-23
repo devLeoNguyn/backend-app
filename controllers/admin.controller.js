@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Movie = require('../models/Movie');
 const MovieRental = require('../models/MovieRental');
+const MoviePayment = require('../models/MoviePayment');
 const Genre = require('../models/Genre');
 const mongoose = require('mongoose');
 
@@ -36,10 +37,13 @@ class AdminController {
         }
     }
 
-    // GET /api/admin/users - Format theo admin template
+    // GET /api/admin/users - Format theo admin template với pagination
     async getAllUsers(req, res) {
         try {
-            const { page = 1, limit = 10, search } = req.query;
+            const { page = 1, limit = 20, search } = req.query;
+            const pageNum = parseInt(page);
+            const limitNum = parseInt(limit);
+            
             const query = search ? {
                 $or: [
                     { full_name: { $regex: search, $options: 'i' } },
@@ -49,35 +53,56 @@ class AdminController {
 
             const users = await User.find(query)
                 .sort({ createdAt: -1 })
-                .limit(limit * 1)
-                .skip((page - 1) * limit);
+                .limit(limitNum)
+                .skip((pageNum - 1) * limitNum);
 
             const total = await User.countDocuments(query);
 
             // Map to admin template format
-            const formattedUsers = users.map(user => ({
-                id: user._id,
-                firstName: user.full_name.split(' ')[0],
-                lastName: user.full_name.split(' ').slice(1).join(' '),
-                email: user.email,
-                phone: user.phone,
-                createdAt: user.createdAt.toISOString().split('T')[0],
-                verified: user.is_phone_verified,
-                img: user.avatar || '/default-avatar.png',
-                // Thêm thông tin chi tiết
-                fullName: user.full_name,
-                role: user.role,
-                gender: user.gender,
-                dateOfBirth: user.date_of_birth,
-                address: user.address,
-                lastLogin: user.last_login,
-                isActive: user.is_active !== false,
-                isLocked: user.is_locked === true,
-                joinedDate: user.createdAt.toISOString().split('T')[0],
-                totalRentals: 0 // Sẽ được populate sau
-            }));
+            const formattedUsers = users.map(user => {
+                // Xử lý an toàn full_name có thể null/undefined
+                const fullName = user.full_name || user.email || 'Người dùng';
+                const nameParts = fullName.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                
+                // Xử lý an toàn createdAt
+                const createdAtDate = user.createdAt ? user.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
-            res.json(formattedUsers);
+                return {
+                    id: user._id,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: user.email,
+                    phone: user.phone,
+                    createdAt: createdAtDate,
+                    verified: user.is_phone_verified,
+                    img: user.avatar || '/default-avatar.png',
+                    // Thêm thông tin chi tiết
+                    fullName: fullName,
+                    role: user.role,
+                    gender: user.gender,
+                    dateOfBirth: user.date_of_birth,
+                    address: user.address,
+                    lastLogin: user.last_login,
+                    isActive: user.is_active !== false,
+                    isLocked: user.is_locked === true,
+                    joinedDate: createdAtDate,
+                    totalRentals: 0 // Sẽ được populate sau
+                };
+            });
+
+            res.json({
+                users: formattedUsers,
+                pagination: {
+                    currentPage: pageNum,
+                    totalPages: Math.ceil(total / limitNum),
+                    totalUsers: total,
+                    pageSize: limitNum,
+                    hasNext: pageNum < Math.ceil(total / limitNum),
+                    hasPrev: pageNum > 1
+                }
+            });
         } catch (error) {
             console.error('Get all users error:', error);
             res.status(500).json({ status: 'error', message: error.message });
@@ -329,11 +354,27 @@ class AdminController {
     // GET /api/admin/totalrevenue - Format for admin template charts
     async getTotalRevenue(req, res) {
         try {
-            const totalRevenue = await MovieRental.aggregate([
-                { $match: { status: { $in: ['active', 'expired'] } } },
-                { $lookup: { from: 'moviepayments', localField: 'paymentId', foreignField: '_id', as: 'payment' } },
-                { $unwind: '$payment' },
-                { $group: { _id: null, total: { $sum: '$payment.amount' } } }
+            // Lấy doanh thu của năm hiện tại
+            const currentYear = new Date().getFullYear();
+            const startOfYear = new Date(currentYear, 0, 1); // 1/1/2025
+            const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59); // 31/12/2025
+            
+            const totalRevenue = await MoviePayment.aggregate([
+                {
+                    $match: {
+                        status: 'SUCCESS',
+                        paymentTime: { 
+                            $gte: startOfYear,
+                            $lte: endOfYear
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: '$amount' }
+                    }
+                }
             ]);
             
             res.json({

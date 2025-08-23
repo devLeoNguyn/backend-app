@@ -170,11 +170,21 @@ export const fetchTotalProfit = async () => {
     };
 };
 
-// Users từ movie app
-export const fetchUsers = async () => {
+// Users từ movie app với pagination
+export const fetchUsers = async (page: number = 1, limit: number = 20, search?: string) => {
     const adminUserId = getAdminUserId();
+    const params: { adminUserId: string; page: number; limit: number; search?: string } = { 
+        adminUserId,
+        page,
+        limit
+    };
+    
+    if (search) {
+        params.search = search;
+    }
+    
     const response = await axios.get(API_ENDPOINTS.ADMIN_USERS, {
-        params: { adminUserId }
+        params
     });
     
     console.log('Users API response:', response.data);
@@ -316,6 +326,28 @@ export const createProduct = async (productData: {
         }
     }
     
+    // Generate episodes based on total_episodes for series
+    const generateEpisodes = () => {
+        const episodeCount = productData.total_episodes || 1;
+        const episodes = [];
+        
+        for (let i = 1; i <= episodeCount; i++) {
+            episodes.push({
+                episode_title: productData.movie_type === 'Phim lẻ' 
+                    ? `${productData.title} - Full Movie`
+                    : `${productData.title} - Tập ${i}`,
+                uri: 'pending-upload', // Placeholder, will be updated when video is uploaded
+                episode_number: i,
+                episode_description: productData.movie_type === 'Phim lẻ'
+                    ? `${productData.title} - Full Movie`
+                    : `${productData.title} - Tập ${i}`,
+                duration: 120 // Default 2 hours
+            });
+        }
+        
+        return episodes;
+    };
+
     // Transform admin form data to movie API format
     const movieData = {
         movie_title: productData.title,
@@ -330,15 +362,7 @@ export const createProduct = async (productData: {
         genres: productData.genres, // <-- assign genres array directly
         event_start_time: null, // Không sử dụng event_start_time
         send_notification: productData.send_notification || false, // Thêm flag gửi notification
-        episodes: [
-            {
-                episode_title: `${productData.title} - ${productData.movie_type === 'Phim lẻ' ? 'Full Movie' : 'Episode 1'}`,
-                uri: 'pending-upload', // Placeholder, will be updated when video is uploaded
-                episode_number: 1,
-                episode_description: `${productData.title} - ${productData.movie_type === 'Phim lẻ' ? 'Full Movie' : 'Episode 1'}`,
-                duration: 120 // Default 2 hours
-            }
-        ],
+        episodes: generateEpisodes(), // Tạo episodes dựa trên total_episodes
         adminUserId // For admin authentication
     };
     

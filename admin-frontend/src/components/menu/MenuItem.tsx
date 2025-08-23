@@ -31,6 +31,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
               key={index}
               onClick={onClick}
               to={listItem.url || ''}
+              end={listItem.url === '/admin'}
               className={({ isActive }) =>
                 isActive
                   ? 'btn btn-block w-full px-5 2xl:min-h-[52px] 3xl:min-h-[64px] justify-start gap-3 rounded-xl shadow-lg elegant-black btn-black'

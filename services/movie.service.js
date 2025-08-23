@@ -209,7 +209,7 @@ const updateMovie = async (movieId, updateData) => {
         console.log('   AFTER:', afterGenreIds);
         console.log('   REPLACED?', JSON.stringify(beforeGenreIds) !== JSON.stringify(afterGenreIds));
 
-        // Update episodes if provided
+        // Update episodes if provided OR if total_episodes changed for series
         let episodes = [];
         if (episodesData && episodesData.length > 0) {
             console.log('📺 [MovieService] Updating episodes...');
@@ -228,6 +228,34 @@ const updateMovie = async (movieId, updateData) => {
                 .sort({ episode_number: 1 });
                 
             console.log(`📺 [MovieService] Retrieved ${episodes.length} existing episodes`);
+            
+            // Auto-generate episodes if total_episodes changed for series
+            if (updatedMovie.movie_type === 'Phim bộ' && 
+                updateData.total_episodes && 
+                updateData.total_episodes !== episodes.length) {
+                
+                console.log(`🔄 [MovieService] Auto-generating episodes for series: ${episodes.length} -> ${updateData.total_episodes}`);
+                
+                // Delete old episodes
+                await Episode.deleteMany({ movie_id: movieId });
+                
+                // Generate episodes based on total_episodes
+                const episodesToCreate = [];
+                for (let i = 1; i <= updateData.total_episodes; i++) {
+                    episodesToCreate.push({
+                        episode_title: `${updatedMovie.movie_title} - Tập ${i}`,
+                        uri: 'pending-upload',
+                        episode_number: i,
+                        episode_description: `${updatedMovie.movie_title} - Tập ${i}`,
+                        duration: 120
+                    });
+                }
+                
+                // Create new episodes
+                episodes = await createEpisodesForMovie(movieId, episodesToCreate, updatedMovie.movie_type);
+                
+                console.log(`✅ [MovieService] Auto-created ${episodes.length} episodes for series`);
+            }
         }
 
         return { updatedMovie, episodes };

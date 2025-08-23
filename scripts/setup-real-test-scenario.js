@@ -14,7 +14,7 @@ async function setupRealTestScenario() {
     console.log('🎬 Setting up Real Test Scenario...\n');
 
     // 1. Find the rental and user
-    const rental = await MovieRental.findById('68a416d9e37c9f5dafa35dfc')
+    const rental = await MovieRental.findById('68a555f03a1c2caefc790a92')
       .populate('userId', 'name email fcmToken pushNotificationsEnabled notificationMute')
       .populate('movieId', 'movie_title');
 

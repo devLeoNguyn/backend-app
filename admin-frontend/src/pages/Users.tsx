@@ -4,7 +4,7 @@ import {
   MdSearch, 
   MdEmail,
   MdPhone,
-  MdCalendarToday,
+  MdCalendarToday
 } from 'react-icons/md';
 import { fetchUsers } from '../api/ApiCollection';
 
@@ -18,7 +18,7 @@ interface User {
   gender?: string;
   img?: string;
   createdAt: string;
-  // Removed live online status from UI/logic
+  isActive: boolean;
 }
 
 // Component Avatar tái sử dụng
@@ -80,10 +80,12 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['allusers'],
-    queryFn: fetchUsers,
+    queryKey: ['allusers', currentPage, pageSize, searchTerm],
+    queryFn: () => fetchUsers(currentPage, pageSize, searchTerm || undefined),
   });
 
   if (isLoading) {
@@ -107,30 +109,40 @@ const Users = () => {
     );
   }
 
-  const users: User[] = data || [];
+  const users: User[] = data?.users || [];
+  const pagination = data?.pagination;
   
-  // Filter users based on search and role
+  // Filter users based on role (client-side filter for role)
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesRole = filterRole === 'all' || user.role === filterRole;
-    
-    return matchesSearch && matchesRole;
+    return matchesRole;
   });
 
-  const totalUsers = users.length;
+  const totalUsers = pagination?.totalUsers || 0;
   const adminCount = users.filter(u => u.role === 'admin').length;
   const userCount = users.filter(u => u.role === 'user').length;
-  // Removed active online counter
+  
+  // Handle search with debounce
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Handle pagination
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
   return (
     <div className="p-6 space-y-6 bg-base-100 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold text-base-content">👥 Quản lý Người dùng</h1>
+        <h1 className="text-3xl font-bold text-base-content">Quản lý Người dùng</h1>
         {/* <button 
           className="btn btn-primary gap-2"
           onClick={() => setIsAddModalOpen(true)}
@@ -150,7 +162,7 @@ const Users = () => {
                 <p className="text-2xl font-bold">{totalUsers}</p>
                 <p className="text-xs opacity-75 mt-1">người dùng</p>
               </div>
-              <div className="text-3xl opacity-90">👥</div>
+              {/* <div className="text-3xl opacity-90">👥</div> */}
             </div>
           </div>
         </div>
@@ -163,7 +175,7 @@ const Users = () => {
                 <p className="text-2xl font-bold">{adminCount}</p>
                 <p className="text-xs opacity-75 mt-1">quản trị viên</p>
               </div>
-              <div className="text-3xl opacity-90">👑</div>
+              {/* <div className="text-3xl opacity-90">👑</div> */}
             </div>
           </div>
         </div>
@@ -176,7 +188,7 @@ const Users = () => {
                 <p className="text-2xl font-bold">{userCount}</p>
                 <p className="text-xs opacity-75 mt-1">người dùng thường</p>
               </div>
-              <div className="text-3xl opacity-90">👤</div>
+              {/* <div className="text-3xl opacity-90">👤</div> */}
             </div>
           </div>
         </div>
@@ -197,7 +209,7 @@ const Users = () => {
                   placeholder="Tìm kiếm theo tên hoặc email..."
                   className="input input-bordered w-full pl-10"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
             </div>
@@ -244,7 +256,7 @@ const Users = () => {
                             <div className={`badge ${
                               user.role === 'admin' ? 'badge-warning' : 'badge-info'
                             }`}>
-                              {user.role === 'admin' ? '👑 Admin' : '👤 User'}
+                              {user.role === 'admin' ? 'Admin' : 'User'}
                             </div>
                             {/* Removed per-user online badge */}
                           </div>
@@ -314,6 +326,55 @@ const Users = () => {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {data?.pagination && data.pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 p-4 bg-base-200 rounded-lg">
+            <div className="text-sm text-base-content/70">
+              Hiển thị {((data.pagination.currentPage - 1) * data.pagination.pageSize) + 1} - {Math.min(data.pagination.currentPage * data.pagination.pageSize, data.pagination.totalUsers)} trong tổng số {data.pagination.totalUsers} người dùng
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {/* Page Size Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Hiển thị:</span>
+                <select 
+                  className="select select-bordered select-sm"
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              {/* Pagination Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  className="btn btn-sm btn-outline"
+                  disabled={!data.pagination.hasPrev}
+                  onClick={() => handlePageChange(data.pagination.currentPage - 1)}
+                >
+                  ‹ Trước
+                </button>
+                
+                <span className="text-sm px-3 py-1 bg-base-300 rounded">
+                  Trang {data.pagination.currentPage} / {data.pagination.totalPages}
+                </span>
+                
+                <button
+                  className="btn btn-sm btn-outline"
+                  disabled={!data.pagination.hasNext}
+                  onClick={() => handlePageChange(data.pagination.currentPage + 1)}
+                >
+                  Tiếp ›
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add User Modal */}

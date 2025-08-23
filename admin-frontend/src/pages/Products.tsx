@@ -231,7 +231,7 @@ const Products = () => {
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">🎬 Quản lý phim</h1>
+        <h1 className="text-2xl font-bold">Quản lý phim</h1>
         <div className="flex gap-2">
           <button
             className="btn btn-black elegant-black"
@@ -243,7 +243,7 @@ const Products = () => {
             className="btn btn-primary"
             onClick={() => setIsSportsOpen(true)}
           >
-            ⚽ Thêm sự kiện thể thao
+            + Thêm sự kiện thể thao
           </button>
         </div>
       </div>
