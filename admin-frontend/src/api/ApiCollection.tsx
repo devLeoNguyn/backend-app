@@ -568,14 +568,21 @@ export const deleteProduct = async (productId: string) => {
 };
 
 // Orders (Rentals) từ movie app
+// ❌ KHÔNG SỬ DỤNG - API endpoint không tồn tại
+// 🗓️ Date: 24/08/2025 - Comment vì backend không có /api/admin/rentals
+// 🔧 Lý do: Backend chỉ có /api/rentals/* endpoints, không có admin namespace
 export const fetchOrders = async () => {
-    const adminUserId = getAdminUserId();
-    const response = await axios.get(API_ENDPOINTS.ADMIN_RENTALS, {
-        params: { adminUserId }
-    });
+    // const adminUserId = getAdminUserId();
+    // const response = await axios.get(API_ENDPOINTS.ADMIN_RENTALS, {
+    //     params: { adminUserId }
+    // });
+    // console.log('Orders (Rentals) API response:', response.data);
+    // return response.data;
     
-    console.log('Orders (Rentals) API response:', response.data);
-    return response.data;
+    // Temporary fallback to existing endpoint
+    const response = await axios.get(`${API_BASE_URL}/api/rentals/stats/popular`);
+    console.log('Orders (Rentals) fallback API response:', response.data);
+    return response.data.data || [];
 };
 
 // Revenue stats (sử dụng API có sẵn)

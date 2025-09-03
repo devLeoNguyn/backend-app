@@ -2,7 +2,10 @@ const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
 // const TokenService = require('../../services/token.service'); // Removed token service
 
-// Gửi OTP đăng ký
+// DEPRECATED: Gửi OTP đăng ký - KHÔNG SỬ DỤNG NỮA
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (sendUnifiedOTP)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.sendRegisterOTP = async (req, res) => {
     try {
         const { phone } = req.body;
@@ -37,8 +40,12 @@ exports.sendRegisterOTP = async (req, res) => {
         });
     }
 };
+*/
 
-// Xác thực OTP đăng ký
+// DEPRECATED: Xác thực OTP đăng ký - KHÔNG SỬ DỤNG NỮA  
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (verifyUnifiedOTP)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.verifyRegisterOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -63,8 +70,12 @@ exports.verifyRegisterOTP = async (req, res) => {
         });
     }
 };
+*/
 
-// Xác thực OTP đăng nhập (bỏ token)
+// DEPRECATED: Xác thực OTP đăng nhập - KHÔNG SỬ DỤNG NỮA
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (verifyUnifiedOTP)  
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.verifyOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -106,4 +117,5 @@ exports.verifyOTP = async (req, res) => {
             message: error.message
         });
     }
-}; 
+};
+*/ 

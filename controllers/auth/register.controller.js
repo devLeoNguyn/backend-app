@@ -1,7 +1,10 @@
 const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
 
-// Bước 1: Kiểm tra thông tin và gửi OTP
+// DEPRECATED: Bước 1: Kiểm tra thông tin và gửi OTP - KHÔNG SỬ DỤNG NỮA
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (sendUnifiedOTP)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.register = async (req, res) => {
     try {
         const { phone } = req.body;
@@ -49,8 +52,12 @@ exports.register = async (req, res) => {
         });
     }
 };
+*/
 
-// Bước 2: Xác thực OTP và nhập thông tin cá nhân
+// DEPRECATED: Bước 2: Xác thực OTP và nhập thông tin cá nhân - KHÔNG SỬ DỤNG NỮA  
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (completeRegistration)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.registerWithOTP = async (req, res) => {
     try {
         const { full_name, email, gender } = req.body;
@@ -133,4 +140,5 @@ exports.registerWithOTP = async (req, res) => {
             message: error.message
         });
     }
-}; 
+};
+*/ 

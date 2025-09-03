@@ -37,7 +37,7 @@ export const useNotifications = () => {
       
       console.log('Fetching notifications with:', { adminUserId });
       
-      const response = await notificationService.getNotifications(adminUserId, {});
+      const response = await notificationService.getNotifications(adminUserId);
       
       console.log('Notifications response:', response);
       
@@ -66,7 +66,11 @@ export const useNotifications = () => {
   }, [adminUserId, fetchNotifications]);
   
   // Change page
-  const changePage = useCallback((_page: number) => {
+  const changePage = useCallback(
+    // ❌ KHÔNG SỬ DỤNG - _page parameter không được sử dụng trong function
+    // 🗓️ Date: 24/08/2025 - Comment vì ESLint warning "'_page' is defined but never used"
+    // (_page: number) => {
+    () => {
     // Simple pagination without filters
     fetchNotifications();
   }, [fetchNotifications]);

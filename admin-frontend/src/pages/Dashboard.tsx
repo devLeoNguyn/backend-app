@@ -16,7 +16,11 @@ const fetchDashboardStats = async () => {
     fetch(`${API_BASE_URL}/api/admin/totalusers?adminUserId=${adminUserId}`).then(r => r.json()),
     fetch(`${API_BASE_URL}/api/admin/totalproducts?adminUserId=${adminUserId}`).then(r => r.json()),
     fetch(`${API_BASE_URL}/api/admin/totalrevenue?adminUserId=${adminUserId}`).then(r => r.json()),
-    fetch(`${API_BASE_URL}/api/admin/rentals?adminUserId=${adminUserId}`).then(r => r.json())
+    // ❌ KHÔNG SỬ DỤNG - Backend không có route /api/admin/rentals
+    // 🗓️ Date: 24/08/2025 - Comment vì endpoint không tồn tại 
+    // 🔧 Fallback: Sử dụng existing rental stats endpoint
+    // fetch(`${API_BASE_URL}/api/admin/rentals?adminUserId=${adminUserId}`).then(r => r.json())
+    fetch(`${API_BASE_URL}/api/rentals/stats/popular?limit=5`).then(r => r.json()).then(data => data.data || [])
   ]);
 
   return {

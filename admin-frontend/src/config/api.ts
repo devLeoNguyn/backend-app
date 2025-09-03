@@ -31,7 +31,10 @@ export const API_ENDPOINTS = {
     ADMIN_USER_LOCK: `${API_BASE_URL}/api/admin/users`,
     ADMIN_MOVIES: `${API_BASE_URL}/api/admin/movies`, 
     ADMIN_MOVIES_CREATE: `${API_BASE_URL}/api/admin/movies`, // POST endpoint cho tạo phim mới
-    ADMIN_RENTALS: `${API_BASE_URL}/api/admin/rentals`,
+    // ❌ KHÔNG SỬ DỤNG - Backend không có route /api/admin/rentals
+    // 🗓️ Date: 24/08/2025 - Comment vì endpoint không tồn tại
+    // 🔧 Lý do: Backend chỉ có /api/rentals/* routes, không có admin namespace
+    // ADMIN_RENTALS: `${API_BASE_URL}/api/admin/rentals`,
     
     // Admin template compatible endpoints
     ADMIN_TOTAL_USERS: `${API_BASE_URL}/api/admin/totalusers`,

@@ -2,7 +2,10 @@ const User = require('../../models/User');
 const OTPService = require('../../services/otp.service');
 const bcrypt = require('bcrypt');
 
-// Đăng nhập bằng OTP - Simple version (chỉ trả về userId)
+// DEPRECATED: Đăng nhập bằng OTP - KHÔNG SỬ DỤNG NỮA
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (verifyUnifiedOTP)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.loginWithOTP = async (req, res) => {
     try {
         const { phone, otp } = req.body;
@@ -54,8 +57,9 @@ exports.loginWithOTP = async (req, res) => {
         });
     }
 };
+*/
 
-// Đăng xuất - Simple version
+// KEEP: Đăng xuất - Simple version (VẪN SỬ DỤNG)
 exports.logout = async (req, res) => {
     try {
         res.json({
@@ -71,7 +75,10 @@ exports.logout = async (req, res) => {
     }
 };
 
-// Yêu cầu OTP để đăng nhập
+// DEPRECATED: Yêu cầu OTP để đăng nhập - KHÔNG SỬ DỤNG NỮA
+// Lý do: Đã chuyển sang unified flow trong unified.controller.js (sendUnifiedOTP)
+// TODO: Xóa sau khi xác nhận không có client nào reference (21/08/2025)
+/*
 exports.requestLoginOTP = async (req, res) => {
     try {
         const { phone } = req.body;
@@ -107,8 +114,9 @@ exports.requestLoginOTP = async (req, res) => {
         });
     }
 };
+*/
 
-// Traditional login với email/password cho admin panel
+// KEEP: Traditional login với email/password cho admin panel (VẪN SỬ DỤNG)
 exports.traditionalLogin = async (req, res) => {
     try {
         const { email, password, phone } = req.body;

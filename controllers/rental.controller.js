@@ -344,12 +344,16 @@ class RentalController {
 
     // ===========================================
     // CRON JOB MANAGEMENT ENDPOINTS (Admin only)
+    // ❌ KHÔNG SỬ DỤNG - Admin frontend và mobile app không gọi
+    // 🗓️ Date: 24/08/2025 - Comment để clean unused functions
     // ===========================================
 
+    /*
     /**
      * GET /api/rentals/cron/status
      * Lấy trạng thái các cron jobs
      */
+    /*
     async getCronJobsStatus(req, res) {
         try {
             const status = cronService.getJobsStatus();
@@ -369,12 +373,15 @@ class RentalController {
             });
         }
     }
+    */
 
+    /*
     /**
      * POST /api/rentals/cron/manual-check
      * Chạy manual check rental expiration
      * @access Admin
      */
+    /*
     async runManualCheck(req, res) {
         try {
             const cronService = require('../services/cron.service');
@@ -417,11 +424,14 @@ class RentalController {
             });
         }
     }
+    */
 
+    /*
     /**
      * PUT /api/rentals/cron/:action/:jobName
      * Start/Stop một cron job cụ thể
      */
+    /*
     async controlCronJob(req, res) {
         try {
             const { action, jobName } = req.params;
@@ -461,11 +471,14 @@ class RentalController {
             });
         }
     }
+    */
 
+    /*
     /**
      * PUT /api/rentals/cron/all/:action
      * Start/Stop tất cả cron jobs
      */
+    /*
     async controlAllCronJobs(req, res) {
         try {
             const { action } = req.params;
@@ -497,11 +510,14 @@ class RentalController {
             });
         }
     }
+    */
 
+    /*
     /**
      * POST /api/rentals/test-expiry-notification
      * Test rental expiry notification manually
      */
+    /*
     async testRentalExpiryNotification(req, res) {
         try {
             console.log('Testing rental expiry notification...');
@@ -522,15 +538,21 @@ class RentalController {
             });
         }
     }
+    */
 
     // ===========================================
     // WEBHOOK HANDLERS
+    // ❌ KHÔNG SỬ DỤNG - Logic chưa hoàn thiện
+    // 🗓️ Date: 24/08/2025 - Comment vì chưa implement signature verification
+    // 🔧 Lý do: TODO verify webhook signature và auto-confirmation logic
     // ===========================================
 
+    /*
     /**
      * POST /api/rentals/webhook/payment-success
      * Webhook từ PayOS khi thanh toán thành công
      */
+    /*
     async handlePaymentWebhook(req, res) {
         try {
             // TODO: Verify webhook signature từ PayOS
@@ -558,6 +580,7 @@ class RentalController {
             });
         }
     }
+    */
 }
 
 module.exports = new RentalController();

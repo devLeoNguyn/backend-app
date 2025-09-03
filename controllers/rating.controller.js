@@ -5,7 +5,17 @@ const mongoose = require('mongoose');
 // Import shared utility functions (eliminates duplication)
 const { calculateMovieRating } = require('../utils/movieStatsUtils');
 
-// Thêm đánh giá mới
+// =====================================
+// LEGACY RATING FUNCTIONS - DEPRECATED
+// 🗓️ Date: 21/08/2025
+// 📝 Reason: Replaced by star rating system (addStarRating, deleteStarRating)
+// 🔄 Status: Commented for monitoring period
+// ❌ Frontend Usage: NOT USED - Frontend uses star rating system
+// =====================================
+
+/*
+// Thêm đánh giá mới - DEPRECATED: Use addStarRating instead
+// ❌ NOT USED BY FRONTEND - Frontend uses star rating system
 exports.createRating = async (req, res) => {
     try {
         const { movie_id, comment, userId } = req.body;
@@ -58,8 +68,11 @@ exports.createRating = async (req, res) => {
         });
     }
 };
+*/
 
-// Xóa đánh giá
+/*
+// Xóa đánh giá - DEPRECATED: Use deleteStarRating instead
+// ❌ NOT USED BY FRONTEND - Frontend uses star rating system
 exports.deleteRating = async (req, res) => {
     try {
         const { id } = req.params;
@@ -95,6 +108,7 @@ exports.deleteRating = async (req, res) => {
         });
     }
 };
+*/
 
 // Lấy danh sách like của một phim
 exports.getMovieRatings = async (req, res) => {
@@ -276,11 +290,18 @@ exports.toggleLike = async (req, res) => {
     }
 };
 
-// ==============================================
-// LEGACY LIKE FUNCTIONS (for backward compatibility)
-// ==============================================
+// =====================================
+// LEGACY LIKE FUNCTIONS - DEPRECATED  
+// 🗓️ Date: 21/08/2025
+// 📝 Reason: Replaced by toggleLike function (PUT /api/ratings/movies/:movie_id/like)
+// 🔄 Status: Commented for monitoring period - routes still active for backward compatibility
+// ⚠️  Frontend uses toggleLike (PUT method) instead of these separate POST endpoints
+// ❌ Frontend Usage: NOT USED - Frontend uses toggleLike (PUT method)
+// =====================================
 
-// Like a movie (Legacy)
+/*
+// Like a movie (Legacy) - DEPRECATED: Use toggleLike instead
+// ❌ NOT USED BY FRONTEND - Frontend uses toggleLike (PUT method)
 exports.likeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
@@ -339,8 +360,11 @@ exports.likeMovie = async (req, res) => {
         });
     }
 };
+*/
 
-// Unlike a movie (Legacy)
+/*
+// Unlike a movie (Legacy) - DEPRECATED: Use toggleLike instead
+// ❌ NOT USED BY FRONTEND - Frontend uses toggleLike (PUT method)
 exports.unlikeMovie = async (req, res) => {
     try {
         const { movie_id } = req.params;
@@ -377,6 +401,7 @@ exports.unlikeMovie = async (req, res) => {
         });
     }
 };
+*/
 
 // ==============================================
 // COMMENT FUNCTIONS
@@ -790,6 +815,8 @@ exports.deleteStarRating = async (req, res) => {
 };
 
 // Lấy thống kê tổng quan rating của tất cả phim (cho admin)
+// ❌ NOT USED BY FRONTEND - Admin panel only
+// 🔧 CONSIDER: Move to admin controller if not used in main app
 exports.getAllMoviesRatingStats = async (req, res) => {
     try {
         const { page = 1, limit = 20, sort = 'highest_rated' } = req.query;

@@ -206,22 +206,28 @@ router.get('/stats/popular', rentalController.getPopularRentals);
 
 // ===========================================
 // CRON JOB MANAGEMENT ENDPOINTS (Admin)
+// ❌ KHÔNG SỬ DỤNG - Admin frontend và mobile app không gọi các endpoint này
+// 🗓️ Date: 24/08/2025 - Comment để clean unused APIs
+// 🔧 Lý do: Chỉ dành cho system admin manual control, không có UI tương ứng
 // ===========================================
 
+/*
 /**
  * @route GET /api/rentals/cron/status
  * @desc Lấy trạng thái các cron jobs
  * @access Admin
  */
-router.get('/cron/status', rentalController.getCronJobsStatus);
+// router.get('/cron/status', rentalController.getCronJobsStatus);
 
+/*
 /**
  * @route POST /api/rentals/cron/manual-check
  * @desc Chạy manual check rental expiration
  * @access Admin
  */
-router.post('/cron/manual-check', rentalController.runManualCheck);
+// router.post('/cron/manual-check', rentalController.runManualCheck);
 
+/*
 /**
  * @route PUT /api/rentals/cron/:action/:jobName
  * @desc Start/Stop một cron job cụ thể
@@ -229,32 +235,38 @@ router.post('/cron/manual-check', rentalController.runManualCheck);
  * @param action - start hoặc stop
  * @param jobName - tên của job (expiredRentalsCheck, expiringNotifications, etc.)
  */
-router.put('/cron/:action/:jobName', rentalController.controlCronJob);
+// router.put('/cron/:action/:jobName', rentalController.controlCronJob);
 
+/*
 /**
  * @route PUT /api/rentals/cron/all/:action
  * @desc Start/Stop tất cả cron jobs
  * @access Admin
  * @param action - start hoặc stop
  */
-router.put('/cron/all/:action', rentalController.controlAllCronJobs);
+// router.put('/cron/all/:action', rentalController.controlAllCronJobs);
 
+/*
 /**
  * @route POST /api/rentals/test-expiry-notification
  * @desc Test rental expiry notification manually
  * @access Admin
  */
-router.post('/test-expiry-notification', rentalController.testRentalExpiryNotification);
+// router.post('/test-expiry-notification', rentalController.testRentalExpiryNotification);
 
 // ===========================================
 // WEBHOOK ENDPOINTS
+// ❌ KHÔNG SỬ DỤNG - Webhook handler chưa implement đầy đủ
+// 🗓️ Date: 24/08/2025 - Comment vì logic chưa hoàn thiện
+// 🔧 Lý do: TODO verify signature và auto-confirmation chưa được implement
 // ===========================================
 
+/*
 /**
  * @route POST /api/rentals/webhook/payment-success
  * @desc Webhook từ PayOS khi thanh toán thành công
  * @access PayOS only
  */
-router.post('/webhook/payment-success', rentalController.handlePaymentWebhook);
+// router.post('/webhook/payment-success', rentalController.handlePaymentWebhook);
 
 module.exports = router; 

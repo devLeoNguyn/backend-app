@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { 
-    createRating,
-    // updateRating,
-    deleteRating,
+    // DEPRECATED FUNCTIONS - Commented out for monitoring period (21/08/2025)
+    // createRating,         // DEPRECATED: Use addStarRating instead  
+    // deleteRating,         // DEPRECATED: Use deleteStarRating instead
+    // likeMovie,            // DEPRECATED: Use toggleLike instead
+    // unlikeMovie,          // DEPRECATED: Use toggleLike instead
+    
     getMovieRatings,
-    toggleLike,        // ⚡ NEW: Toggle like API
-    likeMovie,         // Legacy
-    unlikeMovie,       // Legacy
+    toggleLike,        // ⚡ NEW: Toggle like API (replaces likeMovie/unlikeMovie)
     addComment,
     getComments,
     deleteUserComment,
@@ -23,14 +24,9 @@ const {
 router.get('/movie/:movie_id', getMovieRatings);
 
 // PROTECTED - cần userId
-// Thêm đánh giá mới (userId từ body)
-router.post('/', createRating);
-
-// Cập nhật đánh giá
-// router.put('/:id', updateRating);
-
-// Xóa đánh giá (userId từ body)
-router.delete('/:id', deleteRating);
+// DEPRECATED ROUTES - Commented for monitoring period
+// router.post('/', createRating);           // DEPRECATED: Use star rating endpoints
+// router.delete('/:id', deleteRating);     // DEPRECATED: Use DELETE /movies/:id/star-rating
 
 // ==============================================
 // NEW UNIFIED INTERACTION APIS
@@ -57,16 +53,20 @@ router.get('/movies/:movie_id/stars', getMovieStarRatings);
 router.delete('/movies/:movie_id/stars', deleteStarRating);
 
 // Lấy thống kê rating của tất cả phim (cho admin)
+// ❌ NOT USED BY FRONTEND - Admin panel only
+// 🔧 CONSIDER: Move to admin routes if not used in main app
 router.get('/stats/all-movies', getAllMoviesRatingStats);
 
 // ==============================================
 // LEGACY ROUTES (for backward compatibility)
 // ==============================================
 
-// Legacy like routes (userId từ body)
-router.post('/movies/:movie_id/like', likeMovie);
-router.delete('/movies/:movie_id/like', unlikeMovie); // Backward compatibility
-router.post('/movies/:movie_id/unlike', unlikeMovie); // 🆕 FIX: Add correct POST endpoint for unlike
+// ❌ DEPRECATED: Legacy like routes (userId từ body) - Use PUT /movies/:movie_id/like instead
+// 🗓️ Date: 21/08/2025 - Commented for monitoring period
+// Frontend uses toggleLike (PUT method) which handles both like/unlike in single endpoint
+// router.post('/movies/:movie_id/like', likeMovie);        // DEPRECATED
+// router.delete('/movies/:movie_id/like', unlikeMovie);    // DEPRECATED  
+// router.post('/movies/:movie_id/unlike', unlikeMovie);    // DEPRECATED
 
 // UNIFIED comment routes (userId từ body)
 router.post('/movies/:movie_id/comment', addComment);    // Add/Update comment (unified)

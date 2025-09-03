@@ -259,7 +259,7 @@ router.post("/confirm-webhook",
 router.post("/webhook", async (req, res) => {
   try {
     const webhookData = payOS.verifyPaymentWebhookData(req.body);
-    console.log("📥 Webhook nhận được:", webhookData);
+    console.log("Webhook nhận được:", webhookData);
 
     // Cập nhật trạng thái thanh toán trong DB
     const payment = await Payment.findOne({ orderCode: webhookData.orderCode });
@@ -285,6 +285,14 @@ router.post("/webhook", async (req, res) => {
   }
 });
 
+// ===========================================
+// PAYMENT SUCCESS/CANCEL HANDLERS
+// ❌ KHÔNG SỬ DỤNG - Mobile app không sử dụng payment routes trực tiếp
+// 🗓️ Date: 24/08/2025 - Comment vì app sử dụng rental API flow
+// 🔧 Lý do: App dùng QR payment screen với rental endpoints, không cần success/cancel routes
+// ===========================================
+
+/*
 // Route handler cho payment success
 router.get("/success", async (req, res) => {
   try {
@@ -313,7 +321,9 @@ router.get("/success", async (req, res) => {
     });
   }
 });
+*/
 
+/*
 // Route handler cho payment cancel
 router.get("/cancel", async (req, res) => {
   try {
@@ -341,5 +351,6 @@ router.get("/cancel", async (req, res) => {
     });
   }
 });
+*/
 
 module.exports = router;

@@ -60,7 +60,9 @@ class NotificationService {
   // Get all notifications
   async getNotifications(
     adminUserId: string,
-    _filters: any = {}
+    // ❌ KHÔNG SỬ DỤNG - _filters parameter không được sử dụng trong function
+    // 🗓️ Date: 24/08/2025 - Comment vì ESLint warning "'_filters' is assigned a value but never used"
+    // _filters: any = {}
   ): Promise<PaginatedResponse<Notification>> {
     try {
       // Simple params
